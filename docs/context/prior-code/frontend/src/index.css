@@ -1,0 +1,33 @@
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';
+@import 'leaflet/dist/leaflet.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { @apply bg-paper text-ink font-sans antialiased; font-feature-settings: 'cv11', 'ss01'; }
+  body { @apply text-sm; }
+  :focus-visible { outline: 2px solid #1E6B70; outline-offset: 2px; }
+  table { font-variant-numeric: tabular-nums; }
+  h1 { @apply text-2xl font-semibold tracking-tight; }
+  h2 { @apply text-lg font-semibold tracking-tight; }
+  h3 { @apply text-sm font-semibold; }
+  input[type='checkbox'] { @apply h-4 w-4 accent-[#1E6B70]; }
+}
+
+@layer components {
+  .num { font-variant-numeric: tabular-nums; }
+  .label { @apply mb-1 block text-xs font-medium text-ink2; }
+  .input { @apply w-full rounded-md border border-rule bg-white px-3 py-2.5 text-sm text-ink placeholder:text-ink2/60 hover:border-ink2/40 disabled:bg-rule2 disabled:text-ink2; }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-md border border-rule bg-white px-4 py-2.5 text-sm font-medium text-ink hover:bg-rule2 disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-primary { @apply border-accent bg-accent text-white hover:bg-accent-dark; }
+  .panel { @apply rounded-lg border border-rule bg-panel p-5 shadow-panel md:p-6; }
+  .th { @apply whitespace-nowrap border-b border-rule px-3 py-3 text-left text-xs font-medium text-ink2; }
+  .td { @apply border-b border-rule2 px-3 py-3 align-top; }
+  tbody tr:last-child .td { border-bottom: 0; }
+}
+
+.leaflet-container { font-family: inherit; background: #ECE8DC; }
+.leaflet-tooltip { font-size: 12px; font-weight: 500; padding: 1px 6px; border-radius: 4px; border-color: #E2DED2; box-shadow: none; color: #15191C; }
+.leaflet-tooltip-top:before, .leaflet-tooltip-right:before { display: none; }
