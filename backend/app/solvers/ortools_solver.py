@@ -6,8 +6,10 @@ integers, so costs are scaled by SCALE (x1000) and rounded; the reported
 distance is nevertheless recomputed from the float matrix by the shared
 evaluator, never read from OR-Tools.
 
-Default search: PATH_CHEAPEST_ARC first solution + GUIDED_LOCAL_SEARCH,
-stopped by a wall-clock limit (GLS never stops on its own).
+Default search: chosen per problem type (CVRP / VRPTW) and budget class from
+the P2 audit (AUDITED_DEFAULTS, docs/decisions/0005). An explicit
+first_solution / metaheuristic always wins. Time-bound metaheuristics never
+stop on their own; the wall-clock limit stops them.
 
 Time budget: `time_limit_s` is the TOTAL wall-clock budget of the run. OR-Tools'
 own limit only covers its search, so the model-build time (arc-cost table,
@@ -32,6 +34,33 @@ ROUTING_STATUS = {
     0: "NOT_SOLVED", 1: "SUCCESS", 2: "PARTIAL_SUCCESS_LOCAL_OPTIMUM_NOT_REACHED",
     3: "FAIL", 4: "FAIL_TIMEOUT", 5: "INVALID", 6: "INFEASIBLE", 7: "OPTIMAL",
 }
+# Budget classes (upper bound in seconds, inclusive) used for the audited defaults.
+BUDGET_CLASSES = [("short", 2.0), ("medium", 6.0), ("long", math.inf)]
+
+
+def budget_class(budget_s: float) -> str:
+    for name, upper in BUDGET_CLASSES:
+        if budget_s <= upper:
+            return name
+    raise AssertionError("unreachable")
+
+
+# Winners of the P2 audit (experiments/results/ortools_audit_2026-11-02, decision 0005):
+# per (problem, budget class), the configuration that solved every run with the lowest
+# mean gap. Evidence: n <= 100 customers, budgets 1 / 3 / 10 s, one laptop. Budgets above
+# 10 s use the "long" entry without having been tested there.
+AUDITED_DEFAULTS = {
+    ("CVRP", "short"): ("SAVINGS", "GUIDED_LOCAL_SEARCH"),
+    ("CVRP", "medium"): ("SAVINGS", "GUIDED_LOCAL_SEARCH"),
+    ("CVRP", "long"): ("PATH_CHEAPEST_ARC", "GUIDED_LOCAL_SEARCH"),
+    ("VRPTW", "short"): ("PARALLEL_CHEAPEST_INSERTION", "TABU_SEARCH"),
+    ("VRPTW", "medium"): ("PARALLEL_CHEAPEST_INSERTION", "TABU_SEARCH"),
+    ("VRPTW", "long"): ("LOCAL_CHEAPEST_INSERTION", "GUIDED_LOCAL_SEARCH"),
+}
+
+
+def default_search(has_time_windows: bool, time_limit_s: float) -> tuple[str, str]:
+    return AUDITED_DEFAULTS[("VRPTW" if has_time_windows else "CVRP", budget_class(time_limit_s))]
 
 
 def _up(v: float) -> int:
@@ -83,12 +112,20 @@ def _add_time_dimension(instance: Instance, manager, routing) -> None:
 def solve_ortools(
     instance: Instance,
     time_limit_s: float = 10.0,
-    first_solution: str = "PATH_CHEAPEST_ARC",
-    metaheuristic: str = "GUIDED_LOCAL_SEARCH",
+    first_solution: str | None = None,
+    metaheuristic: str | None = None,
 ) -> R.SolveResult:
+    """first_solution / metaheuristic = None means: use the audited default for this
+    problem type and budget class. The config records which choice was made."""
+    explicit = (first_solution is not None, metaheuristic is not None)
+    default_fs, default_mh = default_search(instance.has_time_windows, time_limit_s)
+    first_solution = first_solution or default_fs
+    metaheuristic = metaheuristic or default_mh
     config = {"time_limit_s": time_limit_s, "first_solution_strategy": first_solution,
               "local_search_metaheuristic": metaheuristic, "cost_scale": SCALE,
-              "time_windows": instance.has_time_windows}
+              "time_windows": instance.has_time_windows, "budget_class": budget_class(time_limit_s),
+              "search_choice": {(True, True): "explicit", (False, False): "audited_default"}.get(
+                  explicit, "partly_audited_default")}
     if instance.has_time_windows:
         config["time_scale"] = TIME_SCALE
 

@@ -6,8 +6,15 @@ import { fmtSeconds, SOLVER_STATUS_TEXT } from '../lib/format'
 import { useApp } from '../state/AppContext'
 import { AlgoTag, Badge, EmptyState, Field, Notice, NumberInput, PageHeader, Panel, Spinner, TableWrap } from '../components/ui'
 
-const FIRST = ['PATH_CHEAPEST_ARC', 'PARALLEL_CHEAPEST_INSERTION', 'SAVINGS']
-const META = ['GUIDED_LOCAL_SEARCH', 'SIMULATED_ANNEALING', 'TABU_SEARCH']
+// AUTO = let the backend use the audited default for this problem type and budget (sent as null).
+const AUTO = 'AUTO'
+const FIRST = [AUTO, 'PATH_CHEAPEST_ARC', 'PARALLEL_CHEAPEST_INSERTION', 'SAVINGS', 'LOCAL_CHEAPEST_INSERTION']
+const META = [AUTO, 'GUIDED_LOCAL_SEARCH', 'SIMULATED_ANNEALING', 'TABU_SEARCH', 'GREEDY_DESCENT']
+const optionLabel = (x) => (x === AUTO ? 'Audited default (by budget)' : x)
+const orParams = (p) => ({
+  first_solution: p.first_solution === AUTO ? null : p.first_solution,
+  metaheuristic: p.metaheuristic === AUTO ? null : p.metaheuristic,
+})
 const TERMINAL = ['completed', 'failed']
 
 function AlgoBlock({ algo, checked, onToggle, blurb, children }) {
@@ -71,7 +78,7 @@ export default function RunOptimization() {
     try {
       const started = []
       for (const algo of algos) {
-        const body = { instance_id: instance.instance_id, algorithm: algo, time_limit_s: budget, ortools: orp, ga: { ...gap, ...(timeOnly ? { max_generations: 1000000, stagnation_generations: null } : {}) } }
+        const body = { instance_id: instance.instance_id, algorithm: algo, time_limit_s: budget, ortools: orParams(orp), ga: { ...gap, ...(timeOnly ? { max_generations: 1000000, stagnation_generations: null } : {}) } }
         const r = await api.startRun(body)
         started.push({ algo, runId: r.run_id, run: null, startedMs: Date.now() })
       }
@@ -104,10 +111,10 @@ export default function RunOptimization() {
             blurb="Google OR-Tools routing solver with a capacity dimension. Search stops at the time budget.">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="First solution strategy" htmlFor="or-first">
-                <select id="or-first" className="input" value={orp.first_solution} onChange={(e) => setOrp({ ...orp, first_solution: e.target.value })}>{FIRST.map((x) => <option key={x}>{x}</option>)}</select>
+                <select id="or-first" className="input" value={orp.first_solution} onChange={(e) => setOrp({ ...orp, first_solution: e.target.value })}>{FIRST.map((x) => <option key={x} value={x}>{optionLabel(x)}</option>)}</select>
               </Field>
               <Field label="Local search metaheuristic" htmlFor="or-meta">
-                <select id="or-meta" className="input" value={orp.metaheuristic} onChange={(e) => setOrp({ ...orp, metaheuristic: e.target.value })}>{META.map((x) => <option key={x}>{x}</option>)}</select>
+                <select id="or-meta" className="input" value={orp.metaheuristic} onChange={(e) => setOrp({ ...orp, metaheuristic: e.target.value })}>{META.map((x) => <option key={x} value={x}>{optionLabel(x)}</option>)}</select>
               </Field>
             </div>
           </AlgoBlock>

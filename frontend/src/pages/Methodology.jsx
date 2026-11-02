@@ -18,7 +18,7 @@ export default function Methodology() {
       </Panel>
 
       <Panel title="OR-Tools configuration">
-        <P>Routing model with a capacity dimension. Default first solution strategy PATH_CHEAPEST_ARC, then GUIDED_LOCAL_SEARCH, stopped by a wall-clock limit (the metaheuristic does not stop on its own). Arc costs are scaled by 1000 and rounded to integers because OR-Tools requires integer costs; this introduces rounding of at most 0.0005 cost units per arc inside the solver only. The run's time budget is the total wall-clock time: OR-Tools' own limit covers only its search, so the model-build time is measured and subtracted from the search limit.</P>
+        <P>Routing model with a capacity dimension (and a time dimension when the instance has time windows). By default the first solution strategy and metaheuristic are chosen per problem type and time budget from our measured audit (decision 0005; for example SAVINGS + GUIDED_LOCAL_SEARCH for short CVRP runs, PARALLEL_CHEAPEST_INSERTION + TABU_SEARCH for short time-window runs); a user choice overrides this. Search is stopped by a wall-clock limit. Arc costs are scaled by 1000 and rounded to integers because OR-Tools requires integer costs; this introduces rounding of at most 0.0005 cost units per arc inside the solver only. The run's time budget is the total wall-clock time: OR-Tools' own limit covers only its search, so the model-build time is measured and subtracted from the search limit.</P>
       </Panel>
 
       <Panel title="Genetic algorithm configuration" className="xl:col-span-2">

@@ -25,6 +25,8 @@ Effort is a rough estimate in *team-weeks* (all three members working on the pha
 
 **Status:** P1 done on 2 Nov 2026 (see PROGRESS.md). Gehring-Homberger was not imported (optional). Notes carried forward: P2 must audit time-window instances separately (the default OR-Tools start strategy failed on R101); P3 must fix the GA's excess routes on time-window instances.
 
+**Status:** P2 done on 2 Nov 2026: OR-Tools audit (1728 runs) and audited defaults per problem type and budget class (docs/decisions/0005). Notes carried forward: P3's equal-clock comparison should use the audited OR-Tools defaults; P5's selector should treat the budget as a feature (the best configuration changes between 1, 3 and 10 s); synthetic time-window instances are still missing (P5 generator).
+
 The phases are done in order, but P4, P6 and P9 can run in parallel with the solver phases if the team splits work by person. Even with parallel work, the full must-have list needs roughly **7 to 9 calendar weeks**. That estimate is uncertain.
 
 ## Proposed cut line (depends on weeks remaining)

@@ -50,8 +50,11 @@ class GenerateIn(BaseModel):
 
 
 class ORToolsParams(BaseModel):
-    first_solution: Literal["PATH_CHEAPEST_ARC", "PARALLEL_CHEAPEST_INSERTION", "SAVINGS"] = "PATH_CHEAPEST_ARC"
-    metaheuristic: Literal["GUIDED_LOCAL_SEARCH", "SIMULATED_ANNEALING", "TABU_SEARCH"] = "GUIDED_LOCAL_SEARCH"
+    # None = audited default for the problem type and time budget (docs/decisions/0005).
+    first_solution: Literal["PATH_CHEAPEST_ARC", "PARALLEL_CHEAPEST_INSERTION", "SAVINGS",
+                            "LOCAL_CHEAPEST_INSERTION"] | None = None
+    metaheuristic: Literal["GUIDED_LOCAL_SEARCH", "SIMULATED_ANNEALING", "TABU_SEARCH",
+                           "GREEDY_DESCENT"] | None = None
 
 
 class GAParams(BaseModel):

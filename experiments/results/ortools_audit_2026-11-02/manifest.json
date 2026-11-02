@@ -1,0 +1,55 @@
+{
+ "created_at": "2026-11-02T08:29:14+00:00",
+ "args": {
+  "instances": [
+   "solomon:C101",
+   "solomon:C201",
+   "solomon:R101",
+   "solomon:R201",
+   "solomon:RC101",
+   "solomon:RC201",
+   "A:A-n32-k5",
+   "A:A-n60-k9",
+   "A:A-n80-k10",
+   "X:X-n101-k25",
+   "synthetic:50",
+   "synthetic:100"
+  ],
+  "first_solutions": [
+   "PATH_CHEAPEST_ARC",
+   "SAVINGS",
+   "PARALLEL_CHEAPEST_INSERTION",
+   "LOCAL_CHEAPEST_INSERTION"
+  ],
+  "metaheuristics": [
+   "GREEDY_DESCENT",
+   "GUIDED_LOCAL_SEARCH",
+   "SIMULATED_ANNEALING",
+   "TABU_SEARCH"
+  ],
+  "budgets": [
+   1.0,
+   3.0,
+   10.0
+  ],
+  "repeats": 3,
+  "out": "C:\\Users\\rohit\\AppData\\Local\\Temp\\ortools_audit_full",
+  "resume": true,
+  "estimate_only": false,
+  "analyze_only": false
+ },
+ "environment": {
+  "python": "3.14.7",
+  "platform": "Windows-11-10.0.26300-SP0",
+  "processor": "AMD64 Family 23 Model 96 Stepping 1, AuthenticAMD",
+  "cpu_count": 16,
+  "ortools": "9.15.6755",
+  "numpy": "2.5.4",
+  "pandas": "3.1.0"
+ },
+ "git_commit": "309177e",
+ "planned_runs": 1728,
+ "estimated_seconds": 6480.0,
+ "policy": "one run at a time; time limit = total wall clock incl. model build; OR-Tools has no seed, repeats re-run the same configuration",
+ "notes": "Added after the run: the first attempt started 2026-11-02 ~07:23 UTC and was stopped by Claude Code after 308 runs because the system ran low on memory; it was resumed with --resume (created_at above is the resume time, because the script then overwrote the manifest; fixed afterwards). Run 305 (A-n32-k5, SAVINGS + GUIDED_LOCAL_SEARCH, 10 s, repeat 0) took 1506.7 s just before that stop and is excluded as a timing anomaly."
+}
