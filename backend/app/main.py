@@ -1,7 +1,8 @@
 """FastAPI app. Run from backend/:  uvicorn app.main:app --reload --port 8000
 
 Environment variables
-  ROUTEOPT_DATA_DIR            where instances/runs/experiments JSON are stored (default ../experiments/results/api_data)
+  ROUTEOPT_DATA_DIR            where instances/runs/experiments JSON are stored
+                               (default ../experiments/results/api_data)
   ROUTEOPT_CORS_ORIGINS        comma-separated allowed origins (default http://localhost:5173)
   ROUTEOPT_MAX_TIME_LIMIT_S    cap on per-run time limits (default 300)
 """

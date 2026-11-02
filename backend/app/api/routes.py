@@ -125,9 +125,17 @@ def get_instance(instance_id: str, request: Request) -> dict:
 
 
 # ---- runs ---------------------------------------------------------------
-def solver_config(algorithm: str, time_limit_s: float | None, ortools: S.ORToolsParams, ga: S.GAParams) -> dict:
+HYBRID_OWN = {"time_limit_s", "local_search", "seed", "max_generations", "stagnation_generations"}
+
+
+def solver_config(algorithm: str, time_limit_s: float | None, ortools: S.ORToolsParams, ga: S.GAParams,
+                  hybrid: S.HybridParams | None = None) -> dict:
     if algorithm == "ortools":
         return {"time_limit_s": time_limit_s or 10.0, **ortools.model_dump()}
+    if algorithm == "hybrid":
+        hp = hybrid or S.HybridParams()
+        return {"time_limit_s": time_limit_s or 10.0, **hp.model_dump(), **ortools.model_dump(),
+                "seed": ga.seed, "ga": {k: v for k, v in ga.model_dump().items() if k not in HYBRID_OWN}}
     return {**ga.model_dump(), "time_limit_s": time_limit_s}
 
 
@@ -138,7 +146,7 @@ def start_run(body: S.RunIn, request: Request) -> dict:
         raise HTTPException(404, detail=f"instance {body.instance_id} not found")
     check_time(body.time_limit_s, "time_limit_s")
     run_id = store.submit_run(body.instance_id, body.algorithm,
-                              solver_config(body.algorithm, body.time_limit_s, body.ortools, body.ga))
+                              solver_config(body.algorithm, body.time_limit_s, body.ortools, body.ga, body.hybrid))
     return {"run_id": run_id, "state": "queued"}
 
 

@@ -9,6 +9,7 @@ from typing import Any
 SOLVED = "solved"                      # solver returned a candidate solution
 NO_SOLUTION = "no_solution"            # solver ran but found nothing / proved infeasible
 TIMEOUT_NO_SOLUTION = "timeout_no_solution"  # time limit hit before any solution
+HARD_TIMEOUT = "hard_timeout"          # overran its time limit; stopped by the wall-clock guard
 INVALID_INPUT = "invalid_input"
 ERROR = "error"
 

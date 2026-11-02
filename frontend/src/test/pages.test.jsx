@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { INSTANCE, mockFetch, renderPage } from './helpers'
 import ProblemSetup from '../pages/ProblemSetup'
 import Compare from '../pages/Compare'
+import RunOptimization from '../pages/RunOptimization'
 
 vi.mock('../components/RouteMap', () => ({ default: () => <div data-testid="map" /> }))
 vi.mock('recharts', () => {
@@ -90,4 +91,40 @@ test('Compare: shows measured values, a dash for a failed solver, and no winner 
   expect(row).toHaveTextContent('—')
   expect(row).not.toHaveTextContent('↓')
   expect(screen.getByText(/returned no solution/i)).toBeInTheDocument()
+})
+
+test('Run optimization: "Audited default" is preselected and sends null so the backend picks', async () => {
+  localStorage.setItem('routeopt.currentInstance', 'inst-test000001')
+  const bodies = []
+  mockFetch({
+    ...BASE, 'GET /api/instances': [], 'GET /api/runs?instance_id': [],
+    'POST /api/runs': (opts) => { bodies.push(JSON.parse(opts.body)); return { run_id: `run-${bodies.length}`, state: 'queued' } },
+    'GET /api/runs/run-': { run_id: 'run-1', state: 'queued' },
+  })
+  renderPage(<RunOptimization />)
+  const first = await screen.findByLabelText(/first solution strategy/i)
+  const meta = screen.getByLabelText(/local search metaheuristic/i)
+  expect(first).toHaveDisplayValue('Audited default (by budget)')
+  expect(meta).toHaveDisplayValue('Audited default (by budget)')
+  await userEvent.click(screen.getByRole('checkbox', { name: /run genetic algorithm/i }))  // OR-Tools only
+  await userEvent.click(screen.getByRole('button', { name: /run selected algorithm/i }))
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(bodies[0].algorithm).toBe('ortools')
+  expect(bodies[0].ortools).toEqual({ first_solution: null, metaheuristic: null })
+})
+
+test('Run optimization: a named strategy is sent unchanged', async () => {
+  localStorage.setItem('routeopt.currentInstance', 'inst-test000001')
+  const bodies = []
+  mockFetch({
+    ...BASE, 'GET /api/instances': [], 'GET /api/runs?instance_id': [],
+    'POST /api/runs': (opts) => { bodies.push(JSON.parse(opts.body)); return { run_id: 'run-1', state: 'queued' } },
+    'GET /api/runs/run-': { run_id: 'run-1', state: 'queued' },
+  })
+  renderPage(<RunOptimization />)
+  await userEvent.selectOptions(await screen.findByLabelText(/first solution strategy/i), 'SAVINGS')
+  await userEvent.click(screen.getByRole('checkbox', { name: /run genetic algorithm/i }))
+  await userEvent.click(screen.getByRole('button', { name: /run selected algorithm/i }))
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(bodies[0].ortools).toEqual({ first_solution: 'SAVINGS', metaheuristic: null })
 })

@@ -23,6 +23,7 @@ export const SOLVER_STATUS_TEXT = {
   solved: 'Returned a solution',
   no_solution: 'No solution found',
   timeout_no_solution: 'Time limit reached before any solution',
+  hard_timeout: 'Stopped: overran its time limit (no plan)',
   invalid_input: 'Rejected input',
   error: 'Solver error',
 }

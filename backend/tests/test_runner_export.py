@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
-
 from app.services.export import summarize, write_raw_csv
 from app.services.generator import generate_instance
 from app.services.runner import environment_info, run_algorithm
@@ -43,10 +42,14 @@ def test_csv_export_contains_real_rows(tmp_path):
 
 def test_summary_excludes_infeasible_runs():
     df = pd.DataFrame([
-        dict(n_customers=10, algorithm="ga", feasible=True, total_distance=100.0, estimated_cost=150.0, runtime_seconds=1.0, vehicles_used=1),
-        dict(n_customers=10, algorithm="ga", feasible=True, total_distance=120.0, estimated_cost=170.0, runtime_seconds=1.0, vehicles_used=1),
-        dict(n_customers=10, algorithm="ga", feasible=False, total_distance=1.0, estimated_cost=1.0, runtime_seconds=1.0, vehicles_used=1),
-        dict(n_customers=10, algorithm="ortools", feasible=None, total_distance=math.nan, estimated_cost=math.nan, runtime_seconds=1.0, vehicles_used=math.nan),
+        dict(n_customers=10, algorithm="ga", feasible=True, total_distance=100.0, estimated_cost=150.0,
+             runtime_seconds=1.0, vehicles_used=1),
+        dict(n_customers=10, algorithm="ga", feasible=True, total_distance=120.0, estimated_cost=170.0,
+             runtime_seconds=1.0, vehicles_used=1),
+        dict(n_customers=10, algorithm="ga", feasible=False, total_distance=1.0, estimated_cost=1.0,
+             runtime_seconds=1.0, vehicles_used=1),
+        dict(n_customers=10, algorithm="ortools", feasible=None, total_distance=math.nan, estimated_cost=math.nan,
+             runtime_seconds=1.0, vehicles_used=math.nan),
     ])
     s = summarize(df).set_index("algorithm")
     assert s.loc["ga", "runs"] == 3 and s.loc["ga", "feasible_runs"] == 2

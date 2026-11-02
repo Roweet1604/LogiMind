@@ -3,16 +3,18 @@ import datetime as dt
 import math
 
 import pytest
-from fastapi.testclient import TestClient
-
 from app.benchmarks import catalog
 from app.benchmarks.formats import (
-    BenchmarkFormatError, parse_solomon, parse_solution, parse_tsplib_cvrp,
+    BenchmarkFormatError,
+    parse_solomon,
+    parse_solution,
+    parse_tsplib_cvrp,
 )
 from app.evaluation.metrics import compute_metrics
 from app.evaluation.validator import validate_routes
 from app.main import app
 from app.models.problem import Customer, Instance
+from fastapi.testclient import TestClient
 
 # Small made-up files in the official layouts (not real benchmark data).
 SOLOMON_TEXT = """T1

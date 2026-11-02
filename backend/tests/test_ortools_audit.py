@@ -3,7 +3,6 @@ import math
 
 import pandas as pd
 import pytest
-
 from app.benchmarks import audit as A
 
 
@@ -109,12 +108,12 @@ def test_repeat_variation_spread(toy_raw):
 
 
 # ---- audited defaults in the solver (decision 0005) ----
-from fastapi.testclient import TestClient  # noqa: E402
-
 from app.benchmarks import catalog  # noqa: E402
 from app.main import app  # noqa: E402
 from app.services.runner import run_algorithm  # noqa: E402
 from app.solvers.ortools_solver import AUDITED_DEFAULTS, default_search, solve_ortools  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+
 from tests.test_api import wait_run  # noqa: E402
 from tests.test_time_windows import line_instance  # noqa: E402
 

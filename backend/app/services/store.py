@@ -1,6 +1,8 @@
 """In-process store + JSON-file persistence + single-worker execution.
 
-One worker thread runs solver jobs strictly one at a time. This is deliberate:
+One worker thread runs solver jobs strictly one at a time, each inside the
+guarded worker process (services/guard.py: a run that overruns its time limit
+is killed and reported as hard_timeout). This is deliberate:
 runs are compared by wall-clock time, so concurrent jobs would compete for CPU
 and make the comparison unfair.
 
@@ -22,7 +24,8 @@ import pandas as pd
 
 from app.models.problem import Instance
 from app.services.export import summarize
-from app.services.runner import RunRecord, run_algorithm
+from app.services.guard import GuardedWorker
+from app.services.runner import RunRecord
 
 TERMINAL = {"completed", "failed"}
 
@@ -51,6 +54,7 @@ class Store:
             (self.dir / sub).mkdir(parents=True, exist_ok=True)
         self.lock = threading.RLock()
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="solver")
+        self.guard = GuardedWorker()
         self.instances: dict[str, Instance] = {}
         self.runs: dict[str, dict[str, Any]] = {}
         self.experiments: dict[str, dict[str, Any]] = {}
@@ -98,7 +102,7 @@ class Store:
             self.runs[run_id] = {**self.runs[run_id], "state": "running"}
             base = self.runs[run_id]
         try:
-            rec: RunRecord = run_algorithm(self.instances[base["instance_id"]], base["algorithm"], config)
+            rec: RunRecord = self.guard.run(self.instances[base["instance_id"]], base["algorithm"], config)
             rec.result.run_id = run_id
             update = {
                 "state": "completed", "started_at": rec.started_at, "result": rec.result.to_dict(),

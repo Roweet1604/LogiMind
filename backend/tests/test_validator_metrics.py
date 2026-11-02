@@ -1,5 +1,4 @@
 import pytest
-
 from app.evaluation import validator as V
 from app.evaluation.metrics import compute_metrics, route_distance
 from app.evaluation.validator import validate_routes

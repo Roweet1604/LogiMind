@@ -5,7 +5,6 @@ import tempfile
 os.environ.setdefault("ROUTEOPT_DATA_DIR", tempfile.mkdtemp(prefix="routeopt_test_"))
 
 import pytest
-
 from app.models.problem import Customer, Instance
 
 

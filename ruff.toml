@@ -1,0 +1,7 @@
+# Lint settings for backend/ and experiments/ (run from the repository root: python -m ruff check .)
+line-length = 120
+target-version = "py312"
+extend-exclude = ["docs/context", "frontend"]
+
+[lint]
+select = ["E", "F", "W", "I"]

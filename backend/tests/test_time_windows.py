@@ -1,10 +1,11 @@
 """Time windows (CVRPTW): model, validator, metrics, both solvers and the API."""
 import pytest
-from fastapi.testclient import TestClient
-
 from app.evaluation.metrics import compute_metrics
 from app.evaluation.validator import (
-    DEPOT_RETURN_LATE, TIME_WINDOW_VIOLATED, route_schedule, validate_routes,
+    DEPOT_RETURN_LATE,
+    TIME_WINDOW_VIOLATED,
+    route_schedule,
+    validate_routes,
 )
 from app.main import app
 from app.models import result as R
@@ -12,6 +13,7 @@ from app.models.problem import Customer, Instance, InstanceValidationError
 from app.services.generator import generate_instance
 from app.solvers.genetic_algorithm import GAConfig, _Problem, repair_time_windows, solve_ga
 from app.solvers.ortools_solver import solve_ortools
+from fastapi.testclient import TestClient
 
 
 def line_instance(**kw) -> Instance:

@@ -48,7 +48,8 @@ def main(argv: list[str] | None = None) -> int:
                     "seed": seed, "population_size": args.population, "max_generations": 10**9,
                     "time_limit_s": args.time_budget, "stagnation_generations": None}))
             last = records[-1].to_row()
-            print(f"n={n} inst={inst.instance_id} done ({len(records)} runs so far; last={last['algorithm']} {last['status']})")
+            print(f"n={n} inst={inst.instance_id} done ({len(records)} runs so far; "
+                  f"last={last['algorithm']} {last['status']})")
 
     raw = write_raw_csv(records, out / "raw.csv")
     summarize(raw).to_csv(out / "summary.csv", index=False)

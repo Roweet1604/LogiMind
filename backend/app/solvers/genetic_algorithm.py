@@ -40,6 +40,7 @@ from dataclasses import asdict, dataclass
 
 from app.models import result as R
 from app.models.problem import Instance, InstanceValidationError
+from app.solvers.local_search import fleet_repair, local_search, routes_to_tour
 
 
 @dataclass
@@ -59,6 +60,12 @@ class GAConfig:
     due_seed_fraction: float = 0.1
     lateness_weight: float | None = None
     tw_repair: bool = True
+    # P3: empty the smallest routes when there are more routes than vehicles;
+    # optional local search (relocate, swap, 2-opt) on a share of the children.
+    fleet_repair: bool = True
+    local_search: bool = False
+    ls_rate: float = 0.2
+    ls_neighbours: int = 10
     seed: int = 0
 
     def validate(self) -> None:
@@ -79,6 +86,10 @@ class GAConfig:
             errs.append("due_seed_fraction must be in [0, 1] and nn_seed_fraction + due_seed_fraction <= 1")
         if self.lateness_weight is not None and self.lateness_weight < 0:
             errs.append("lateness_weight must be >= 0")
+        if not 0 <= self.ls_rate <= 1:
+            errs.append("ls_rate must be in [0, 1]")
+        if self.ls_neighbours < 1:
+            errs.append("ls_neighbours must be >= 1")
         if errs:
             raise ValueError("; ".join(errs))
 
@@ -254,7 +265,9 @@ def _random_due_tour(p: _Problem, rng: random.Random) -> list[int]:
     return sorted(range(1, p.n + 1), key=key.__getitem__)
 
 
-def solve_ga(instance: Instance, config: GAConfig | None = None) -> R.SolveResult:
+def solve_ga(instance: Instance, config: GAConfig | None = None,
+             initial_tours: list[list[int]] | None = None) -> R.SolveResult:
+    """initial_tours (customer ids) go into the start population; the hybrid uses this."""
     cfg = config or GAConfig()
     cfg_dict = asdict(cfg)
 
@@ -274,14 +287,25 @@ def solve_ga(instance: Instance, config: GAConfig | None = None) -> R.SolveResul
         rng = random.Random(cfg.seed)
         p = _Problem(instance, cfg.lateness_weight)
         base = list(range(1, p.n + 1))
+        deadline = None if cfg.time_limit_s is None else start + cfg.time_limit_s
+
+        def out_of_time() -> bool:
+            return deadline is not None and time.perf_counter() >= deadline
 
         pop: list[list[int]] = []
-        n_nn = int(cfg.population_size * cfg.nn_seed_fraction)
+        index_of = instance.index_of() if initial_tours else {}
+        for tour in (initial_tours or [])[:cfg.population_size]:
+            perm = [index_of[c] for c in tour]
+            if sorted(perm) != base:
+                raise ValueError("initial tour must visit every customer exactly once")
+            pop.append(perm)
+        seeded = len(pop)
+        n_nn = min(int(cfg.population_size * cfg.nn_seed_fraction), cfg.population_size - len(pop))
         pop.extend(_random_nn_tour(p, rng) for _ in range(n_nn))
         if p.tw:
-            n_due = int(cfg.population_size * cfg.due_seed_fraction)
+            n_due = min(int(cfg.population_size * cfg.due_seed_fraction), cfg.population_size - len(pop))
             pop.extend(_random_due_tour(p, rng) for _ in range(n_due))
-        repair_calls = repair_wins = 0
+        repair_calls = repair_wins = fleet_calls = fleet_wins = ls_calls = ls_moves = 0
         while len(pop) < cfg.population_size:
             perm = base[:]
             rng.shuffle(perm)
@@ -295,7 +319,7 @@ def solve_ga(instance: Instance, config: GAConfig | None = None) -> R.SolveResul
         stagnant, stop_reason, gen = 0, "max_generations", 0
 
         for gen in range(1, cfg.max_generations + 1):
-            if cfg.time_limit_s is not None and time.perf_counter() - start >= cfg.time_limit_s:
+            if out_of_time():
                 stop_reason = "time_limit"
                 gen -= 1
                 break
@@ -307,19 +331,40 @@ def solve_ga(instance: Instance, config: GAConfig | None = None) -> R.SolveResul
                 picks = [rng.randrange(len(pop)) for _ in range(cfg.tournament_size)]
                 return pop[min(picks, key=fit.__getitem__)]
 
+            cut_short = False
             while len(new_pop) < cfg.population_size:
+                if out_of_time():  # stop mid-generation; every kept child is scored
+                    cut_short = True
+                    break
                 p1, p2 = tournament(), tournament()
                 child = order_crossover(p1, p2, rng) if rng.random() < cfg.crossover_rate else p1[:]
                 if rng.random() < cfg.mutation_rate:
                     mutate(child, rng)
+                if cfg.local_search and rng.random() < cfg.ls_rate:
+                    _, rts = p.split(child)
+                    rts, moves = local_search(p, rts, rng, deadline, cfg.ls_neighbours)
+                    child = routes_to_tour(rts)
+                    ls_calls += 1
+                    ls_moves += moves
                 new_pop.append(child)
                 new_fit.append(p.fitness(child))
                 evaluations += 1
             pop, fit = new_pop, new_fit
 
             gen_best = min(range(len(pop)), key=fit.__getitem__)
-            if p.tw and cfg.tw_repair and _needs_repair(p, pop[gen_best]) and (
-                    cfg.time_limit_s is None or time.perf_counter() - start < cfg.time_limit_s):
+            if cfg.fleet_repair and not out_of_time():
+                _, rts = p.split(pop[gen_best])
+                if len(rts) > p.vehicles:
+                    fleet_calls += 1
+                    fixed = routes_to_tour(fleet_repair(p, rts, deadline))
+                    fixed_fit = p.fitness(fixed)
+                    evaluations += 1
+                    if fixed_fit < fit[gen_best] - 1e-9:
+                        fleet_wins += 1
+                        worst = max(range(len(pop)), key=fit.__getitem__)
+                        pop[worst], fit[worst] = fixed, fixed_fit
+                        gen_best = worst
+            if p.tw and cfg.tw_repair and not out_of_time() and _needs_repair(p, pop[gen_best]):
                 repair_calls += 1
                 fixed, fixed_fit, used = repair_time_windows(p, pop[gen_best], rng)
                 evaluations += used
@@ -333,6 +378,9 @@ def solve_ga(instance: Instance, config: GAConfig | None = None) -> R.SolveResul
             else:
                 stagnant += 1
             history.append(best_fit)
+            if cut_short:
+                stop_reason = "time_limit"
+                break
             if cfg.stagnation_generations is not None and stagnant >= cfg.stagnation_generations:
                 stop_reason = "stagnation"
                 break
@@ -345,7 +393,9 @@ def solve_ga(instance: Instance, config: GAConfig | None = None) -> R.SolveResul
         runtime = time.perf_counter() - start
         step = max(1, len(history) // 200)
         diag = {"generations_run": gen, "stop_reason": stop_reason, "evaluations": evaluations,
-                "best_fitness": best_fit, "fitness_history": history[::step]}
+                "best_fitness": best_fit, "fitness_history": history[::step], "seeded_tours": seeded,
+                "fleet_repair_calls": fleet_calls, "fleet_repair_improvements": fleet_wins,
+                "local_search_calls": ls_calls, "local_search_moves": ls_moves}
         if p.tw:
             diag.update(repair_calls=repair_calls, repair_improvements=repair_wins,
                         best_lateness=sum(sum(p.route_lateness(r)) for r in node_routes))

@@ -1,0 +1,94 @@
+{
+ "created_at": "2026-11-02T10:38:51+00:00",
+ "args": {
+  "instances": [
+   "solomon:C101",
+   "solomon:R101",
+   "solomon:RC101",
+   "solomon:R201",
+   "solomon:RC201",
+   "A:A-n32-k5",
+   "A:A-n80-k10",
+   "X:X-n101-k25",
+   "synthetic:50",
+   "synthetic:100"
+  ],
+  "methods": [
+   "ortools",
+   "ga_nofix",
+   "ga",
+   "ga_ls",
+   "hybrid_seed",
+   "hybrid_seed_ls"
+  ],
+  "budgets": [
+   3.0,
+   10.0
+  ],
+  "seeds": 2,
+  "out": "C:\\Users\\rohit\\AppData\\Local\\Temp\\compare_full",
+  "resume": false,
+  "estimate_only": false,
+  "analyze_only": false
+ },
+ "environment": {
+  "python": "3.14.7",
+  "platform": "Windows-11-10.0.26300-SP0",
+  "processor": "AMD64 Family 23 Model 96 Stepping 1, AuthenticAMD",
+  "cpu_count": 16,
+  "ortools": "9.15.6755",
+  "numpy": "2.5.4",
+  "pandas": "3.1.0"
+ },
+ "git_commit": "a527bd4",
+ "planned_runs": 240,
+ "estimated_seconds": 1560.0,
+ "methods": {
+  "ortools": {
+   "algorithm": "ortools",
+   "config": {},
+   "label": "OR-Tools (audited defaults)"
+  },
+  "ga_nofix": {
+   "algorithm": "ga",
+   "config": {
+    "max_generations": 1000000000,
+    "stagnation_generations": null,
+    "fleet_repair": false
+   },
+   "label": "GA, P1 version (no fleet repair)"
+  },
+  "ga": {
+   "algorithm": "ga",
+   "config": {
+    "max_generations": 1000000000,
+    "stagnation_generations": null
+   },
+   "label": "GA + fleet repair"
+  },
+  "ga_ls": {
+   "algorithm": "ga",
+   "config": {
+    "max_generations": 1000000000,
+    "stagnation_generations": null,
+    "local_search": true
+   },
+   "label": "GA + fleet repair + local search"
+  },
+  "hybrid_seed": {
+   "algorithm": "hybrid",
+   "config": {
+    "local_search": false
+   },
+   "label": "Hybrid: OR-Tools seed, no local search"
+  },
+  "hybrid_seed_ls": {
+   "algorithm": "hybrid",
+   "config": {
+    "local_search": true
+   },
+   "label": "Hybrid: OR-Tools seed + local search"
+  }
+ },
+ "policy": "equal total wall clock per run; one run at a time; wall-clock guard (1.5 x budget + 5 s) stops hung runs as hard_timeout"
+}

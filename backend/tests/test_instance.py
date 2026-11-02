@@ -1,7 +1,6 @@
 import math
 
 import pytest
-
 from app.models.problem import Customer, Instance, InstanceValidationError
 from app.services.generator import generate_instance
 

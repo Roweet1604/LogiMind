@@ -29,7 +29,6 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "backend"))
 
 import pandas as pd  # noqa: E402
-
 from app.benchmarks import audit as A  # noqa: E402
 from app.services.runner import environment_info  # noqa: E402
 
@@ -58,7 +57,8 @@ def write_report(df: pd.DataFrame, out: Path, manifest: dict) -> None:
         "OR-Tools has no seed: repeats re-run the same configuration; their differences come from the time limit. "
         "Gaps are averaged over feasible runs only; the `solved` column shows how many runs gave a feasible plan.", "",
         "## Recommended configuration per problem and budget", "",
-        "| Problem | Budget (s) | Class | First solution | Metaheuristic | Mean gap to best observed % | Mean gap to BKS % | Note |",
+        "| Problem | Budget (s) | Class | First solution | Metaheuristic "
+        "| Mean gap to best observed % | Mean gap to BKS % | Note |",
         "| --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for _, r in rec.iterrows():
@@ -94,7 +94,8 @@ def write_report(df: pd.DataFrame, out: Path, manifest: dict) -> None:
         lines += ["| Instance | First solution | Metaheuristic | Budget (s) | Repeat | Runtime (s) | Started (UTC) |",
                   "| --- | --- | --- | --- | --- | --- | --- |"]
         for _, r in anomalies.iterrows():
-            lines.append(f"| {r['instance_key']} | {r['first_solution']} | {r['metaheuristic']} | {fmt(r['budget_s'], 0)} | "
+            lines.append(f"| {r['instance_key']} | {r['first_solution']} | {r['metaheuristic']} | "
+                         f"{fmt(r['budget_s'], 0)} | "
                          f"{r['repeat']} | {fmt(r['runtime_seconds'], 1)} | {r['started_at']} |")
 
     lines += ["", "## Failures (runs without a feasible plan)", ""]

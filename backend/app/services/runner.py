@@ -14,9 +14,10 @@ from app.evaluation.validator import ValidationResult, validate_routes
 from app.models import result as R
 from app.models.problem import Instance
 from app.solvers.genetic_algorithm import GAConfig, solve_ga
+from app.solvers.hybrid import HybridConfig, solve_hybrid
 from app.solvers.ortools_solver import solve_ortools
 
-ALGORITHMS = ("ortools", "ga")
+ALGORITHMS = ("ortools", "ga", "hybrid")
 
 
 def environment_info() -> dict[str, Any]:
@@ -79,6 +80,12 @@ def run_algorithm(instance: Instance, algorithm: str, config: dict[str, Any] | N
         except TypeError as exc:  # unknown GA setting
             res = R.SolveResult(instance.instance_id, "ga", R.INVALID_INPUT, 0.0, None, config,
                                 seed=config.get("seed"), message=f"invalid GA config: {exc}")
+    elif algorithm == "hybrid":
+        try:
+            res = solve_hybrid(instance, HybridConfig(**config))
+        except TypeError as exc:  # unknown hybrid setting
+            res = R.SolveResult(instance.instance_id, "hybrid", R.INVALID_INPUT, 0.0, None, config,
+                                seed=config.get("seed"), message=f"invalid hybrid config: {exc}")
     else:
         raise ValueError(f"unknown algorithm {algorithm!r}; expected one of {ALGORITHMS}")
 

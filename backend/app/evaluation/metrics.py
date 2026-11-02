@@ -9,7 +9,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from app.evaluation.validator import (
-    CAPACITY_EXCEEDED, TIME_VIOLATIONS, ValidationResult, route_schedule,
+    CAPACITY_EXCEEDED,
+    TIME_VIOLATIONS,
+    ValidationResult,
+    route_schedule,
 )
 from app.models.problem import Instance
 

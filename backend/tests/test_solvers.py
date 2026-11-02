@@ -2,7 +2,6 @@ import math
 import random
 
 import pytest
-
 from app.evaluation.validator import TOO_MANY_VEHICLES, validate_routes
 from app.models import result as R
 from app.models.problem import Customer, Instance
@@ -57,6 +56,7 @@ def test_ga_time_limit_respected():
 
 def test_ga_does_not_import_ortools():
     import ast
+
     import app.solvers.genetic_algorithm as ga
     tree = ast.parse(open(ga.__file__).read())
     imported = {a.name for n in ast.walk(tree) if isinstance(n, ast.Import) for a in n.names}

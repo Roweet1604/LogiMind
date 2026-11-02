@@ -69,15 +69,27 @@ class GAParams(BaseModel):
     due_seed_fraction: float = Field(0.1, ge=0, le=1)
     lateness_weight: float | None = Field(None, ge=0)
     tw_repair: bool = True
+    fleet_repair: bool = True
+    local_search: bool = False
+    ls_rate: float = Field(0.2, ge=0, le=1)
+    ls_neighbours: int = Field(10, ge=1, le=200)
     seed: int = 0
+
+
+class HybridParams(BaseModel):
+    """OR-Tools seeds the GA inside one total time limit (labelled "hybrid")."""
+    ortools_share: float = Field(0.5, gt=0, lt=1)
+    seed_copies: int = Field(5, ge=1, le=100)
+    local_search: bool = True
 
 
 class RunIn(BaseModel):
     instance_id: str
-    algorithm: Literal["ortools", "ga"]
+    algorithm: Literal["ortools", "ga", "hybrid"]
     time_limit_s: float | None = Field(None, gt=0)  # OR-Tools default 10 s; GA: optional extra stop
     ortools: ORToolsParams = ORToolsParams()
     ga: GAParams = GAParams()
+    hybrid: HybridParams = HybridParams()
 
 
 class ExperimentIn(BaseModel):
