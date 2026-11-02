@@ -1,0 +1,247 @@
+"""Custom Genetic Algorithm for CVRP (own population-based search; no OR-Tools).
+
+Representation
+--------------
+A chromosome is a *giant tour*: a permutation of all customers. It is decoded
+into vehicle routes by an optimal "split" (Prins-style dynamic programme): the
+tour is cut into consecutive segments, each segment being one route, such that
+every segment respects vehicle capacity and total estimated cost
+(fixed vehicle cost + cost_per_distance * distance) is minimal for that order.
+
+Constraint handling
+-------------------
+* Customer coverage / no duplicates: guaranteed by the permutation encoding.
+* Capacity: guaranteed by the split (segments never exceed capacity; instance
+  validation ensures every single demand fits one vehicle).
+* Fleet size: the split ignores the vehicle limit, so tours that decode into
+  more routes than vehicles are penalised by `excess_routes * penalty`, where
+  penalty is an upper bound on any feasible solution's cost. The independent
+  validator still checks the final answer and reports a violation if the GA
+  ends with an over-sized fleet.
+
+Operators
+---------
+Selection: tournament. Crossover: order crossover (OX). Mutation: swap,
+inversion or relocate (one chosen at random). Elitism: best `elite_count`
+copied unchanged. Optional: a fraction of the initial population is built with
+randomised nearest-neighbour tours (`nn_seed_fraction`; set 0 for a purely
+random start). Termination: max generations, wall-clock limit, or stagnation. The clock is checked
+between generations, so the initial population is always built and evaluated first;
+with very small budgets on very large instances the GA can therefore overshoot.
+
+Fitness is the shared cost model, so it is comparable with the OR-Tools objective
+(but reported metrics are always recomputed by the shared evaluator).
+"""
+from __future__ import annotations
+
+import random
+import time
+from dataclasses import asdict, dataclass
+
+from app.models import result as R
+from app.models.problem import Instance, InstanceValidationError
+
+
+@dataclass
+class GAConfig:
+    population_size: int = 100
+    max_generations: int = 500
+    time_limit_s: float | None = None
+    stagnation_generations: int | None = 100
+    elite_count: int = 2
+    tournament_size: int = 3
+    crossover_rate: float = 0.9
+    mutation_rate: float = 0.2
+    nn_seed_fraction: float = 0.1
+    seed: int = 0
+
+    def validate(self) -> None:
+        errs = []
+        if self.population_size < 4:
+            errs.append("population_size must be >= 4")
+        if self.max_generations < 1:
+            errs.append("max_generations must be >= 1")
+        if not 0 <= self.elite_count < self.population_size:
+            errs.append("elite_count must be in [0, population_size)")
+        if self.tournament_size < 1:
+            errs.append("tournament_size must be >= 1")
+        if not (0 <= self.crossover_rate <= 1 and 0 <= self.mutation_rate <= 1):
+            errs.append("crossover_rate and mutation_rate must be in [0, 1]")
+        if not 0 <= self.nn_seed_fraction <= 1:
+            errs.append("nn_seed_fraction must be in [0, 1]")
+        if errs:
+            raise ValueError("; ".join(errs))
+
+
+class _Problem:
+    """Plain-list view of the instance for fast inner loops."""
+
+    def __init__(self, inst: Instance):
+        self.d = inst.distance_matrix().tolist()
+        self.demand = inst.demands
+        self.cap = inst.vehicle_capacity
+        self.fixed = inst.fixed_vehicle_cost
+        self.cpd = inst.cost_per_distance
+        self.vehicles = inst.vehicle_count
+        self.n = len(self.d) - 1
+        # Upper bound for any feasible solution: one depot round trip per customer.
+        self.penalty = sum(2 * self.d[0][i] for i in range(1, self.n + 1)) * self.cpd + self.fixed * self.n + 1.0
+
+    def split(self, perm: list[int]) -> tuple[float, list[list[int]]]:
+        """Optimal capacity-respecting segmentation of `perm`; returns (cost, routes of node indices)."""
+        n, d, dem, cap = len(perm), self.d, self.demand, self.cap
+        inf = float("inf")
+        best = [inf] * (n + 1)
+        pred = [0] * (n + 1)
+        best[0] = 0.0
+        for i in range(n):
+            base = best[i]
+            if base == inf:
+                continue
+            load, dist = 0, 0.0
+            for j in range(i, n):
+                c = perm[j]
+                load += dem[c]
+                if load > cap:
+                    break
+                dist = d[0][c] if j == i else dist + d[perm[j - 1]][c]
+                cost = base + self.fixed + self.cpd * (dist + d[c][0])
+                if cost < best[j + 1]:
+                    best[j + 1] = cost
+                    pred[j + 1] = i
+        routes, j = [], n
+        while j > 0:
+            i = pred[j]
+            routes.append(perm[i:j])
+            j = i
+        routes.reverse()
+        return best[n], routes
+
+    def fitness(self, perm: list[int]) -> float:
+        cost, routes = self.split(perm)
+        return cost + self.penalty * max(0, len(routes) - self.vehicles)
+
+
+def order_crossover(p1: list[int], p2: list[int], rng: random.Random) -> list[int]:
+    n = len(p1)
+    if n < 3:
+        return p1[:]
+    a, b = sorted(rng.sample(range(n), 2))
+    child: list[int | None] = [None] * n
+    child[a:b + 1] = p1[a:b + 1]
+    used = set(p1[a:b + 1])
+    fill = [g for g in p2[b + 1:] + p2[:b + 1] if g not in used]
+    positions = list(range(b + 1, n)) + list(range(0, a))
+    for pos, g in zip(positions, fill):
+        child[pos] = g
+    return child  # type: ignore[return-value]
+
+
+def mutate(perm: list[int], rng: random.Random) -> None:
+    n = len(perm)
+    if n < 2:
+        return
+    kind = rng.choice(("swap", "inversion", "relocate"))
+    i, j = sorted(rng.sample(range(n), 2))
+    if kind == "swap":
+        perm[i], perm[j] = perm[j], perm[i]
+    elif kind == "inversion":
+        perm[i:j + 1] = reversed(perm[i:j + 1])
+    else:
+        perm.insert(j, perm.pop(i))
+
+
+def _random_nn_tour(p: _Problem, rng: random.Random, k: int = 3) -> list[int]:
+    left = set(range(1, p.n + 1))
+    cur = rng.choice(sorted(left))
+    tour = [cur]
+    left.remove(cur)
+    while left:
+        cand = sorted(left, key=lambda c: p.d[cur][c])[:k]
+        cur = rng.choice(cand)
+        tour.append(cur)
+        left.remove(cur)
+    return tour
+
+
+def solve_ga(instance: Instance, config: GAConfig | None = None) -> R.SolveResult:
+    cfg = config or GAConfig()
+    cfg_dict = asdict(cfg)
+
+    def result(status, runtime, routes=None, message="", diag=None):
+        return R.SolveResult(instance.instance_id, "ga", status, runtime, routes, cfg_dict,
+                             seed=cfg.seed, message=message, diagnostics=diag or {})
+
+    try:
+        cfg.validate()
+        instance.validate()
+    except (InstanceValidationError, ValueError) as exc:
+        return result(R.INVALID_INPUT, 0.0, message=str(exc))
+
+    instance.distance_matrix()  # shared one-off cost, computed outside the timed region
+    start = time.perf_counter()
+    try:
+        rng = random.Random(cfg.seed)
+        p = _Problem(instance)
+        base = list(range(1, p.n + 1))
+
+        pop: list[list[int]] = []
+        n_nn = int(cfg.population_size * cfg.nn_seed_fraction)
+        pop.extend(_random_nn_tour(p, rng) for _ in range(n_nn))
+        while len(pop) < cfg.population_size:
+            perm = base[:]
+            rng.shuffle(perm)
+            pop.append(perm)
+        fit = [p.fitness(x) for x in pop]
+        evaluations = len(pop)
+
+        best_fit, best_perm = min(zip(fit, pop), key=lambda t: t[0])
+        best_perm = best_perm[:]
+        history = [best_fit]
+        stagnant, stop_reason, gen = 0, "max_generations", 0
+
+        for gen in range(1, cfg.max_generations + 1):
+            if cfg.time_limit_s is not None and time.perf_counter() - start >= cfg.time_limit_s:
+                stop_reason = "time_limit"
+                gen -= 1
+                break
+            order = sorted(range(len(pop)), key=fit.__getitem__)
+            new_pop = [pop[i][:] for i in order[:cfg.elite_count]]
+            new_fit = [fit[i] for i in order[:cfg.elite_count]]
+
+            def tournament() -> list[int]:
+                picks = [rng.randrange(len(pop)) for _ in range(cfg.tournament_size)]
+                return pop[min(picks, key=fit.__getitem__)]
+
+            while len(new_pop) < cfg.population_size:
+                p1, p2 = tournament(), tournament()
+                child = order_crossover(p1, p2, rng) if rng.random() < cfg.crossover_rate else p1[:]
+                if rng.random() < cfg.mutation_rate:
+                    mutate(child, rng)
+                new_pop.append(child)
+                new_fit.append(p.fitness(child))
+                evaluations += 1
+            pop, fit = new_pop, new_fit
+
+            gen_best = min(range(len(pop)), key=fit.__getitem__)
+            if fit[gen_best] < best_fit - 1e-12:
+                best_fit, best_perm, stagnant = fit[gen_best], pop[gen_best][:], 0
+            else:
+                stagnant += 1
+            history.append(best_fit)
+            if cfg.stagnation_generations is not None and stagnant >= cfg.stagnation_generations:
+                stop_reason = "stagnation"
+                break
+
+        _, node_routes = p.split(best_perm)
+        ids = instance.node_ids
+        routes = [[ids[c] for c in r] for r in node_routes]
+        # pad with empty routes so len(routes) == vehicle_count when possible
+        routes += [[] for _ in range(max(0, instance.vehicle_count - len(routes)))]
+        runtime = time.perf_counter() - start
+        step = max(1, len(history) // 200)
+        return result(R.SOLVED, runtime, routes, diag={
+            "generations_run": gen, "stop_reason": stop_reason, "evaluations": evaluations,
+            "best_fitness": best_fit, "fitness_history": history[::step]})
+    except Exception as exc:
+        return result(R.ERROR, time.perf_counter() - start, message=f"{type(exc).__name__}: {exc}")
