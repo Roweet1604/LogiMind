@@ -16,6 +16,7 @@ Last updated: 2 Nov 2026, end of Phase 1. Current phase: **P1 done. Next: P2 (OR
 - **Verified against CVRPLIB:** all 93 published best-known solutions pass our validator, and our recomputed distance equals the published cost exactly (max difference 0.0).
 - **Tests:** backend **90 passed** (54 baseline + 36 new, incl. 3 that use the downloaded files), run on 2 Nov 2026 with Python 3.14.7 / OR-Tools 9.15.6755. Frontend 13 passed (baseline, unchanged since).
 - `experiments/run_benchmarks.py` smoke run works (10 customers, 1 s).
+- **Re-verified in a new session (2 Nov 2026):** backend 90 passed (4 library deprecation warnings), frontend 13 passed, benchmark smoke run OK. No code changed; P1 was not redone.
 
 ## First solver observations (5 s, one seed, Rohit's laptop; indicative only, do not quote)
 | Instance | OR-Tools (default) | GA (with repair) |
