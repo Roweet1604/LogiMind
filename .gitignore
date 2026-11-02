@@ -6,3 +6,4 @@ experiments/results/api_data/
 .env
 *.egg-info/
 .ruff_cache/
+experiments/benchmarks/data/

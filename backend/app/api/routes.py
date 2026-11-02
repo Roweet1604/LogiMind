@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response
 
 from app.api import schemas as S
+from app.benchmarks import catalog
 from app.models.problem import Customer, Instance, InstanceValidationError
 from app.services.export import summarize
 from app.services.generator import generate_instance
@@ -33,7 +34,7 @@ def check_time(value: float | None, field: str) -> None:
 def instance_summary(i: Instance) -> dict:
     return {"instance_id": i.instance_id, "name": i.name, "source": i.source, "metric": i.metric,
             "n_customers": len(i.customers), "vehicle_count": i.vehicle_count,
-            "vehicle_capacity": i.vehicle_capacity}
+            "vehicle_capacity": i.vehicle_capacity, "has_time_windows": i.has_time_windows}
 
 
 def register(request: Request, inst: Instance) -> dict:
@@ -63,10 +64,13 @@ def health() -> dict:
 def create_instance(body: S.InstanceIn, request: Request) -> dict:
     inst = Instance(
         depot_x=body.depot_x, depot_y=body.depot_y,
-        customers=[Customer(c.id, c.x, c.y, c.demand) for c in body.customers],
+        customers=[Customer(c.id, c.x, c.y, c.demand, ready_time=c.ready_time, due_time=c.due_time,
+                            service_time=c.service_time) for c in body.customers],
         vehicle_count=body.vehicle_count, vehicle_capacity=body.vehicle_capacity, metric=body.metric,
         distance_unit=body.distance_unit, fixed_vehicle_cost=body.fixed_vehicle_cost,
-        cost_per_distance=body.cost_per_distance, name=body.name or "user-instance", source="user")
+        cost_per_distance=body.cost_per_distance, name=body.name or "user-instance", source="user",
+        depot_ready_time=body.depot_ready_time, depot_due_time=body.depot_due_time,
+        time_per_distance=body.time_per_distance, time_unit=body.time_unit)
     return register(request, inst)
 
 
@@ -79,6 +83,32 @@ def generate(body: S.GenerateIn, request: Request) -> dict:
         vehicle_capacity=body.vehicle_capacity, vehicle_count=body.vehicle_count,
         fixed_vehicle_cost=body.fixed_vehicle_cost, cost_per_distance=body.cost_per_distance)
     return register(request, inst)
+
+
+# ---- public benchmarks ---------------------------------------------------
+@router.get("/benchmarks")
+def list_benchmarks() -> list[dict]:
+    """Best-known solutions table, with whether the instance file is downloaded."""
+    out = []
+    for name, b in sorted(catalog.load_bks().items()):
+        row = dict(b.__dict__)
+        row["downloaded"] = b.set in catalog.SETS and catalog.data_file(b.set, name).exists()
+        out.append(row)
+    return out
+
+
+@router.post("/benchmarks/{set_key}/{name}", status_code=201)
+def load_benchmark(set_key: str, name: str, request: Request) -> dict:
+    if set_key not in catalog.SETS or not catalog.re_safe_name(name):
+        raise HTTPException(404, detail=f"unknown benchmark {set_key}/{name}")
+    try:
+        inst = catalog.load_instance(set_key, name)
+    except FileNotFoundError as exc:
+        raise HTTPException(404, detail=str(exc))
+    out = register(request, inst)
+    bks = catalog.load_bks().get(name)
+    out["best_known"] = dict(bks.__dict__) if bks else None
+    return out
 
 
 @router.get("/instances")

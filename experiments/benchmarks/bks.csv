@@ -1,0 +1,94 @@
+instance,set,problem,n_customers,bks_cost,bks_routes,distance_convention,routes_rule,source_url,retrieved_on
+A-n32-k5,A,CVRP,31,784,5,Euclidean rounded to the nearest integer (TSPLIB),Fixed,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/4,2026-11-02
+A-n33-k5,A,CVRP,32,661,5,Euclidean rounded to the nearest integer (TSPLIB),Fixed,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/5,2026-11-02
+A-n33-k6,A,CVRP,32,742,6,Euclidean rounded to the nearest integer (TSPLIB),Fixed,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/7,2026-11-02
+A-n34-k5,A,CVRP,33,778,5,Euclidean rounded to the nearest integer (TSPLIB),Fixed,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/8,2026-11-02
+A-n36-k5,A,CVRP,35,799,5,Euclidean rounded to the nearest integer (TSPLIB),Fixed,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/9,2026-11-02
+A-n37-k5,A,CVRP,36,669,5,Euclidean rounded to the nearest integer (TSPLIB),Fixed,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/10,2026-11-02
+A-n37-k6,A,CVRP,36,949,6,Euclidean rounded to the nearest integer (TSPLIB),Fixed,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/11,2026-11-02
+A-n38-k5,A,CVRP,37,730,5,Euclidean rounded to the nearest integer (TSPLIB),Fixed,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/12,2026-11-02
+A-n39-k5,A,CVRP,38,822,5,Euclidean rounded to the nearest integer (TSPLIB),Fixed,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/13,2026-11-02
+A-n39-k6,A,CVRP,38,831,6,Euclidean rounded to the nearest integer (TSPLIB),Fixed,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/14,2026-11-02
+A-n44-k6,A,CVRP,43,937,6,Euclidean rounded to the nearest integer (TSPLIB),Fixed,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/15,2026-11-02
+A-n45-k6,A,CVRP,44,944,6,Euclidean rounded to the nearest integer (TSPLIB),Fixed,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/16,2026-11-02
+A-n45-k7,A,CVRP,44,1146,7,Euclidean rounded to the nearest integer (TSPLIB),Fixed,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/17,2026-11-02
+A-n46-k7,A,CVRP,45,914,7,Euclidean rounded to the nearest integer (TSPLIB),Fixed,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/18,2026-11-02
+A-n48-k7,A,CVRP,47,1073,7,Euclidean rounded to the nearest integer (TSPLIB),Fixed,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/19,2026-11-02
+A-n53-k7,A,CVRP,52,1010,7,Euclidean rounded to the nearest integer (TSPLIB),Fixed,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/20,2026-11-02
+A-n54-k7,A,CVRP,53,1167,7,Euclidean rounded to the nearest integer (TSPLIB),Fixed,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/21,2026-11-02
+A-n55-k9,A,CVRP,54,1073,9,Euclidean rounded to the nearest integer (TSPLIB),Fixed,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/22,2026-11-02
+A-n60-k9,A,CVRP,59,1354,9,Euclidean rounded to the nearest integer (TSPLIB),Fixed,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/23,2026-11-02
+A-n61-k9,A,CVRP,60,1034,9,Euclidean rounded to the nearest integer (TSPLIB),Fixed,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/24,2026-11-02
+A-n62-k8,A,CVRP,61,1288,8,Euclidean rounded to the nearest integer (TSPLIB),Fixed,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/25,2026-11-02
+A-n63-k10,A,CVRP,62,1314,10,Euclidean rounded to the nearest integer (TSPLIB),Fixed,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/27,2026-11-02
+A-n63-k9,A,CVRP,62,1616,9,Euclidean rounded to the nearest integer (TSPLIB),Fixed,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/26,2026-11-02
+A-n64-k9,A,CVRP,63,1401,9,Euclidean rounded to the nearest integer (TSPLIB),Fixed,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/28,2026-11-02
+A-n65-k9,A,CVRP,64,1174,9,Euclidean rounded to the nearest integer (TSPLIB),Fixed,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/29,2026-11-02
+A-n69-k9,A,CVRP,68,1159,9,Euclidean rounded to the nearest integer (TSPLIB),Fixed,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/30,2026-11-02
+A-n80-k10,A,CVRP,79,1763,10,Euclidean rounded to the nearest integer (TSPLIB),Fixed,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/31,2026-11-02
+X-n101-k25,X,CVRP,100,27591,26,Euclidean rounded to the nearest integer (TSPLIB),Free,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/158,2026-11-02
+X-n106-k14,X,CVRP,105,26362,14,Euclidean rounded to the nearest integer (TSPLIB),Free,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/159,2026-11-02
+X-n110-k13,X,CVRP,109,14971,13,Euclidean rounded to the nearest integer (TSPLIB),Free,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/160,2026-11-02
+X-n115-k10,X,CVRP,114,12747,10,Euclidean rounded to the nearest integer (TSPLIB),Free,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/161,2026-11-02
+X-n120-k6,X,CVRP,119,13332,6,Euclidean rounded to the nearest integer (TSPLIB),Free,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/162,2026-11-02
+X-n125-k30,X,CVRP,124,55539,30,Euclidean rounded to the nearest integer (TSPLIB),Free,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/163,2026-11-02
+X-n129-k18,X,CVRP,128,28940,18,Euclidean rounded to the nearest integer (TSPLIB),Free,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/164,2026-11-02
+X-n134-k13,X,CVRP,133,10916,13,Euclidean rounded to the nearest integer (TSPLIB),Free,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/165,2026-11-02
+X-n139-k10,X,CVRP,138,13590,10,Euclidean rounded to the nearest integer (TSPLIB),Free,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/166,2026-11-02
+X-n143-k7,X,CVRP,142,15700,7,Euclidean rounded to the nearest integer (TSPLIB),Free,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/167,2026-11-02
+C101,solomon,VRPTW,100,827.3,10,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/380,2026-11-02
+C102,solomon,VRPTW,100,827.3,10,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/381,2026-11-02
+C103,solomon,VRPTW,100,826.3,10,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/382,2026-11-02
+C104,solomon,VRPTW,100,822.9,10,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/383,2026-11-02
+C105,solomon,VRPTW,100,827.3,10,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/384,2026-11-02
+C106,solomon,VRPTW,100,827.3,10,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/385,2026-11-02
+C107,solomon,VRPTW,100,827.3,10,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/386,2026-11-02
+C108,solomon,VRPTW,100,827.3,10,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/387,2026-11-02
+C109,solomon,VRPTW,100,827.3,10,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/388,2026-11-02
+C201,solomon,VRPTW,100,589.1,3,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/389,2026-11-02
+C202,solomon,VRPTW,100,589.1,3,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/390,2026-11-02
+C203,solomon,VRPTW,100,588.7,3,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/391,2026-11-02
+C204,solomon,VRPTW,100,588.1,3,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/392,2026-11-02
+C205,solomon,VRPTW,100,586.4,3,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/393,2026-11-02
+C206,solomon,VRPTW,100,586.0,3,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/394,2026-11-02
+C207,solomon,VRPTW,100,585.8,3,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/395,2026-11-02
+C208,solomon,VRPTW,100,585.8,3,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/396,2026-11-02
+R101,solomon,VRPTW,100,1637.7,20,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/397,2026-11-02
+R102,solomon,VRPTW,100,1466.6,18,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/398,2026-11-02
+R103,solomon,VRPTW,100,1208.7,14,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/399,2026-11-02
+R104,solomon,VRPTW,100,971.5,11,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/400,2026-11-02
+R105,solomon,VRPTW,100,1355.3,15,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/401,2026-11-02
+R106,solomon,VRPTW,100,1234.6,13,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/402,2026-11-02
+R107,solomon,VRPTW,100,1064.6,11,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/403,2026-11-02
+R108,solomon,VRPTW,100,932.1,10,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/404,2026-11-02
+R109,solomon,VRPTW,100,1146.9,13,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/405,2026-11-02
+R110,solomon,VRPTW,100,1068.0,12,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/406,2026-11-02
+R111,solomon,VRPTW,100,1048.7,12,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/407,2026-11-02
+R112,solomon,VRPTW,100,948.6,10,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/408,2026-11-02
+R201,solomon,VRPTW,100,1143.2,8,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/409,2026-11-02
+R202,solomon,VRPTW,100,1029.6,8,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/410,2026-11-02
+R203,solomon,VRPTW,100,870.8,6,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/411,2026-11-02
+R204,solomon,VRPTW,100,731.3,5,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/412,2026-11-02
+R205,solomon,VRPTW,100,949.8,5,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/413,2026-11-02
+R206,solomon,VRPTW,100,875.9,5,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/414,2026-11-02
+R207,solomon,VRPTW,100,794.0,4,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/415,2026-11-02
+R208,solomon,VRPTW,100,701.0,4,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/416,2026-11-02
+R209,solomon,VRPTW,100,854.8,5,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/417,2026-11-02
+R210,solomon,VRPTW,100,900.5,6,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/418,2026-11-02
+R211,solomon,VRPTW,100,746.7,4,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/419,2026-11-02
+RC101,solomon,VRPTW,100,1619.8,15,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/420,2026-11-02
+RC102,solomon,VRPTW,100,1457.4,14,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/421,2026-11-02
+RC103,solomon,VRPTW,100,1258.0,11,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/422,2026-11-02
+RC104,solomon,VRPTW,100,1132.3,10,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/423,2026-11-02
+RC105,solomon,VRPTW,100,1513.7,15,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/424,2026-11-02
+RC106,solomon,VRPTW,100,1372.7,12,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/425,2026-11-02
+RC107,solomon,VRPTW,100,1207.8,12,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/426,2026-11-02
+RC108,solomon,VRPTW,100,1114.2,11,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/427,2026-11-02
+RC201,solomon,VRPTW,100,1261.8,9,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/428,2026-11-02
+RC202,solomon,VRPTW,100,1092.3,8,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/429,2026-11-02
+RC203,solomon,VRPTW,100,923.7,5,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/430,2026-11-02
+RC204,solomon,VRPTW,100,783.5,4,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/431,2026-11-02
+RC205,solomon,VRPTW,100,1154.0,7,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/432,2026-11-02
+RC206,solomon,VRPTW,100,1051.1,7,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/433,2026-11-02
+RC207,solomon,VRPTW,100,962.9,6,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/434,2026-11-02
+RC208,solomon,VRPTW,100,776.1,4,Euclidean truncated to one decimal,At most the number of vehicles,https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/bks/435,2026-11-02

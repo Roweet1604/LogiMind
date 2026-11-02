@@ -1,16 +1,31 @@
-"""Shared CVRP problem model. Both solvers, the validator and the metrics
-evaluator consume this one object, so every comparison uses identical data.
+"""Shared CVRP / CVRPTW problem model. Both solvers, the validator and the
+metrics evaluator consume this one object, so every comparison uses identical data.
 
 Conventions
 -----------
 * Node 0 is the depot. Customers are nodes 1..n in the order of `customers`.
   Solvers work on node indices; results are reported with customer IDs.
 * metric="euclidean": x, y are planar coordinates already in `distance_unit`.
+* metric="euclidean_nint": Euclidean rounded to the nearest integer (TSPLIB
+  EUC_2D; CVRPLIB sets A/B/P/X). metric="euclidean_trunc1": Euclidean truncated
+  to one decimal (CVRPLIB convention for Solomon / Gehring-Homberger).
 * metric="haversine": x = longitude, y = latitude (degrees); distances are
   great-circle kilometres. This is straight-line distance, NOT road distance.
 * Estimated cost = fixed_vehicle_cost * vehicles_used
                    + cost_per_distance * total_distance.
   These are synthetic cost units, not calibrated currency.
+
+Time windows (CVRPTW)
+---------------------
+* Travel time between nodes = distance * time_per_distance (time units are
+  whatever the instance uses, e.g. minutes; Solomon uses time = distance).
+* A customer's service must START within [ready_time, due_time]. Arriving
+  early means waiting; due_time=None means no upper limit.
+* service_time is spent at the customer after service starts.
+* Every route leaves the depot no earlier than depot_ready_time and must be
+  back by depot_due_time (None = no limit).
+* An instance with all defaults (no windows, no service times) is a plain CVRP
+  and keeps exactly the same instance_id as before time windows existed.
 """
 from __future__ import annotations
 
@@ -24,7 +39,9 @@ import numpy as np
 
 EARTH_RADIUS_KM = 6371.0088
 DEPOT_NODE = 0
-METRICS = ("euclidean", "haversine")
+METRICS = ("euclidean", "haversine", "euclidean_nint", "euclidean_trunc1")
+# Tolerance for time-window feasibility checks (floating-point noise only).
+TIME_EPS = 1e-6
 
 
 class InstanceValidationError(ValueError):
@@ -41,6 +58,9 @@ class Customer:
     x: float
     y: float
     demand: int
+    ready_time: float = 0.0
+    due_time: float | None = None
+    service_time: float = 0.0
 
 
 @dataclass
@@ -57,6 +77,10 @@ class Instance:
     name: str = ""
     source: str = "user"  # e.g. "synthetic", "user", "benchmark:<name>"
     instance_id: str = ""
+    depot_ready_time: float = 0.0
+    depot_due_time: float | None = None
+    time_per_distance: float = 1.0
+    time_unit: str = "min"
     _matrix: np.ndarray | None = field(default=None, init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
@@ -65,13 +89,23 @@ class Instance:
 
     # ---- identity -------------------------------------------------------
     def compute_id(self) -> str:
-        payload = {
+        payload: dict[str, Any] = {
             "depot": [self.depot_x, self.depot_y],
             "customers": [[c.id, c.x, c.y, c.demand] for c in self.customers],
             "vehicles": [self.vehicle_count, self.vehicle_capacity],
             "metric": self.metric,
             "costs": [self.fixed_vehicle_cost, self.cost_per_distance],
         }
+        if self.has_time_windows:  # only then, so plain CVRP ids stay unchanged
+            def num(v: float | None) -> float | None:  # 15 and 15.0 must hash the same
+                return None if v is None else float(v)
+
+            payload["time"] = {
+                "depot": [num(self.depot_ready_time), num(self.depot_due_time)],
+                "customers": [[c.id, num(c.ready_time), num(c.due_time), num(c.service_time)]
+                              for c in self.customers],
+                "time_per_distance": num(self.time_per_distance),
+            }
         digest = hashlib.sha1(json.dumps(payload, sort_keys=True).encode()).hexdigest()
         return f"inst-{digest[:10]}"
 
@@ -88,6 +122,27 @@ class Instance:
     @property
     def total_demand(self) -> int:
         return sum(c.demand for c in self.customers)
+
+    @property
+    def has_time_windows(self) -> bool:
+        """True if any time data differs from the plain-CVRP defaults."""
+        return (self.depot_ready_time != 0.0 or self.depot_due_time is not None
+                or any(c.ready_time != 0.0 or c.due_time is not None or c.service_time != 0.0
+                       for c in self.customers))
+
+    @property
+    def ready_times(self) -> list[float]:
+        return [self.depot_ready_time] + [c.ready_time for c in self.customers]
+
+    @property
+    def due_times(self) -> list[float]:
+        """Latest service start per node; math.inf where there is no limit."""
+        due = [self.depot_due_time] + [c.due_time for c in self.customers]
+        return [math.inf if t is None else t for t in due]
+
+    @property
+    def service_times(self) -> list[float]:
+        return [0.0] + [c.service_time for c in self.customers]
 
     def index_of(self) -> dict[int, int]:
         return {cid: i for i, cid in enumerate(self.node_ids)}
@@ -106,7 +161,8 @@ class Instance:
         if self.fixed_vehicle_cost < 0 or self.cost_per_distance < 0:
             errors.append("cost parameters must be non-negative")
         coords = [(self.depot_x, self.depot_y)] + [(c.x, c.y) for c in self.customers]
-        if not all(math.isfinite(v) for p in coords for v in p):
+        coords_ok = all(math.isfinite(v) for p in coords for v in p)
+        if not coords_ok:
             errors.append("coordinates must be finite numbers")
         elif self.metric == "haversine" and not all(
             -180 <= x <= 180 and -90 <= y <= 90 for x, y in coords
@@ -131,10 +187,51 @@ class Instance:
             valid_demand = sum(c.demand for c in self.customers if isinstance(c.demand, int) and c.demand > 0)
             if valid_demand > fleet_cap:
                 errors.append(f"total demand {valid_demand} exceeds total fleet capacity {fleet_cap}")
+
+        time_ok = self._validate_time_fields(errors)
+        if time_ok and coords_ok and self.metric in METRICS and self.has_time_windows:
+            self._validate_reachability(errors)
         if errors:
             raise InstanceValidationError(errors)
 
-    # ---- distances ------------------------------------------------------
+    def _validate_time_fields(self, errors: list[str]) -> bool:
+        before = len(errors)
+
+        def finite(v: Any) -> bool:
+            return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+
+        if not (finite(self.time_per_distance) and self.time_per_distance > 0):
+            errors.append(f"time_per_distance must be a positive number, got {self.time_per_distance!r}")
+        if not (finite(self.depot_ready_time) and self.depot_ready_time >= 0):
+            errors.append("depot_ready_time must be a finite number >= 0")
+        elif self.depot_due_time is not None and not (
+                finite(self.depot_due_time) and self.depot_due_time >= self.depot_ready_time):
+            errors.append("depot_due_time must be a finite number >= depot_ready_time")
+        for c in self.customers:
+            if not (finite(c.ready_time) and c.ready_time >= 0):
+                errors.append(f"customer {c.id}: ready_time must be a finite number >= 0")
+            elif c.due_time is not None and not (finite(c.due_time) and c.due_time >= c.ready_time):
+                errors.append(f"customer {c.id}: due_time must be a finite number >= ready_time")
+            if not (finite(c.service_time) and c.service_time >= 0):
+                errors.append(f"customer {c.id}: service_time must be a finite number >= 0")
+        return len(errors) == before
+
+    def _validate_reachability(self, errors: list[str]) -> None:
+        """Each customer must be servable on its own direct depot round trip."""
+        t = self.travel_time_matrix()
+        depot_due = math.inf if self.depot_due_time is None else self.depot_due_time
+        for i, c in enumerate(self.customers, start=1):
+            arrival = self.depot_ready_time + t[0][i]
+            if c.due_time is not None and arrival > c.due_time + TIME_EPS:
+                errors.append(f"customer {c.id}: cannot be reached before due_time {c.due_time} "
+                              f"(earliest arrival {arrival:.2f})")
+                continue
+            back = max(arrival, c.ready_time) + c.service_time + t[i][0]
+            if back > depot_due + TIME_EPS:
+                errors.append(f"customer {c.id}: cannot be served and return before depot_due_time "
+                              f"{depot_due} (earliest return {back:.2f})")
+
+    # ---- distances and travel times ---------------------------------------
     def distance_matrix(self) -> np.ndarray:
         """(n+1)x(n+1) float matrix in `distance_unit`; computed once, shared by all solvers."""
         if self._matrix is None:
@@ -147,32 +244,63 @@ class Instance:
                 self._matrix = 2 * EARTH_RADIUS_KM * np.arcsin(np.sqrt(np.clip(a, 0.0, 1.0)))
             else:
                 diff = pts[:, None, :] - pts[None, :, :]
-                self._matrix = np.hypot(diff[..., 0], diff[..., 1])
+                m = np.hypot(diff[..., 0], diff[..., 1])
+                if self.metric == "euclidean_nint":
+                    m = np.floor(m + 0.5)
+                elif self.metric == "euclidean_trunc1":
+                    # small epsilon so values like 0.3 stored as 0.29999.. are not truncated down
+                    m = np.floor(m * 10 + 1e-9) / 10
+                self._matrix = m
         return self._matrix
+
+    def travel_time_matrix(self) -> np.ndarray:
+        """Travel time between nodes = distance * time_per_distance."""
+        return self.distance_matrix() * self.time_per_distance
 
     # ---- (de)serialisation ---------------------------------------------
     def to_dict(self) -> dict[str, Any]:
-        return {
+        tw = self.has_time_windows
+
+        def cust(c: Customer) -> dict[str, Any]:
+            d: dict[str, Any] = {"id": c.id, "x": c.x, "y": c.y, "demand": c.demand}
+            if tw:
+                d.update(ready_time=c.ready_time, due_time=c.due_time, service_time=c.service_time)
+            return d
+
+        out: dict[str, Any] = {
             "instance_id": self.instance_id,
             "name": self.name,
             "source": self.source,
             "metric": self.metric,
             "distance_unit": self.distance_unit,
             "depot": {"x": self.depot_x, "y": self.depot_y},
-            "customers": [{"id": c.id, "x": c.x, "y": c.y, "demand": c.demand} for c in self.customers],
+            "customers": [cust(c) for c in self.customers],
             "vehicle_count": self.vehicle_count,
             "vehicle_capacity": self.vehicle_capacity,
             "fixed_vehicle_cost": self.fixed_vehicle_cost,
             "cost_per_distance": self.cost_per_distance,
+            "has_time_windows": tw,
         }
+        if tw:
+            out["depot"].update(ready_time=self.depot_ready_time, due_time=self.depot_due_time)
+            out.update(time_per_distance=self.time_per_distance, time_unit=self.time_unit)
+        return out
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> "Instance":
+        def opt(v: Any) -> float | None:
+            return None if v is None else float(v)
+
         try:
+            depot = d["depot"]
             return cls(
-                depot_x=float(d["depot"]["x"]),
-                depot_y=float(d["depot"]["y"]),
-                customers=[Customer(int(c["id"]), float(c["x"]), float(c["y"]), c["demand"]) for c in d["customers"]],
+                depot_x=float(depot["x"]),
+                depot_y=float(depot["y"]),
+                customers=[Customer(int(c["id"]), float(c["x"]), float(c["y"]), c["demand"],
+                                    ready_time=float(c.get("ready_time", 0.0)),
+                                    due_time=opt(c.get("due_time")),
+                                    service_time=float(c.get("service_time", 0.0)))
+                           for c in d["customers"]],
                 vehicle_count=int(d["vehicle_count"]),
                 vehicle_capacity=int(d["vehicle_capacity"]),
                 metric=d.get("metric", "euclidean"),
@@ -182,6 +310,10 @@ class Instance:
                 name=d.get("name", ""),
                 source=d.get("source", "user"),
                 instance_id=d.get("instance_id", ""),
+                depot_ready_time=float(depot.get("ready_time", 0.0)),
+                depot_due_time=opt(depot.get("due_time")),
+                time_per_distance=float(d.get("time_per_distance", 1.0)),
+                time_unit=d.get("time_unit", "min"),
             )
         except (KeyError, TypeError, ValueError) as exc:
             raise InstanceValidationError([f"malformed instance data: {exc!r}"]) from exc

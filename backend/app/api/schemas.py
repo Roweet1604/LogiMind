@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-Metric = Literal["euclidean", "haversine"]
+Metric = Literal["euclidean", "haversine", "euclidean_nint", "euclidean_trunc1"]
 
 
 class CustomerIn(BaseModel):
@@ -14,6 +14,10 @@ class CustomerIn(BaseModel):
     x: float
     y: float
     demand: int
+    # Optional time window: service must start within [ready_time, due_time].
+    ready_time: float = Field(0.0, ge=0)
+    due_time: float | None = Field(None, ge=0)
+    service_time: float = Field(0.0, ge=0)
 
 
 class InstanceIn(BaseModel):
@@ -27,6 +31,10 @@ class InstanceIn(BaseModel):
     vehicle_capacity: int
     fixed_vehicle_cost: float = Field(50.0, ge=0)
     cost_per_distance: float = Field(1.0, ge=0)
+    depot_ready_time: float = Field(0.0, ge=0)
+    depot_due_time: float | None = Field(None, ge=0)
+    time_per_distance: float = Field(1.0, gt=0)
+    time_unit: str = "min"
 
 
 class GenerateIn(BaseModel):
@@ -55,6 +63,9 @@ class GAParams(BaseModel):
     crossover_rate: float = Field(0.9, ge=0, le=1)
     mutation_rate: float = Field(0.2, ge=0, le=1)
     nn_seed_fraction: float = Field(0.1, ge=0, le=1)
+    due_seed_fraction: float = Field(0.1, ge=0, le=1)
+    lateness_weight: float | None = Field(None, ge=0)
+    tw_repair: bool = True
     seed: int = 0
 
 

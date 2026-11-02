@@ -28,21 +28,22 @@ Start every session by reading this file, `PLAN.md` and `PROGRESS.md`, then run 
 
 ## Repository layout
 - `docs/context/`: read-only inputs (pivot, Review 2 deck, Product Guide, measured evidence, prompt pack). Do not edit.
-- `docs/context/prior-code/`: the route-optimization v3 baseline (reference copy; do not edit). P1 migrates it into the layout below.
+- `docs/context/prior-code/`: the route-optimization v3 baseline (reference copy; do not edit). Migrated to the root in P1.
 - `docs/decisions/`: decision records.
-- Planned from P1 (not created yet): `backend/` (FastAPI app, solvers, selector, copilot), `frontend/` (ops console), `driver/` (PWA), `experiments/`, `docker-compose.yml`, `.env.example`.
+- `backend/`: FastAPI app. `app/models` (CVRP/CVRPTW model), `app/solvers` (OR-Tools, GA), `app/evaluation` (validator, metrics), `app/benchmarks` (parsers, BKS, gap), `app/services`, `app/api`.
+- `frontend/`: React ops console (baseline). `experiments/`: benchmark runner; `experiments/benchmarks/` (fetch script, committed `bks.csv`, git-ignored `data/`).
+- Planned: `driver/` (PWA), `docker-compose.yml`, `.env.example`.
 
-## Commands
-Until P1 migrates the baseline, these run the reference copy (Windows, Git Bash or PowerShell):
+## Commands (Windows; keep venvs and node_modules OUTSIDE OneDrive, e.g. %TEMP%)
 ```
-cd docs/context/prior-code/backend
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-python -m pytest -q
+python -m venv %TEMP%\lmv
+%TEMP%\lmv\Scripts\python -m pip install -r backend\requirements.txt
+cd backend && %TEMP%\lmv\Scripts\python -m pytest -q          # backend tests
+python experiments\benchmarks\fetch_benchmarks.py              # download benchmark files (once)
+%TEMP%\lmv\Scripts\python experiments\run_benchmarks.py --sizes 10 --ga-seeds 1 --time-budget 1 --out %TEMP%\bench
 ```
-Frontend baseline: `cd docs/context/prior-code/frontend`, then `npm install` and `npm test`.
-Replace this section with the real commands once the new layout exists.
+Frontend tests: copy `frontend/` to %TEMP%, then `npm ci` and `npm test` there.
+Tests must pass offline; tests needing downloaded benchmark files skip when they are missing.
 
 ## Stack (change only with a written reason in docs/decisions/)
 Python 3.12+, FastAPI, Pydantic v2, SQLAlchemy 2 + Alembic (SQLite dev, Postgres in Docker Compose), OR-Tools, own GA (NumPy), scikit-learn, LangGraph/LangChain with `langchain-ollama` behind a provider-agnostic interface, httpx, JSON logging, pytest, ruff. Frontend: React + Vite (JS/JSX), Tailwind, Leaflet + OSM tiles, vite-plugin-pwa. Self-hosted OSRM (no hosted routing services). Docker Compose.
