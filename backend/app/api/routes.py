@@ -11,6 +11,7 @@ from app.api import schemas as S
 from app.api.auth import require_principal
 from app.benchmarks import catalog
 from app.db.keys import Principal
+from app.db.models import Tenant
 from app.db.session import tenant_session
 from app.models.problem import Customer, Instance, InstanceValidationError
 from app.replan.events import ReplanError, ReplanIn
@@ -79,8 +80,18 @@ def csv_response(rows: list[dict], filename: str, df: pd.DataFrame | None = None
 
 
 @router.get("/health")
-def health() -> dict:
-    return {"status": "ok", "environment": environment_info()}
+def health(request: Request) -> dict:
+    """research_endpoints tells the ops console whether the dev-only research pages can be used."""
+    return {"status": "ok", "environment": environment_info(),
+            "research_endpoints": bool(request.app.state.legacy_open)}
+
+
+@router.get("/whoami", tags=["plans"])
+def whoami(request: Request, who: Principal = Depends(require_principal)) -> dict:
+    """Checks an API key (used by the ops console login). Never returns the key itself."""
+    with tenant_session(request.app.state.db, who.tenant_id) as s:
+        tenant = s.get(Tenant, who.tenant_id)
+        return {"tenant_id": who.tenant_id, "tenant_name": tenant.name if tenant else "", "key_id": who.key_id}
 
 
 # ---- instances ----------------------------------------------------------
@@ -194,6 +205,12 @@ def create_plan(body: S.PlanIn, request: Request, who: Principal = Depends(requi
     except InstanceValidationError as exc:
         raise HTTPException(422, detail={"message": "invalid instance", "errors": exc.errors})
     return request.app.state.plans.submit(who, inst, body.engine, body.time_limit_s, body.seed)
+
+
+@router.get("/plans", tags=["plans"])
+def list_plans(request: Request, limit: int = 100, who: Principal = Depends(require_principal)) -> list[dict]:
+    """The caller's plans, newest first (summaries; GET /api/plans/{id} for routes and metrics)."""
+    return request.app.state.plans.list(who, max(1, min(limit, 500)))
 
 
 @router.get("/plans/{plan_id}", tags=["plans"])

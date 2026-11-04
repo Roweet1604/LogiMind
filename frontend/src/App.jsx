@@ -7,6 +7,9 @@ import RouteResults from './pages/RouteResults'
 import Compare from './pages/Compare'
 import BenchmarkLab from './pages/BenchmarkLab'
 import Methodology from './pages/Methodology'
+import Login from './pages/Login'
+import Plans from './pages/Plans'
+import PlanDetail from './pages/PlanDetail'
 
 export default function App() {
   return (
@@ -19,6 +22,9 @@ export default function App() {
         <Route path="compare" element={<Compare />} />
         <Route path="benchmark" element={<BenchmarkLab />} />
         <Route path="methodology" element={<Methodology />} />
+        <Route path="login" element={<Login />} />
+        <Route path="plans" element={<Plans />} />
+        <Route path="plans/:id" element={<PlanDetail />} />
         <Route path="*" element={<p>Page not found.</p>} />
       </Route>
     </Routes>

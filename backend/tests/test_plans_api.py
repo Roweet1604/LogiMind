@@ -93,3 +93,18 @@ def test_explicit_engine_is_used_and_labelled(setup):
     assert r.json()["selection"]["method"] == "requested"
     p = wait_plan(c, r.json()["plan_id"], ha)
     assert p["feasible"] is True and p["result"]["solve"]["algorithm"] == "ga"
+
+
+def test_plan_list_whoami_and_health_flag(setup):
+    c, app, ha, hb, tenant_a = setup
+    me = c.get("/api/whoami", headers=ha).json()
+    assert me["tenant_id"] == tenant_a and me["tenant_name"] == "A" and "lm_" not in str(me)
+    assert c.get("/api/whoami").status_code == 401
+    plan_id = c.post("/api/plans", json={"instance": TINY, "engine": "ortools", "time_limit_s": 0.5},
+                     headers=ha).json()["plan_id"]
+    wait_plan(c, plan_id, ha)
+    rows = c.get("/api/plans", headers=ha).json()
+    assert [r["plan_id"] for r in rows] == [plan_id] and rows[0]["feasible"] is True
+    assert rows[0]["n_customers"] == 4 and rows[0]["total_distance"] > 0
+    assert c.get("/api/plans", headers=hb).json() == []  # other tenant sees nothing
+    assert c.get("/api/health").json()["research_endpoints"] in (True, False)

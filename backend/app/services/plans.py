@@ -11,6 +11,7 @@ import time
 import uuid
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.db.keys import Principal
@@ -180,6 +181,23 @@ class PlanService:
                                 "engine": job.algorithm, "error": update["error"],
                                 "disruption_to_feasible_s": timing.get("disruption_to_feasible_s")})
 
+    def list(self, who: Principal, limit: int = 100) -> list[dict]:
+        with tenant_session(self.factory, who.tenant_id) as s:
+            rows = s.scalars(select(Plan).order_by(Plan.created_at.desc()).limit(limit))
+            out = []
+            for p in rows:
+                result = p.result or {}
+                validation = result.get("validation") or {}
+                out.append({
+                    "plan_id": p.id, "name": p.instance.get("name", ""), "state": p.state, "engine": p.engine,
+                    "requested_engine": p.requested_engine, "n_customers": len(p.instance.get("customers", [])),
+                    "status": (result.get("solve") or {}).get("status"),
+                    "feasible": result.get("feasible", validation.get("feasible")) if p.result else None,
+                    "total_distance": (result.get("metrics") or {}).get("total_distance"),
+                    "parent_plan_id": p.parent_id, "event_type": (p.event or {}).get("type"),
+                    "created_at": p.created_at.isoformat() if p.created_at else None})
+            return out
+
     def get(self, who: Principal, plan_id: str) -> dict | None:
         with tenant_session(self.factory, who.tenant_id) as s:
             p = s.get(Plan, plan_id)
@@ -191,6 +209,7 @@ class PlanService:
                     "status": ((p.result or {}).get("solve") or {}).get("status"),
                     "feasible": p.result.get("feasible", validation.get("feasible")) if p.result else None,
                     "result": p.result, "error": p.error, "instance_id": p.instance.get("instance_id"),
+                    "instance": p.instance,
                     "parent_plan_id": p.parent_id, "event": p.event, "replan": p.replan,
                     "created_at": p.created_at.isoformat() if p.created_at else None,
                     "finished_at": p.finished_at.isoformat() if p.finished_at else None}

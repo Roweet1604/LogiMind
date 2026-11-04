@@ -1,6 +1,7 @@
 import { render } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { AppProvider } from '../state/AppContext'
+import { AuthProvider } from '../state/AuthContext'
 
 // Routes fetch calls by "METHOD /path" prefix to canned JSON (or {status, body} for errors).
 export function mockFetch(table) {
@@ -14,8 +15,8 @@ export function mockFetch(table) {
   })
 }
 
-export const renderPage = (ui) =>
-  render(<MemoryRouter><AppProvider>{ui}</AppProvider></MemoryRouter>)
+export const renderPage = (ui, { route = '/' } = {}) =>
+  render(<MemoryRouter initialEntries={[route]}><AuthProvider><AppProvider>{ui}</AppProvider></AuthProvider></MemoryRouter>)
 
 export const INSTANCE = {
   instance_id: 'inst-test000001', name: 'tiny', source: 'synthetic', metric: 'euclidean', distance_unit: 'km',

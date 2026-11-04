@@ -1,6 +1,7 @@
-import { BookOpen, Check, FlaskConical, LayoutGrid, Play, Route as RouteIcon, Scale, SlidersHorizontal } from 'lucide-react'
+import { BookOpen, Check, ClipboardList, FlaskConical, KeyRound, LayoutGrid, Play, Route as RouteIcon, Scale, SlidersHorizontal } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useApp } from '../state/AppContext'
+import { useAuth } from '../state/AuthContext'
 import { Badge } from './ui'
 
 const FLOW = [
@@ -58,10 +59,18 @@ function Stepper() {
   )
 }
 
+const OPS = [
+  { to: '/plans', label: 'Plans', icon: ClipboardList },
+  { to: '/login', label: 'API key', icon: KeyRound },
+]
+const RESEARCH_PATHS = [...FLOW, ...MORE.filter((m) => m.to === '/benchmark')].map((s) => s.to)
+
 export default function Layout() {
   const { instance, health } = useApp()
+  const { me } = useAuth()
   const { pathname } = useLocation()
   const inFlow = FLOW.some((s) => s.to === pathname)
+  const researchOff = health.state === 'ok' && health.research === false && RESEARCH_PATHS.includes(pathname)
   return (
     <div className="min-h-screen md:flex">
       <aside className="bg-nav text-nav-text md:sticky md:top-0 md:flex md:h-screen md:w-64 md:shrink-0 md:flex-col">
@@ -72,19 +81,23 @@ export default function Layout() {
             <circle cx="7" cy="20" r="2" fill="#fff" /><circle cx="21" cy="8" r="2" fill="#fff" />
           </svg>
           <div>
-            <p className="font-semibold leading-tight text-white">Route optimization</p>
-            <p className="text-xs text-nav-text/70">OR-Tools vs custom GA</p>
+            <p className="font-semibold leading-tight text-white">LogiMind</p>
+            <p className="text-xs text-nav-text/70">Ops console</p>
           </div>
         </div>
         <nav aria-label="Main" className="flex gap-1 overflow-x-auto px-3 pb-3 md:flex-1 md:flex-col md:gap-0.5 md:overflow-y-auto">
           <Item to="/" label="Overview" icon={LayoutGrid} />
-          <p className="hidden px-3 pb-1 pt-5 text-xs font-medium text-nav-text/50 md:block">Workflow</p>
+          <p className="hidden px-3 pb-1 pt-5 text-xs font-medium text-nav-text/50 md:block">Operations</p>
+          {OPS.map((i) => <Item key={i.to} {...i} />)}
+          <p className="hidden px-3 pb-1 pt-5 text-xs font-medium text-nav-text/50 md:block">Research workflow (dev only)</p>
           {FLOW.map((i, k) => <Item key={i.to} {...i} n={k + 1} />)}
           <p className="hidden px-3 pb-1 pt-5 text-xs font-medium text-nav-text/50 md:block">Research</p>
           {MORE.map((i) => <Item key={i.to} {...i} />)}
         </nav>
         <div className="hidden border-t border-nav-line px-5 py-4 text-xs md:block">
-          <p className="mb-1 text-nav-text/60">Current instance</p>
+          <p className="mb-1 text-nav-text/60">Tenant</p>
+          <p className="mb-4 text-white">{me ? (me.tenant_name || me.tenant_id) : <span className="text-nav-text/70">Not signed in</span>}</p>
+          <p className="mb-1 text-nav-text/60">Current research instance</p>
           {instance ? (
             <p className="break-all font-mono text-[12px] leading-snug text-white">{instance.instance_id}<span className="block text-nav-text/70">{instance.customers.length} customers · {instance.metric}</span></p>
           ) : <p className="text-nav-text/70">None selected</p>}
@@ -99,6 +112,13 @@ export default function Layout() {
           {health.state === 'down' && (
             <div className="mb-5 rounded-md border border-err/40 bg-err-soft px-4 py-3" role="alert">
               Backend unreachable. Start it with <code className="font-mono">uvicorn app.main:app --port 8000</code> in <code className="font-mono">backend/</code>.
+            </div>
+          )}
+          {researchOff && (
+            <div className="mb-5 rounded-md border border-warn/40 bg-warn-soft px-4 py-3" role="status">
+              The research pages are switched off on this backend (they have no tenants). Use{' '}
+              <Link className="underline" to="/plans">Plans</Link> with an API key, or start the backend with{' '}
+              <code className="font-mono">LOGIMIND_DEV_RESEARCH_ENDPOINTS=1</code> for local development.
             </div>
           )}
           {inFlow && <Stepper />}

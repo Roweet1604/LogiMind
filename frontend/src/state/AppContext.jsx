@@ -35,7 +35,7 @@ export function AppProvider({ children }) {
 
   // Initial load + health.
   useEffect(() => {
-    api.health().then((h) => setHealth({ state: 'ok', env: h.environment }))
+    api.health().then((h) => setHealth({ state: 'ok', env: h.environment, research: h.research_endpoints !== false }))
       .catch((e) => setHealth({ state: 'down', message: e.message }))
     refreshInstances().catch(() => {})
   }, [refreshInstances])

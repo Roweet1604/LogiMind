@@ -24,13 +24,26 @@ export function parseErrorBody(status, body) {
   return new ApiError(`Request failed (${status})`, { status })
 }
 
-async function request(path, { method = 'GET', body, raw = false } = {}) {
+// Tenant API key: kept in memory and in sessionStorage only (gone when the tab closes), never in localStorage.
+const KEY_STORE = 'logimind.apiKey'
+let apiKey = (() => { try { return sessionStorage.getItem(KEY_STORE) || '' } catch { return '' } })()
+export const getApiKey = () => apiKey
+export function setApiKey(key) {
+  apiKey = key || ''
+  try { if (apiKey) sessionStorage.setItem(KEY_STORE, apiKey); else sessionStorage.removeItem(KEY_STORE) } catch { /* storage blocked */ }
+}
+
+async function request(path, { method = 'GET', body, form, raw = false, key } = {}) {
   let res
+  const headers = {}
+  if (body) headers['Content-Type'] = 'application/json'
+  const k = key ?? apiKey
+  if (k) headers['X-API-Key'] = k
   try {
     res = await fetch(`${BASE}${path}`, {
       method,
-      headers: body ? { 'Content-Type': 'application/json' } : undefined,
-      body: body ? JSON.stringify(body) : undefined,
+      headers: Object.keys(headers).length ? headers : undefined,
+      body: form || (body ? JSON.stringify(body) : undefined),
     })
   } catch {
     throw new ApiError('Cannot reach the backend. Is it running on port 8000?', { status: 0 })
@@ -55,6 +68,17 @@ export const api = {
   startExperiment: (body) => request('/api/experiments', { method: 'POST', body }),
   getExperiment: (id) => request(`/api/experiments/${id}`),
   listExperiments: () => request('/api/experiments'),
+  // Tenant API (needs an API key)
+  whoami: (key) => request('/api/whoami', { key }),
+  listPlans: () => request('/api/plans'),
+  getPlan: (id) => request(`/api/plans/${id}`),
+  createPlan: (body) => request('/api/plans', { method: 'POST', body }),
+  replan: (id, body) => request(`/api/plans/${id}/replan`, { method: 'POST', body }),
+  importOrders: (file) => {
+    const form = new FormData()
+    form.append('file', file)
+    return request('/api/orders/import', { method: 'POST', form })
+  },
 }
 
 export const exportUrl = {
