@@ -1,0 +1,51 @@
+{
+  "created_at": "2026-11-04T05:34:55+00:00",
+  "data": "synthetic",
+  "sizes": [
+    20,
+    50,
+    80
+  ],
+  "tightness": [
+    "none",
+    "loose",
+    "tight"
+  ],
+  "budgets": [
+    1.0,
+    3.0
+  ],
+  "seeds": 2,
+  "engines": {
+    "ortools": [
+      "ortools",
+      {}
+    ],
+    "hybrid": [
+      "hybrid",
+      {
+        "local_search": true
+      }
+    ],
+    "ga_ls": [
+      "ga",
+      {
+        "max_generations": 1000000000,
+        "stagnation_generations": null,
+        "local_search": true
+      }
+    ]
+  },
+  "estimate_min": 12.42,
+  "env": {
+    "python": "3.14.7",
+    "platform": "Windows-11-10.0.26300-SP0",
+    "processor": "AMD64 Family 23 Model 96 Stepping 1, AuthenticAMD",
+    "cpu_count": 16,
+    "ortools": "9.15.6755",
+    "numpy": "2.5.4",
+    "pandas": "3.1.0"
+  },
+  "git_commit": "fd747e8",
+  "resumed": false
+}

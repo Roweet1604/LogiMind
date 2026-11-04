@@ -1,0 +1,384 @@
+{
+  "overall": {
+    "cases": 20,
+    "ortools": {
+      "wins_or_ties": 11,
+      "share_wins_or_ties": 0.55,
+      "sole_wins": 4,
+      "share_sole_wins": 0.2
+    },
+    "ga_ls": {
+      "wins_or_ties": 8,
+      "share_wins_or_ties": 0.4,
+      "sole_wins": 5,
+      "share_sole_wins": 0.25
+    },
+    "hybrid": {
+      "wins_or_ties": 11,
+      "share_wins_or_ties": 0.55,
+      "sole_wins": 4,
+      "share_sole_wins": 0.2
+    },
+    "ties": 7
+  },
+  "by_problem": {
+    "CVRP": {
+      "cases": 10,
+      "ortools": {
+        "wins_or_ties": 3,
+        "share_wins_or_ties": 0.3,
+        "sole_wins": 1,
+        "share_sole_wins": 0.1
+      },
+      "ga_ls": {
+        "wins_or_ties": 7,
+        "share_wins_or_ties": 0.7,
+        "sole_wins": 5,
+        "share_sole_wins": 0.5
+      },
+      "hybrid": {
+        "wins_or_ties": 4,
+        "share_wins_or_ties": 0.4,
+        "sole_wins": 2,
+        "share_sole_wins": 0.2
+      },
+      "ties": 2
+    },
+    "VRPTW": {
+      "cases": 10,
+      "ortools": {
+        "wins_or_ties": 8,
+        "share_wins_or_ties": 0.8,
+        "sole_wins": 3,
+        "share_sole_wins": 0.3
+      },
+      "ga_ls": {
+        "wins_or_ties": 1,
+        "share_wins_or_ties": 0.1,
+        "sole_wins": 0,
+        "share_sole_wins": 0.0
+      },
+      "hybrid": {
+        "wins_or_ties": 7,
+        "share_wins_or_ties": 0.7,
+        "sole_wins": 2,
+        "share_sole_wins": 0.2
+      },
+      "ties": 5
+    }
+  },
+  "by_family": {
+    "A": {
+      "cases": 4,
+      "ortools": {
+        "wins_or_ties": 2,
+        "share_wins_or_ties": 0.5,
+        "sole_wins": 0,
+        "share_sole_wins": 0.0
+      },
+      "ga_ls": {
+        "wins_or_ties": 3,
+        "share_wins_or_ties": 0.75,
+        "sole_wins": 1,
+        "share_sole_wins": 0.25
+      },
+      "hybrid": {
+        "wins_or_ties": 3,
+        "share_wins_or_ties": 0.75,
+        "sole_wins": 1,
+        "share_sole_wins": 0.25
+      },
+      "ties": 2
+    },
+    "X": {
+      "cases": 2,
+      "ortools": {
+        "wins_or_ties": 0,
+        "share_wins_or_ties": 0.0,
+        "sole_wins": 0,
+        "share_sole_wins": 0.0
+      },
+      "ga_ls": {
+        "wins_or_ties": 2,
+        "share_wins_or_ties": 1.0,
+        "sole_wins": 2,
+        "share_sole_wins": 1.0
+      },
+      "hybrid": {
+        "wins_or_ties": 0,
+        "share_wins_or_ties": 0.0,
+        "sole_wins": 0,
+        "share_sole_wins": 0.0
+      },
+      "ties": 0
+    },
+    "solomon_C1": {
+      "cases": 2,
+      "ortools": {
+        "wins_or_ties": 2,
+        "share_wins_or_ties": 1.0,
+        "sole_wins": 0,
+        "share_sole_wins": 0.0
+      },
+      "ga_ls": {
+        "wins_or_ties": 1,
+        "share_wins_or_ties": 0.5,
+        "sole_wins": 0,
+        "share_sole_wins": 0.0
+      },
+      "hybrid": {
+        "wins_or_ties": 2,
+        "share_wins_or_ties": 1.0,
+        "sole_wins": 0,
+        "share_sole_wins": 0.0
+      },
+      "ties": 2
+    },
+    "solomon_R1": {
+      "cases": 2,
+      "ortools": {
+        "wins_or_ties": 1,
+        "share_wins_or_ties": 0.5,
+        "sole_wins": 0,
+        "share_sole_wins": 0.0
+      },
+      "ga_ls": {
+        "wins_or_ties": 0,
+        "share_wins_or_ties": 0.0,
+        "sole_wins": 0,
+        "share_sole_wins": 0.0
+      },
+      "hybrid": {
+        "wins_or_ties": 2,
+        "share_wins_or_ties": 1.0,
+        "sole_wins": 1,
+        "share_sole_wins": 0.5
+      },
+      "ties": 1
+    },
+    "solomon_R2": {
+      "cases": 2,
+      "ortools": {
+        "wins_or_ties": 2,
+        "share_wins_or_ties": 1.0,
+        "sole_wins": 1,
+        "share_sole_wins": 0.5
+      },
+      "ga_ls": {
+        "wins_or_ties": 0,
+        "share_wins_or_ties": 0.0,
+        "sole_wins": 0,
+        "share_sole_wins": 0.0
+      },
+      "hybrid": {
+        "wins_or_ties": 1,
+        "share_wins_or_ties": 0.5,
+        "sole_wins": 0,
+        "share_sole_wins": 0.0
+      },
+      "ties": 1
+    },
+    "solomon_RC1": {
+      "cases": 2,
+      "ortools": {
+        "wins_or_ties": 2,
+        "share_wins_or_ties": 1.0,
+        "sole_wins": 1,
+        "share_sole_wins": 0.5
+      },
+      "ga_ls": {
+        "wins_or_ties": 0,
+        "share_wins_or_ties": 0.0,
+        "sole_wins": 0,
+        "share_sole_wins": 0.0
+      },
+      "hybrid": {
+        "wins_or_ties": 1,
+        "share_wins_or_ties": 0.5,
+        "sole_wins": 0,
+        "share_sole_wins": 0.0
+      },
+      "ties": 1
+    },
+    "solomon_RC2": {
+      "cases": 2,
+      "ortools": {
+        "wins_or_ties": 1,
+        "share_wins_or_ties": 0.5,
+        "sole_wins": 1,
+        "share_sole_wins": 0.5
+      },
+      "ga_ls": {
+        "wins_or_ties": 0,
+        "share_wins_or_ties": 0.0,
+        "sole_wins": 0,
+        "share_sole_wins": 0.0
+      },
+      "hybrid": {
+        "wins_or_ties": 1,
+        "share_wins_or_ties": 0.5,
+        "sole_wins": 1,
+        "share_sole_wins": 0.5
+      },
+      "ties": 0
+    },
+    "synthetic": {
+      "cases": 4,
+      "ortools": {
+        "wins_or_ties": 1,
+        "share_wins_or_ties": 0.25,
+        "sole_wins": 1,
+        "share_sole_wins": 0.25
+      },
+      "ga_ls": {
+        "wins_or_ties": 2,
+        "share_wins_or_ties": 0.5,
+        "sole_wins": 2,
+        "share_sole_wins": 0.5
+      },
+      "hybrid": {
+        "wins_or_ties": 1,
+        "share_wins_or_ties": 0.25,
+        "sole_wins": 1,
+        "share_sole_wins": 0.25
+      },
+      "ties": 0
+    }
+  },
+  "by_budget_s": {
+    "3.0": {
+      "cases": 10,
+      "ortools": {
+        "wins_or_ties": 7,
+        "share_wins_or_ties": 0.7,
+        "sole_wins": 2,
+        "share_sole_wins": 0.2
+      },
+      "ga_ls": {
+        "wins_or_ties": 3,
+        "share_wins_or_ties": 0.3,
+        "sole_wins": 2,
+        "share_sole_wins": 0.2
+      },
+      "hybrid": {
+        "wins_or_ties": 6,
+        "share_wins_or_ties": 0.6,
+        "sole_wins": 1,
+        "share_sole_wins": 0.1
+      },
+      "ties": 5
+    },
+    "10.0": {
+      "cases": 10,
+      "ortools": {
+        "wins_or_ties": 4,
+        "share_wins_or_ties": 0.4,
+        "sole_wins": 2,
+        "share_sole_wins": 0.2
+      },
+      "ga_ls": {
+        "wins_or_ties": 5,
+        "share_wins_or_ties": 0.5,
+        "sole_wins": 3,
+        "share_sole_wins": 0.3
+      },
+      "hybrid": {
+        "wins_or_ties": 5,
+        "share_wins_or_ties": 0.5,
+        "sole_wins": 3,
+        "share_sole_wins": 0.3
+      },
+      "ties": 2
+    }
+  },
+  "by_n_customers": {
+    "31": {
+      "cases": 2,
+      "ortools": {
+        "wins_or_ties": 2,
+        "share_wins_or_ties": 1.0,
+        "sole_wins": 0,
+        "share_sole_wins": 0.0
+      },
+      "ga_ls": {
+        "wins_or_ties": 2,
+        "share_wins_or_ties": 1.0,
+        "sole_wins": 0,
+        "share_sole_wins": 0.0
+      },
+      "hybrid": {
+        "wins_or_ties": 2,
+        "share_wins_or_ties": 1.0,
+        "sole_wins": 0,
+        "share_sole_wins": 0.0
+      },
+      "ties": 2
+    },
+    "50": {
+      "cases": 2,
+      "ortools": {
+        "wins_or_ties": 1,
+        "share_wins_or_ties": 0.5,
+        "sole_wins": 1,
+        "share_sole_wins": 0.5
+      },
+      "ga_ls": {
+        "wins_or_ties": 0,
+        "share_wins_or_ties": 0.0,
+        "sole_wins": 0,
+        "share_sole_wins": 0.0
+      },
+      "hybrid": {
+        "wins_or_ties": 1,
+        "share_wins_or_ties": 0.5,
+        "sole_wins": 1,
+        "share_sole_wins": 0.5
+      },
+      "ties": 0
+    },
+    "79": {
+      "cases": 2,
+      "ortools": {
+        "wins_or_ties": 0,
+        "share_wins_or_ties": 0.0,
+        "sole_wins": 0,
+        "share_sole_wins": 0.0
+      },
+      "ga_ls": {
+        "wins_or_ties": 1,
+        "share_wins_or_ties": 0.5,
+        "sole_wins": 1,
+        "share_sole_wins": 0.5
+      },
+      "hybrid": {
+        "wins_or_ties": 1,
+        "share_wins_or_ties": 0.5,
+        "sole_wins": 1,
+        "share_sole_wins": 0.5
+      },
+      "ties": 0
+    },
+    "100": {
+      "cases": 14,
+      "ortools": {
+        "wins_or_ties": 8,
+        "share_wins_or_ties": 0.5714285714285714,
+        "sole_wins": 3,
+        "share_sole_wins": 0.21428571428571427
+      },
+      "ga_ls": {
+        "wins_or_ties": 5,
+        "share_wins_or_ties": 0.35714285714285715,
+        "sole_wins": 4,
+        "share_sole_wins": 0.2857142857142857
+      },
+      "hybrid": {
+        "wins_or_ties": 7,
+        "share_wins_or_ties": 0.5,
+        "sole_wins": 2,
+        "share_sole_wins": 0.14285714285714285
+      },
+      "ties": 5
+    }
+  }
+}

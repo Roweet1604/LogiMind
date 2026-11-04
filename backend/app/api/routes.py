@@ -10,6 +10,8 @@ from fastapi.responses import Response
 from app.api import schemas as S
 from app.benchmarks import catalog
 from app.models.problem import Customer, Instance, InstanceValidationError
+from app.selector.dataset import ENGINE_CONFIGS
+from app.selector.model import ENGINE_LABELS, get_selector
 from app.services.export import summarize
 from app.services.generator import generate_instance
 from app.services.runner import environment_info
@@ -148,6 +150,46 @@ def start_run(body: S.RunIn, request: Request) -> dict:
     run_id = store.submit_run(body.instance_id, body.algorithm,
                               solver_config(body.algorithm, body.time_limit_s, body.ortools, body.ga, body.hybrid))
     return {"run_id": run_id, "state": "queued"}
+
+
+# ---- plans (P5: engine=auto) -------------------------------------------
+API_ENGINE = {"ortools": "ortools", "hybrid": "hybrid", "ga": "ga_ls"}  # the API's "ga" is GA + local search
+
+
+@router.post("/plans", status_code=202)
+def create_plan(body: S.PlanIn, request: Request) -> dict:
+    """Queue a plan. With engine="auto" the selector picks the engine and the reply explains the choice.
+
+    The plan is a normal guarded run: the solver's routes go through the independent validator and the
+    result reports feasibility, timeouts or failures as they are.
+    """
+    store = store_of(request)
+    if body.instance_id not in store.instances:
+        raise HTTPException(404, detail=f"instance {body.instance_id} not found")
+    check_time(body.time_limit_s, "time_limit_s")
+    if body.engine == "auto":
+        selection = get_selector().choose(store.instances[body.instance_id], body.time_limit_s).to_dict()
+        engine = selection["engine"]
+    else:
+        engine = API_ENGINE[body.engine]
+        selection = {"engine": engine, "engine_label": ENGINE_LABELS[engine], "method": "requested",
+                     "explanation": f"Engine {ENGINE_LABELS[engine]} was requested explicitly."}
+    algorithm, base = ENGINE_CONFIGS[engine]
+    cfg = {**base, "time_limit_s": body.time_limit_s}
+    if algorithm != "ortools":
+        cfg["seed"] = body.seed
+    plan_id = store.submit_run(body.instance_id, algorithm, cfg,
+                               meta={"kind": "plan", "requested_engine": body.engine, "selection": selection})
+    return {"plan_id": plan_id, "state": "queued", "engine": engine, "selection": selection}
+
+
+@router.get("/plans/{plan_id}")
+def get_plan(plan_id: str, request: Request) -> dict:
+    run = store_of(request).get_run(plan_id)
+    if run is None or run.get("kind") != "plan":
+        raise HTTPException(404, detail=f"plan {plan_id} not found")
+    feasible = (run.get("validation") or {}).get("feasible")
+    return {"plan_id": plan_id, **run, "feasible": feasible}
 
 
 @router.get("/runs")

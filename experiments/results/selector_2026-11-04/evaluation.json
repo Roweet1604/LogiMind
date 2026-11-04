@@ -1,0 +1,247 @@
+{
+  "data": "synthetic",
+  "runs": 324,
+  "cases": 108,
+  "status_by_engine": {
+    "ga_ls": {
+      "solved": 108
+    },
+    "hybrid": {
+      "solved": 108
+    },
+    "ortools": {
+      "solved": 108
+    }
+  },
+  "feasible_by_engine": {
+    "ga_ls": {
+      "sum": 108,
+      "count": 108
+    },
+    "hybrid": {
+      "sum": 108,
+      "count": 108
+    },
+    "ortools": {
+      "sum": 108,
+      "count": 108
+    }
+  },
+  "label_counts": {
+    "ortools": 61,
+    "ga_ls": 24,
+    "hybrid": 23
+  },
+  "label_by_tightness_budget": {
+    "loose 1s": {
+      "ortools": 9,
+      "hybrid": 6,
+      "ga_ls": 3
+    },
+    "loose 3s": {
+      "ortools": 7,
+      "hybrid": 7,
+      "ga_ls": 4
+    },
+    "none 1s": {
+      "ortools": 8,
+      "ga_ls": 7,
+      "hybrid": 3
+    },
+    "none 3s": {
+      "ga_ls": 9,
+      "ortools": 8,
+      "hybrid": 1
+    },
+    "tight 1s": {
+      "ortools": 14,
+      "hybrid": 3,
+      "ga_ls": 1
+    },
+    "tight 3s": {
+      "ortools": 15,
+      "hybrid": 3
+    }
+  },
+  "cv_by_family": {
+    "group_col": "family",
+    "folds": [
+      {
+        "held_out": "clustered",
+        "cases": 36,
+        "accuracy": 0.3055555555555556,
+        "failures": 0,
+        "mean_regret_pct": 1.0164299936121073,
+        "max_regret_pct": 7.02229109913671
+      },
+      {
+        "held_out": "mixed",
+        "cases": 36,
+        "accuracy": 0.5277777777777778,
+        "failures": 0,
+        "mean_regret_pct": 0.4500617340398271,
+        "max_regret_pct": 3.9434541720809353
+      },
+      {
+        "held_out": "uniform",
+        "cases": 36,
+        "accuracy": 0.5833333333333334,
+        "failures": 0,
+        "mean_regret_pct": 1.3444161226605695,
+        "max_regret_pct": 7.266418990960389
+      }
+    ],
+    "selector": {
+      "cases": 108,
+      "accuracy": 0.4722222222222222,
+      "failures": 0,
+      "mean_regret_pct": 0.9369692834375013,
+      "max_regret_pct": 7.266418990960389
+    },
+    "selector_regret_model": {
+      "cases": 108,
+      "accuracy": 0.42592592592592593,
+      "failures": 0,
+      "mean_regret_pct": 0.5214877417312083,
+      "max_regret_pct": 5.871834001163402
+    },
+    "always_ortools": {
+      "cases": 108,
+      "accuracy": 0.5648148148148148,
+      "failures": 0,
+      "mean_regret_pct": 1.3397705922209564,
+      "max_regret_pct": 11.747273101382502
+    },
+    "always_hybrid": {
+      "cases": 108,
+      "accuracy": 0.21296296296296297,
+      "failures": 0,
+      "mean_regret_pct": 0.6301599348104457,
+      "max_regret_pct": 8.66869553273443
+    },
+    "always_ga_ls": {
+      "cases": 108,
+      "accuracy": 0.2222222222222222,
+      "failures": 0,
+      "mean_regret_pct": 2.672632605582975,
+      "max_regret_pct": 25.955515345067443
+    },
+    "oracle": {
+      "cases": 108,
+      "accuracy": 1.0,
+      "failures": 0,
+      "mean_regret_pct": 0.0,
+      "max_regret_pct": 0.0
+    },
+    "random": {
+      "accuracy": 0.33046296296296296,
+      "failures": 0.0,
+      "mean_regret_pct": 1.5516906652236406,
+      "cases": 108,
+      "note": "mean of 200 seeded random draws"
+    },
+    "label_counts": {
+      "ortools": 61,
+      "ga_ls": 24,
+      "hybrid": 23
+    }
+  },
+  "cv_by_size": {
+    "group_col": "n_customers",
+    "folds": [
+      {
+        "held_out": "20",
+        "cases": 36,
+        "accuracy": 0.6666666666666666,
+        "failures": 0,
+        "mean_regret_pct": 0.7153560166097266,
+        "max_regret_pct": 5.654170814602155
+      },
+      {
+        "held_out": "50",
+        "cases": 36,
+        "accuracy": 0.3333333333333333,
+        "failures": 0,
+        "mean_regret_pct": 0.7497021702143137,
+        "max_regret_pct": 4.018131935866455
+      },
+      {
+        "held_out": "80",
+        "cases": 36,
+        "accuracy": 0.5,
+        "failures": 0,
+        "mean_regret_pct": 1.3217358946022018,
+        "max_regret_pct": 12.973658776475133
+      }
+    ],
+    "selector": {
+      "cases": 108,
+      "accuracy": 0.5,
+      "failures": 0,
+      "mean_regret_pct": 0.928931360475414,
+      "max_regret_pct": 12.973658776475133
+    },
+    "selector_regret_model": {
+      "cases": 108,
+      "accuracy": 0.3888888888888889,
+      "failures": 0,
+      "mean_regret_pct": 1.056349583159467,
+      "max_regret_pct": 15.493711989781351
+    },
+    "always_ortools": {
+      "cases": 108,
+      "accuracy": 0.5648148148148148,
+      "failures": 0,
+      "mean_regret_pct": 1.3397705922209564,
+      "max_regret_pct": 11.747273101382502
+    },
+    "always_hybrid": {
+      "cases": 108,
+      "accuracy": 0.21296296296296297,
+      "failures": 0,
+      "mean_regret_pct": 0.6301599348104457,
+      "max_regret_pct": 8.66869553273443
+    },
+    "always_ga_ls": {
+      "cases": 108,
+      "accuracy": 0.2222222222222222,
+      "failures": 0,
+      "mean_regret_pct": 2.672632605582975,
+      "max_regret_pct": 25.955515345067443
+    },
+    "oracle": {
+      "cases": 108,
+      "accuracy": 1.0,
+      "failures": 0,
+      "mean_regret_pct": 0.0,
+      "max_regret_pct": 0.0
+    },
+    "random": {
+      "accuracy": 0.33046296296296296,
+      "failures": 0.0,
+      "mean_regret_pct": 1.5516906652236406,
+      "cases": 108,
+      "note": "mean of 200 seeded random draws"
+    },
+    "label_counts": {
+      "ortools": 61,
+      "ga_ls": 24,
+      "hybrid": 23
+    }
+  },
+  "feature_importances_full_fit": {
+    "demand_fill": 0.5983808463357397,
+    "depot_offset_rel": 0.2123083336733871,
+    "n_customers": 0.10853882778601136,
+    "nn_dist_cv": 0.06415603952271866,
+    "nn_dist_rel": 0.016615952682143012,
+    "budget_s": 0.0,
+    "log_budget_s": 0.0,
+    "budget_per_customer_ms": 0.0,
+    "has_tw": 0.0,
+    "tw_width_rel_mean": 0.0,
+    "tw_tight_share": 0.0,
+    "service_rel": 0.0
+  },
+  "max_runtime_s": 3.0033400999964215
+}

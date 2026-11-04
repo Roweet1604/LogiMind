@@ -84,7 +84,7 @@ class Store:
 
     # ---- runs -----------------------------------------------------------
     def submit_run(self, instance_id: str, algorithm: str, config: dict[str, Any],
-                   experiment_id: str | None = None) -> str:
+                   experiment_id: str | None = None, meta: dict[str, Any] | None = None) -> str:
         run_id = f"run-{uuid.uuid4().hex[:12]}"
         inst = self.instances[instance_id]
         with self.lock:
@@ -93,6 +93,7 @@ class Store:
                 "n_customers": len(inst.customers), "algorithm": algorithm, "state": "queued",
                 "experiment_id": experiment_id, "created_at": _now(), "requested_config": config,
                 "error": None, "result": None, "validation": None, "metrics": None, "row": None,
+                **_clean(meta or {}),
             }
         self.executor.submit(self._execute, run_id, config)
         return run_id

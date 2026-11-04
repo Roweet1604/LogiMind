@@ -100,3 +100,11 @@ class ExperimentIn(BaseModel):
     ortools_repeats: int = Field(1, ge=1, le=10)
     ga: GAParams = GAParams()
     ortools: ORToolsParams = ORToolsParams()
+
+
+class PlanIn(BaseModel):
+    """A plan request. engine="auto" lets the P5 selector pick the engine and explain why."""
+    instance_id: str
+    engine: Literal["auto", "ortools", "hybrid", "ga"] = "auto"
+    time_limit_s: float = Field(10.0, gt=0)  # total wall-clock budget for the chosen engine
+    seed: int = 0
