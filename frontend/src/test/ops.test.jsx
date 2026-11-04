@@ -181,3 +181,37 @@ test('Layout: research pages explain that they are off and point to Plans', asyn
   expect(await screen.findByText(/research pages are switched off/i)).toBeInTheDocument()
   expect(screen.getAllByRole('link', { name: /plans/i }).length).toBeGreaterThan(0)
 })
+
+test('Plan detail: a dispatcher makes a driver link per route, sees reports and can revoke', async () => {
+  setApiKey(KEY)
+  const link = { link_id: 'dlk-1', plan_id: 'plan-1', route_index: 1, expires_at: '2027-01-15T20:00:00+00:00', revoked_at: null }
+  let links = []
+  const calls = recordingFetch({
+    ...HEALTH, 'GET /api/instances': [], 'GET /api/whoami': ME,
+    'GET /api/plans/plan-1/driver-links': () => links,
+    'GET /api/plans/plan-1/stop-reports': { plan_id: 'plan-1', photos: [{ customer_id: 3 }],
+      events: [{ customer_id: 3, route_index: 1, status: 'failed', reason: 'not_home', note: '', received_at: '2027-01-15T09:00:00Z' }] },
+    'POST /api/plans/plan-1/driver-links': () => { links = [link]; return { ...link, token: 'dl1.x.y', url: 'http://localhost:5174/#t=dl1.x.y' } },
+    'DELETE /api/driver-links/dlk-1': () => { links = [{ ...link, revoked_at: '2027-01-15T10:00:00Z' }]; return links[0] },
+    'GET /api/plans/plan-1': PLAN,
+  })
+  renderPage(<Routes><Route path="/plans/:id" element={<PlanDetail />} /></Routes>, { route: '/plans/plan-1' })
+  expect(await screen.findByText(/failed \(nobody home\)/)).toBeInTheDocument()
+  expect(screen.getByText('1 of 2')).toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: 'Driver link for route 1' }))
+  expect(await screen.findByLabelText('Driver link')).toHaveValue('http://localhost:5174/#t=dl1.x.y')
+  expect(JSON.parse(calls.find((c) => c.key === 'POST /api/plans/plan-1/driver-links').body)).toEqual({ route_index: 1 })
+  await userEvent.click(await screen.findByRole('button', { name: 'Revoke link for route 1' }))
+  await waitFor(() => expect(calls.some((c) => c.key === 'DELETE /api/driver-links/dlk-1')).toBe(true))
+  await waitFor(() => expect(screen.queryByLabelText('Driver link')).not.toBeInTheDocument())
+})
+
+test('Plan detail: an infeasible plan offers no driver links', async () => {
+  setApiKey(KEY)
+  const bad = { ...PLAN, feasible: false, result: { ...PLAN.result, validation: { feasible: false, violations: [] } } }
+  recordingFetch({ ...HEALTH, 'GET /api/instances': [], 'GET /api/whoami': ME, 'GET /api/plans/plan-1': bad })
+  renderPage(<Routes><Route path="/plans/:id" element={<PlanDetail />} /></Routes>, { route: '/plans/plan-1' })
+  expect(await screen.findByText(/not a feasible plan/i)).toBeInTheDocument()
+  expect(screen.queryByText('Drivers')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /driver link/i })).not.toBeInTheDocument()
+})

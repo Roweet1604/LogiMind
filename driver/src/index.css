@@ -1,0 +1,15 @@
+@import '@fontsource-variable/inter';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { @apply bg-paper text-ink font-sans antialiased; -webkit-tap-highlight-color: transparent; }
+  body { @apply text-base; }
+  :focus-visible { outline: 3px solid #1E6B70; outline-offset: 2px; }
+}
+
+@layer components {
+  /* Large touch targets: at least 52 px high, big text. */
+  .tap { @apply inline-flex min-h-[52px] items-center justify-center rounded-md px-3 text-center text-lg font-medium disabled:cursor-not-allowed disabled:opacity-50; }
+}

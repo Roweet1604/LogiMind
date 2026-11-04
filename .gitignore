@@ -7,3 +7,5 @@ experiments/results/api_data/
 *.egg-info/
 .ruff_cache/
 experiments/benchmarks/data/
+frontend/dist/
+driver/dist/

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import DriverLinks from '../components/DriverLinks'
 import RouteMap from '../components/RouteMap'
 import { AlgoTag, Field, Notice, NumberInput, PageHeader, Panel, Segmented, Spinner, Stats, TableWrap } from '../components/ui'
 import { api } from '../lib/api'
@@ -198,6 +199,7 @@ export default function PlanDetail() {
               </TableWrap>
             </Panel>
           )}
+          {routes && plan.feasible === true && <DriverLinks key={`d-${plan.plan_id}`} plan={plan} routes={routes} />}
           <ReplanPanel key={plan.plan_id} plan={plan} onReplanned={(nid) => navigate(`/plans/${nid}`)} />
         </div>
       )}
