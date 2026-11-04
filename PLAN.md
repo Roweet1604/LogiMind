@@ -31,6 +31,8 @@ Effort is a rough estimate in *team-weeks* (all three members working on the pha
 
 **Status:** P5 done on 4 Nov 2026: no engine wins 80% of the P3 cases, so the engine picker was built (decision 0007). The served regret trees are not a proven improvement over always-hybrid (model card; negative result, keep it reported). P6 partly done on 4 Nov 2026: 6a DB/tenants/keys, 6b plans API, 6c order import; 6d webhooks/rate limit exist as tested modules but are not wired (see PROGRESS.md).
 
+**Status:** P6 slices 6a to 6d done on 4 Nov 2026 (DB, tenants, keys, plans API, import, webhooks, rate limit, audit log; research endpoints locked behind a dev switch). Docker Compose / Postgres and the job queue remain. P7 done on 4 Nov 2026: replan endpoint for three events, frozen stops, warm starts, timing (decision 0012). Notes carried forward: the GA cannot keep frozen stops yet; warm start helps mainly at short budgets.
+
 The phases are done in order, but P4, P6 and P9 can run in parallel with the solver phases if the team splits work by person. Even with parallel work, the full must-have list needs roughly **7 to 9 calendar weeks**. That estimate is uncertain.
 
 ## Proposed cut line (depends on weeks remaining)

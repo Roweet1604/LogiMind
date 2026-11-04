@@ -1,6 +1,6 @@
 # LogiMind progress
 
-Last updated: 4 Nov 2026, P5 done (unattended session). Current phase: **P6 in progress** (see the end of this file for the full handoff).
+Last updated: 4 Nov 2026, second unattended session: 6d and P7 done. Current phase: **P6 rest (Docker Compose / Postgres, job queue) or P8**; see Next steps.
 
 ## Done and verified
 ### Phase 0
@@ -48,8 +48,17 @@ Last updated: 4 Nov 2026, P5 done (unattended session). Current phase: **P6 in p
 - **6a done** (commit ecc2b37): SQLAlchemy 2 models (`backend/app/db/models.py`: tenants, api_keys, plans, audit_log) and Alembic migration `backend/migrations/versions/0001_*`. Tenant isolation at the data layer (`app/db/session.py`): every ORM query on a tenant session is filtered, and writes for another tenant are rejected. API keys are stored as SHA-256 only (`app/db/keys.py`). Admin CLI: `backend/manage.py`. 13 tests in `tests/test_tenancy.py` try to break the isolation and the key checks (PK lookup, explicit filter, bulk update/delete, foreign insert, moving a row, forged/tampered/revoked keys, migration = models). Known limit: raw SQL bypasses the filter (decision 0008).
 - **6b done** (commit 5a1146b): `POST /api/plans` and `GET /api/plans/{id}` need `X-API-Key`. The instance is sent inline and stored per tenant. Another tenant's plan gives 404. OpenAPI security scheme added; audit rows for create/complete. The DB is migrated on start-up. 6 tests in `tests/test_plans_api.py` (decision 0009).
 - **6c done** (commit 7c117f1): `POST /api/orders/import` (auth) for .csv/.xlsx files. Reports every problem with its spreadsheet row number; customers are returned only if all rows are valid; each import gets an audit row. 13 tests in `tests/test_order_import.py`.
-- **6d half done** (committed as modules only, not wired): `app/services/webhooks.py` (HMAC-SHA256 signature `t=..,v1=..`, verification with replay window, retries on 5xx/429/network errors with back-off, no retry on other 4xx, `FakeSender` adapter for offline tests) and `app/services/ratelimit.py` (token bucket per key). 6 tests in `tests/test_webhooks_ratelimit.py`. Audit log table and rows exist (6a/6b/6c).
-- **Tests (4 Nov 2026, Python 3.14.7 / OR-Tools 9.15.6755 / scikit-learn 1.9.1 / SQLAlchemy 2.1.8):** backend **177 passed**, 0 failed (4 library deprecation warnings). `python -m ruff check .` passes. Frontend not re-run (no frontend change this session; last result 15 passed).
+- **6d done** (commit 04780c0): webhooks wired. `POST/GET/DELETE /api/webhooks` and `GET /api/webhooks/{id}/deliveries`; tables `webhooks` and `webhook_deliveries` (migration 0002). Plan completion, failure and replan send `LogiMind-Signature` (HMAC-SHA256) on a separate 2-thread pool, never on the solver thread. Up to 4 attempts with back-off; every delivery series is stored and audited. Basic SSRF guard: http(s) only, no localhost or literal private IPs. Host names are NOT resolved (known limit). Rate limit: one token bucket per API key in `require_principal` (429 + `Retry-After`; default 60/min, burst 20). `GET /api/audit` lists the tenant's log. 11 tests in `tests/test_platform_api.py` plus the 6 module tests (decision 0010).
+- **Research endpoints locked** (commit 4e65afc): `/api/instances`, `/api/runs`, `/api/experiments` and `/api/benchmarks` (15 routes) return 403 unless `LOGIMIND_DEV_RESEARCH_ENDPOINTS=1`; only the exact value `1` works, and the setting is OFF by default. An API key alone would not be enough, because that store has no tenants. 7 tests in `tests/test_research_lock.py` (decision 0011). README updated. The React ops console needs the dev switch.
+
+### Phase 7 (replanning), 4 Nov 2026 (commit 5a6fbad)
+- `POST /api/plans/{id}/replan` with events `vehicle_breakdown`, `failed_delivery` (retry or drop) and `urgent_order`. `completed` (stops done per vehicle) are frozen; `now` applies the current time on time-window instances. The result is a new plan linked to its parent (migration 0003) and gets a `plan.replanned` webhook.
+- **OR-Tools**: frozen prefixes are hard `NextVar` chains plus locks, and a broken vehicle cannot take unfinished stops. Warm start uses the adjusted current plan via `ReadAssignmentFromRoutes`; whether it was used or rejected is recorded. **Finding:** the audited SAVINGS default finds no first solution with frozen stops, so replans switch it to PARALLEL_CHEAPEST_INSERTION and record that. **GA** is seeded with the current plan, but only when nothing is frozen; with frozen stops it is refused with 422.
+- A replanned plan is `feasible` only if the validator passes on the real instance **and** the independent frozen-stop check passes. An impossible breakdown is stored and shown as infeasible (tested). `replan.timing.disruption_to_feasible_s` runs from the request to the validated plan.
+- **Experiment** (`experiments/results/replan_2026-11-04/`, synthetic, 96 replans, estimate 2.7 min, actual 2.1 min): 96/96 feasible, 0 frozen-stop violations, warm start accepted 36/36. Warm vs cold mean distance at 0.5 s: -2.6% to -5.3%. At 2 s: -2.0% to +0.2%. **Negative result:** breakdowns at 2 s were slightly worse with the warm start (+0.22%). Time to a feasible plan is about the budget, because the engines use their whole budget; OR-Tools' first solution came after 6 to 9 ms.
+- 12 tests in `tests/test_replan.py`: each event type, GA seeding, the GA refusal, bad events, the 409 for unfinished or infeasible plans, a tenant-isolation test for replan, the solver hooks, and the independent check.
+- **Test-run anomaly:** the first full run of `tests/test_replan.py` (older code) took 82 min; the cause was not found, and the laptop may have slept. Since then the file takes 27 s; test commands use `timeout` (decision 0012).
+- **Tests (4 Nov 2026, Python 3.14.7 / OR-Tools 9.15.6755):** backend **207 passed**, 0 failed (4 library deprecation warnings). `python -m ruff check .` passes. Frontend not re-run (no frontend change; last result 15 passed).
 
 ## First solver observations from P1 (5 s, one seed, Rohit's laptop; indicative only, do not quote; superseded for OR-Tools by the P2 audit)
 | Instance | OR-Tools (default) | GA (with repair) |
@@ -61,25 +70,21 @@ Last updated: 4 Nov 2026, P5 done (unattended session). Current phase: **P6 in p
 | X-n101-k25 (BKS 27591) | +5.7% | +8.1% |
 
 ## Not done / not verified
-- **6d wiring (half done):** still missing a `webhooks` table + migration 0002 (tenant_id, url, secret, events, active) and a deliveries table; `POST/GET/DELETE /api/webhooks`; sending `plan.completed` from `PlanService._execute` on a separate small thread pool (not the solver thread) through `HttpxSender`, with `FakeSender` injected in tests; calling `RateLimiter.check(principal.key_id)` in `app/api/auth.py:require_principal` (429 + `Retry-After`); and `GET /api/audit` for the tenant. Only allow http(s) URLs and think about SSRF (private addresses) before exposing it.
-- Rest of P6 not started: replan endpoint, job queue beyond the single thread, Docker Compose / Postgres, `.env.example`.
-- The research endpoints (`/api/instances`, `/api/runs`, `/api/experiments`) are still unauthenticated and not tenant-scoped (decision 0009).
-- Selector: the data is synthetic only, there are 2 budgets, and it is not checked on Solomon/CVRPLIB. It is not a proven improvement over always-hybrid (model card). The OR-Tools-settings selector was not built (not needed under the 80% rule).
-- Gehring-Homberger instances not downloaded (parser supports them; `--sets homberger`).
-- GA alone (no local search) is still far from OR-Tools on time-window instances (77 to 95% gap); with local search 12 to 14%. The hybrid's `ortools_share` (0.5) and `ls_rate` (0.2) are still untuned.
-- Hybrid and `engine=auto` are not in the frontend yet (API only).
-- Audit evidence covers at most 100 customers, budgets up to 10 s and one laptop.
-- Frontend does not show time windows yet.
-- Team answers still missing: weeks remaining, review dates, workstream owners, pilot data, mentor deliverables (docs/decisions/0002).
-- Docker and Ollama not installed yet (needed for P4 OSRM, Postgres in Compose, and P8).
+- Rest of P6 not started: job queue beyond the single solver thread, Docker Compose / Postgres, `.env.example`. Migrations were tested on SQLite only.
+- Webhook SSRF guard does not resolve host names (decision 0010). The rate limiter is in-process only.
+- Frontend: the ops console still uses the research endpoints (needs `LOGIMIND_DEV_RESEARCH_ENDPOINTS=1`). Plans, replans, `engine=auto`, the hybrid and time windows are not in the UI yet.
+- Replanning: the GA cannot keep frozen stops (OR-Tools only in that case). The failed attempt's own travel is not modelled. Frozen stops are assumed served on the planned schedule. The experiment used 6 synthetic instances, 40 customers and one seed (indicative only).
+- Selector: synthetic data only, two budgets, not checked on Solomon/CVRPLIB; not a proven improvement over always-hybrid (model card).
+- Gehring-Homberger instances not downloaded. The hybrid's `ortools_share` and `ls_rate` are untuned. Audit evidence covers at most 100 customers and 10 s on one laptop.
+- Team answers still missing (docs/decisions/0002). Docker and Ollama not installed (needed for P4 OSRM, Compose/Postgres, P8).
 
 ## Known quirks
 - Instance ids hash coordinates as given: `10` and `10.0` give different ids (baseline behaviour, kept so old ids stay valid). The API always sends floats.
 
 ## Next steps
-1. Finish 6d: webhooks table + migration 0002, the webhook endpoints, delivery on plan completion through the adapter, the rate limiter in `require_principal`, and `GET /api/audit`, with tests (the modules and their tests already exist).
-2. Grow the selector dataset (more seeds, 1/3/10 s budgets, sizes up to 100+) and re-run `experiments/selector_dataset.py` (it has `--estimate-only` and `--resume`) and `experiments/selector_train_eval.py`. Keep the served model only if it beats always-hybrid on both CV splits.
-3. Put the research endpoints behind tenants or keep them local-only, then do P4 (OSRM, needs Docker) or the rest of P6 (Docker Compose + Postgres).
+1. Frontend: move the ops console to the tenant API (`/api/plans` with a key, replan buttons for the three events), so the research endpoints can stay off.
+2. P8 copilot (LangGraph + Ollama behind the adapter, fake LLM for tests). Its tools can call `/api/plans` and `/api/plans/{id}/replan`; this needs Ollama installed.
+3. Rest of P6 and P4: Docker Compose with Postgres (run the Alembic migrations there), `.env.example`, resolve-and-check for webhook URLs, then OSRM (needs Docker).
 
 ## Restart commands
 See CLAUDE.md "Commands". In a new session: read CLAUDE.md, PLAN.md and PROGRESS.md, run the backend tests and report the real result.
@@ -94,5 +99,13 @@ Exact commands used this session (from the repo root, Git Bash):
 cd backend && "$TEMP/lmv/Scripts/python" -m pytest -q                      # 177 passed
 "$TEMP/lmv/Scripts/python" -m ruff check .                                 # from the repo root
 cd backend && LOGIMIND_DATABASE_URL=sqlite:///<path>.db "$TEMP/lmv/Scripts/python" manage.py create-tenant "Name"
+```
+
+Commands added in the second unattended session (Git Bash, repo root):
+```
+"$TEMP/lmv/Scripts/python" experiments/replan_experiment.py --estimate-only    # 6 base + 96 replans, ~2.7 min
+"$TEMP/lmv/Scripts/python" experiments/replan_experiment.py                    # writes experiments/results/replan_2026-11-04
+cd backend && timeout 900 "$TEMP/lmv/Scripts/python" -m pytest -q               # 207 passed
+LOGIMIND_DEV_RESEARCH_ENDPOINTS=1 uvicorn app.main:app --port 8000              # local dev with the ops console
 ```
 
