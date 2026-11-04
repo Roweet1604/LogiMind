@@ -1,6 +1,6 @@
 # LogiMind progress
 
-Last updated: 4 Nov 2026, third unattended session: ops console on the tenant API, P8 copilot (fake LLM only), draft eval set. Current phase: **P8 needs a real-model check (Ollama), then P9 / rest of P6**; see Next steps.
+Last updated: 4 Nov 2026, fourth unattended session: P9 (driver links, driver PWA, ETA notifications) done. Current phase: **P8 real-model check (Ollama), rest of P6 (Docker Compose / Postgres), then P10**; see Next steps.
 
 ## Done and verified
 ### Phase 0
@@ -86,6 +86,45 @@ Last updated: 4 Nov 2026, third unattended session: ops console on the tenant AP
 
 - **Tests at the end of this session (4 Nov 2026, Python 3.14.7 / OR-Tools 9.15.6755 / langgraph 1.2.19 / langchain-ollama 1.1.0):** backend **224 passed**, 0 failed (16 library deprecation warnings: SWIG, langsmith). Frontend **30 passed**. `python -m ruff check .` passes.
 
+### Phase 9 (driver app and notifications), 4 Nov 2026 (commits 1e33324, e8708f0, 330db95; decisions 0015-0017)
+- **Driver access** (`backend/app/driver/`, `app/api/driver.py`, migration 0004).
+  - A dispatcher creates a short-lived HMAC-signed link for **one route** of a completed, feasible plan (`POST /api/plans/{id}/driver-links`; default 12 h, at most 24 h), and can list and revoke links.
+  - Each driver call checks the signature, the expiry and the link row (tenant, plan and route must all match).
+  - Driver endpoints: `GET /api/driver/route`, `POST /api/driver/stops/{customer}/status` (delivered, or failed with a reason; `client_event_id` makes resends safe), `POST /api/driver/stops/{customer}/photo`.
+  - Photos: JPEG/PNG/WebP detected from the bytes, at most 3 MB and 5 per stop, generated file names under `<data dir>/pod/<tenant>/`.
+  - Dispatcher endpoints: `GET /api/plans/{id}/stop-reports` and `GET /api/photos/{id}`. Driver reports never change the plan.
+- **Driver PWA** (`driver/`, React + Vite + vite-plugin-pwa).
+  - Installable: manifest with 192/512 px and maskable icons; a precached app shell.
+  - Offline: the stop list is cached per link; delivered/failed reports are queued and sent in order on start, on `online`, every 20 s and with "Sync now".
+  - Stops have a navigation deep link (lon/lat plans only). Buttons are at least 52 px high.
+  - Photos need a connection; they are re-encoded to JPEG of at most 1600 px first.
+  - The ops console has a "Drivers" panel (link per route, revoke, latest reports).
+- **ETA notifications** (`backend/app/messaging/`, `app/api/notifications.py`, migration 0005).
+  - `MessageSender` adapter with **only a stub** that logs and never sends; any other `LOGIMIND_NOTIFY_PROVIDER` is refused.
+  - `notification_log` records every message sent or skipped (no contact, no opt-in), with recipients masked.
+  - Contacts need **explicit opt-in** (default off), with opt-in and opt-out times.
+  - Templates: eta, delivered, failed.
+  - ETAs come from the validator's own route schedule plus a shift start. Responses say "not live traffic", and plans with no time data say the default 1 min/km is assumed.
+  - Delivered/failed messages follow driver reports; a sender failure never undoes a report.
+- **Tests:**
+  - Backend +17: 9 in `tests/test_driver.py`, which try other routes, other plans, other tenants, tampered, re-signed, expired and revoked tokens, and API key vs driver token mix-ups; 8 in `tests/test_notifications.py`.
+  - Driver PWA 17 (`driver/src/test/`).
+  - Console +2 (`frontend/src/test/ops.test.jsx`).
+- **Verified in a real browser** (Chrome via the Claude in Chrome extension, against uvicorn on a temp SQLite DB with the research endpoints off, and the built PWA served by `vite preview`):
+  - The driver link opened the stop list, and the token was removed from the address bar. The service worker was active and controlling the page; precache present; manifest linked.
+  - A failed report ("Nobody home") synced at once.
+  - With the preview server stopped, a reload showed the saved stop list marked Offline (app shell from the service worker). A delivered report was queued ("waiting to sync") and reached the server after the server came back and the page reloaded.
+  - The ops console's Drivers panel showed the three reports and created a link. No console errors.
+- **Found and fixed in the browser check:** with the server down but the network up, the browser sends no `online` event, so queued reports waited until a reload and "Sync now" was disabled. Added a 20 s retry, and "Sync now" stays enabled (new test).
+- **Not verified:**
+  - **Not installed on a real phone**, and the install prompt was not triggered. The camera capture and the canvas re-encoding path (`driver/src/lib/photo.js`) were not run in a browser; jsdom has no canvas, so the tests use the fallback path.
+  - The maps deep link was not opened, and Chrome's browser-offline mode was not used (the server was stopped instead).
+  - The stub sender was only checked by tests and logs. No real SMS or e-mail was sent (none exists).
+- **Tests at the end of this session (4 Nov 2026, Python 3.14.7 / OR-Tools 9.15.6755):**
+  - Backend **241 passed**, 0 failed (16 library deprecation warnings); `python -m ruff check .` passes.
+  - Ops console **32 passed**. Driver PWA **17 passed**, and `vite build` makes `sw.js` + `manifest.webmanifest` (16 precached entries).
+- **Flaky test seen once:** the opening full run of this session had **1 failure**, `tests/test_hybrid.py::test_guard_stops_a_frozen_run_and_reports_a_timeout` (223 passed, 1 failed). It then passed 3 times alone, once with its whole file, and in all 3 later full runs. That first run was tailed, so the assertion message was not captured. The test asserts wall-clock bounds (1.4 s <= wait < 10 s), so laptop load is the likely cause, but this is not proven.
+
 ## First solver observations from P1 (5 s, one seed, Rohit's laptop; indicative only, do not quote; superseded for OR-Tools by the P2 audit)
 | Instance | OR-Tools (default) | GA (with repair) |
 | --- | --- | --- |
@@ -97,22 +136,30 @@ Last updated: 4 Nov 2026, third unattended session: ops console on the tenant AP
 
 ## Not done / not verified
 - **Copilot with a real model:** not run (Ollama not installed). Next: install Ollama, `ollama pull llama3.2:3b`, have the team review and freeze the DRAFT eval set, then measure the share of exact intent matches. Report the numbers for that exact model only.
-- The ops console was not checked in a real browser this session (component tests, build and an API-level live smoke run only).
+- **P9 limits:**
+  - No offline photo queue.
+  - No contacts / notification-log screen in the console (API only).
+  - ETAs are planned times; they are not updated from the driver's progress.
+  - The server does not strip EXIF from photos; only the PWA's re-encoding does, and that is untested in a browser.
+  - Without `LOGIMIND_DRIVER_LINK_SECRET`, links die on restart. Production needs HTTPS and CORS (or the same origin) for the PWA.
+  - The driver app has not been tried on a real phone.
+- The ops console has now been opened in a real browser only for the plan page and the Drivers panel (sign-in, plan detail, link creation). Import, replan and copilot flows were not walked through in a browser.
 - Copilot sessions are in memory (lost on restart). Chat requests block until the solver finishes.
-- Rest of P6 not started: job queue beyond the single solver thread, Docker Compose / Postgres, `.env.example`. Migrations tested on SQLite only.
+- Rest of P6 not started: job queue beyond the single solver thread, Docker Compose / Postgres, `.env.example`. Migrations tested on SQLite only. Photos are on local disk (Compose needs a volume).
 - Webhook SSRF guard does not resolve host names (decision 0010). The rate limiter is in-process only.
 - Replanning: the GA cannot keep frozen stops. The failed attempt's own travel is not modelled. The experiment covered 6 synthetic instances with one seed.
 - Selector: synthetic data only; not a proven improvement over always-hybrid (model card).
-- P9 driver PWA, P4 OSRM and P10 not started. Gehring-Homberger not downloaded; hybrid split untuned.
+- P4 OSRM and P10 not started. Gehring-Homberger not downloaded; hybrid split untuned.
 - Team answers still missing (docs/decisions/0002). Docker and Ollama not installed.
+- One timing-sensitive test failed once this session (see P9 notes); not reproduced.
 
 ## Known quirks
 - Instance ids hash coordinates as given: `10` and `10.0` give different ids (baseline behaviour, kept so old ids stay valid). The API always sends floats.
 
 ## Next steps
 1. Team: review and freeze `docs/eval/copilot_instructions_DRAFT.json`. Then install Ollama (`ollama pull llama3.2:3b`) and run the copilot on the frozen set; record the model, version and results honestly.
-2. Open the ops console in a browser against a backend started without the dev switch. Walk through sign-in, import, plan, replan and copilot, and fix what the component tests missed.
-3. P9 driver PWA (stop list per vehicle from `/api/plans/{id}`, delivered/failed buttons that call the replan endpoint), then Docker Compose with Postgres.
+2. Try the driver PWA on a real Android phone over HTTPS or USB port-forwarding: install it, take a photo (checks the canvas re-encoding), go offline and sync. Walk through the console's import, replan and copilot flows in a browser.
+3. Docker Compose with Postgres (backend, console, driver PWA, a volume for photos, `.env.example` with `LOGIMIND_DRIVER_LINK_SECRET`), then start P10 evaluation material.
 
 ## Restart commands
 See CLAUDE.md "Commands". In a new session: read CLAUDE.md, PLAN.md and PROGRESS.md, run the backend tests and report the real result.
@@ -142,5 +189,15 @@ Commands added in the third unattended session:
 "$TEMP/lmv/Scripts/python" -m pip install -r backend/requirements.txt   # now also langgraph, langchain-core, langchain-ollama
 # frontend tests: copy frontend/src etc. to %TEMP%\lmfe_s3 (npm ci there once), then:  npx vitest run   # 30 passed
 LOGIMIND_LLM_PROVIDER=none uvicorn app.main:app --port 8000             # copilot off on purpose; default "ollama" uses it only if running
+```
+
+Commands added in the fourth unattended session (Git Bash, repo root):
+```
+cd backend && timeout 1500 "$TEMP/lmv/Scripts/python" -m pytest -q --tb=short     # 241 passed
+# driver PWA: copy driver/ to %TEMP%\lmdrv (npm install there once), then:
+npx vitest run            # 17 passed
+npx vite build && npx vite preview --port 5174   # service worker + manifest; proxies /api to :8000
+# console: copy frontend/src to %TEMP%\lmfe_s3, then npx vitest run   # 32 passed
+LOGIMIND_DRIVER_LINK_SECRET=<32+ chars> uvicorn app.main:app --port 8000   # links survive restarts
 ```
 

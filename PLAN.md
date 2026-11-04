@@ -35,6 +35,8 @@ Effort is a rough estimate in *team-weeks* (all three members working on the pha
 
 **Status:** P8 built on 4 Nov 2026 (LangGraph copilot, six tools, constrained intents, confirmation, chat panel), tested with the fake LLM only; no real model has been run yet (Ollama not installed). The ops console now uses the tenant API. Draft eval set of 50 instructions awaits team review.
 
+**Status:** P9 done on 4 Nov 2026: signed per-route driver links, driver PWA (installable, offline stop list, queued reports, maps deep link, photos online only), stub ETA notifications with opt-in and a log table (decisions 0015-0017). Checked in desktop Chrome against a live backend; not yet on a real phone.
+
 The phases are done in order, but P4, P6 and P9 can run in parallel with the solver phases if the team splits work by person. Even with parallel work, the full must-have list needs roughly **7 to 9 calendar weeks**. That estimate is uncertain.
 
 ## Proposed cut line (depends on weeks remaining)
