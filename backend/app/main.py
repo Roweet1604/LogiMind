@@ -8,6 +8,8 @@ Environment variables
   LOGIMIND_DATABASE_URL        tenant database (default: SQLite file logimind.db in the data dir);
                                migrated to the Alembic head on start-up
   LOGIMIND_RATE_PER_MIN        requests per minute per API key (default 60), LOGIMIND_RATE_BURST (default 20)
+  LOGIMIND_DEV_RESEARCH_ENDPOINTS  "1" turns on /api/instances, /api/runs, /api/experiments, /api/benchmarks
+                               (no tenants; local development only; OFF by default)
   LOGIMIND_WEBHOOK_ALLOW_PRIVATE  "1" allows webhook URLs on localhost/private addresses (dev only; off)
 """
 from __future__ import annotations
@@ -19,7 +21,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.platform import router as platform_router
-from app.api.routes import router
+from app.api.routes import legacy_open_from_env, router
 from app.db.migrate import upgrade_to_head
 from app.db.session import make_engine, make_session_factory
 from app.services.notify import WebhookNotifier
@@ -29,7 +31,7 @@ from app.services.store import Store
 from app.services.webhooks import HttpxSender
 
 
-def create_app(data_dir: Path | None = None) -> FastAPI:
+def create_app(data_dir: Path | None = None, legacy_open: bool | None = None) -> FastAPI:
     default_dir = Path(__file__).resolve().parents[2] / "experiments" / "results" / "api_data"
     app = FastAPI(title="LogiMind API", version="0.2.0",
                   description="Route planning with OR-Tools, GA and hybrid engines. Tenant endpoints "
@@ -44,6 +46,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
         f"sqlite:///{(data_dir / 'logimind.db').as_posix()}"
     upgrade_to_head(url)
     app.state.db = make_session_factory(make_engine(url))
+    app.state.legacy_open = legacy_open_from_env() if legacy_open is None else legacy_open
     app.state.ratelimiter = RateLimiter()
     app.state.notifier = WebhookNotifier(app.state.db, HttpxSender())
     app.state.plans = PlanService(app.state.db, app.state.store, app.state.notifier)

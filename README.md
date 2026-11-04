@@ -18,6 +18,8 @@ uvicorn app.main:app --port 8000
 ```
 API docs: http://localhost:8000/docs
 
+The research endpoints used by the ops console (`/api/instances`, `/api/runs`, `/api/experiments`, `/api/benchmarks`) have no tenants and are OFF by default. For local development only, start the backend with `set LOGIMIND_DEV_RESEARCH_ENDPOINTS=1` first (decision 0011). Tenant endpoints (`/api/plans`, `/api/orders/import`, `/api/webhooks`, `/api/audit`) need an `X-API-Key` from `python manage.py create-tenant "<name>"`.
+
 Public benchmarks (needs internet once; files stay out of git):
 ```
 python experiments\benchmarks\fetch_benchmarks.py

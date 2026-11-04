@@ -21,6 +21,24 @@ from app.services.runner import environment_info
 from app.services.store import Store
 
 router = APIRouter(prefix="/api")
+RESEARCH_TAG = "research (dev only, off by default)"
+LEGACY_ENV = "LOGIMIND_DEV_RESEARCH_ENDPOINTS"
+
+
+def legacy_open_from_env() -> bool:
+    return os.environ.get(LEGACY_ENV) == "1"
+
+
+def legacy_gate(request: Request) -> None:
+    """The research endpoints (instances, runs, experiments, benchmarks) keep their data in a store with no
+    tenants, so they are OFF unless the dev-only setting LOGIMIND_DEV_RESEARCH_ENDPOINTS=1 is set
+    (decision 0011). Tenants use /api/plans, /api/orders/import, /api/webhooks and /api/audit."""
+    if not request.app.state.legacy_open:
+        raise HTTPException(403, detail=f"research endpoints are disabled; they are for local development only "
+                                        f"(set {LEGACY_ENV}=1). Use /api/plans with an API key.")
+
+
+RESEARCH = {"dependencies": [Depends(legacy_gate)], "tags": [RESEARCH_TAG]}
 
 
 def store_of(request: Request) -> Store:
@@ -65,7 +83,7 @@ def health() -> dict:
 
 
 # ---- instances ----------------------------------------------------------
-@router.post("/instances", status_code=201)
+@router.post("/instances", status_code=201, **RESEARCH)
 def create_instance(body: S.InstanceIn, request: Request) -> dict:
     return register(request, instance_from(body))
 
@@ -82,7 +100,7 @@ def instance_from(body: S.InstanceIn) -> Instance:
         time_per_distance=body.time_per_distance, time_unit=body.time_unit)
 
 
-@router.post("/instances/generate", status_code=201)
+@router.post("/instances/generate", status_code=201, **RESEARCH)
 def generate(body: S.GenerateIn, request: Request) -> dict:
     if body.demand_min > body.demand_max:
         raise HTTPException(422, detail={"message": "demand_min must be <= demand_max", "errors": []})
@@ -94,7 +112,7 @@ def generate(body: S.GenerateIn, request: Request) -> dict:
 
 
 # ---- public benchmarks ---------------------------------------------------
-@router.get("/benchmarks")
+@router.get("/benchmarks", **RESEARCH)
 def list_benchmarks() -> list[dict]:
     """Best-known solutions table, with whether the instance file is downloaded."""
     out = []
@@ -105,7 +123,7 @@ def list_benchmarks() -> list[dict]:
     return out
 
 
-@router.post("/benchmarks/{set_key}/{name}", status_code=201)
+@router.post("/benchmarks/{set_key}/{name}", status_code=201, **RESEARCH)
 def load_benchmark(set_key: str, name: str, request: Request) -> dict:
     if set_key not in catalog.SETS or not catalog.re_safe_name(name):
         raise HTTPException(404, detail=f"unknown benchmark {set_key}/{name}")
@@ -119,12 +137,12 @@ def load_benchmark(set_key: str, name: str, request: Request) -> dict:
     return out
 
 
-@router.get("/instances")
+@router.get("/instances", **RESEARCH)
 def list_instances(request: Request) -> list[dict]:
     return [instance_summary(i) for i in store_of(request).instances.values()]
 
 
-@router.get("/instances/{instance_id}")
+@router.get("/instances/{instance_id}", **RESEARCH)
 def get_instance(instance_id: str, request: Request) -> dict:
     inst = store_of(request).instances.get(instance_id)
     if inst is None:
@@ -147,7 +165,7 @@ def solver_config(algorithm: str, time_limit_s: float | None, ortools: S.ORTools
     return {**ga.model_dump(), "time_limit_s": time_limit_s}
 
 
-@router.post("/runs", status_code=202)
+@router.post("/runs", status_code=202, **RESEARCH)
 def start_run(body: S.RunIn, request: Request) -> dict:
     store = store_of(request)
     if body.instance_id not in store.instances:
@@ -212,19 +230,19 @@ async def import_orders(request: Request, file: UploadFile = File(..., descripti
     return report
 
 
-@router.get("/runs")
+@router.get("/runs", **RESEARCH)
 def list_runs(request: Request, instance_id: str | None = None) -> list[dict]:
     keys = ("run_id", "instance_id", "algorithm", "state", "experiment_id", "created_at", "row", "error")
     return [{k: r.get(k) for k in keys} for r in store_of(request).list_runs(instance_id)]
 
 
-@router.get("/runs/export")
+@router.get("/runs/export", **RESEARCH)
 def export_runs(request: Request) -> Response:
     rows = [r["row"] for r in store_of(request).list_runs() if r.get("row")]
     return csv_response(rows, "runs.csv")
 
 
-@router.get("/runs/{run_id}")
+@router.get("/runs/{run_id}", **RESEARCH)
 def get_run(run_id: str, request: Request) -> dict:
     run = store_of(request).get_run(run_id)
     if run is None:
@@ -232,7 +250,7 @@ def get_run(run_id: str, request: Request) -> dict:
     return run
 
 
-@router.get("/runs/{run_id}/metrics")
+@router.get("/runs/{run_id}/metrics", **RESEARCH)
 def get_run_metrics(run_id: str, request: Request) -> dict:
     run = get_run(run_id, request)
     if run["state"] not in ("completed", "failed"):
@@ -244,7 +262,7 @@ def get_run_metrics(run_id: str, request: Request) -> dict:
 
 
 # ---- experiments --------------------------------------------------------
-@router.post("/experiments", status_code=202)
+@router.post("/experiments", status_code=202, **RESEARCH)
 def start_experiment(body: S.ExperimentIn, request: Request) -> dict:
     store = store_of(request)
     if body.instance_id not in store.instances:
@@ -263,7 +281,7 @@ def start_experiment(body: S.ExperimentIn, request: Request) -> dict:
     return {"experiment_id": exp_id, "state": "running", "runs": len(jobs)}
 
 
-@router.get("/experiments")
+@router.get("/experiments", **RESEARCH)
 def list_experiments(request: Request) -> list[dict]:
     store = store_of(request)
     out = []
@@ -280,7 +298,7 @@ def list_experiments(request: Request) -> list[dict]:
     return sorted(out, key=lambda e: e["created_at"], reverse=True)
 
 
-@router.get("/experiments/{experiment_id}")
+@router.get("/experiments/{experiment_id}", **RESEARCH)
 def get_experiment(experiment_id: str, request: Request) -> dict:
     view = store_of(request).experiment_view(experiment_id)
     if view is None:
@@ -288,7 +306,7 @@ def get_experiment(experiment_id: str, request: Request) -> dict:
     return view
 
 
-@router.get("/experiments/{experiment_id}/export")
+@router.get("/experiments/{experiment_id}/export", **RESEARCH)
 def export_experiment(experiment_id: str, request: Request, kind: str = "raw") -> Response:
     if kind not in ("raw", "summary"):
         raise HTTPException(422, detail={"message": "kind must be 'raw' or 'summary'", "errors": []})
