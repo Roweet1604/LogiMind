@@ -42,7 +42,14 @@ Last updated: 4 Nov 2026, P5 done (unattended session). Current phase: **P6 in p
 - **Dataset**: estimate 12.4 min, actual 10.2 min. 324 runs, one at a time through the guard; all feasible, no timeouts. Stored in `experiments/results/selector_2026-11-04/`; training copy in `backend/app/selector/data/training_cases.csv`.
 - **Evaluation** (leave-one-family-out CV): the served regret trees have 0.52% mean regret; classifier 0.94%, always-hybrid 0.63%, always-OR-Tools 1.34%, random 1.55%. Leave-one-size-out: regret trees 1.06%, always-hybrid 0.63%. **This is not a proven improvement over always using the hybrid** (negative result, in `docs/model_card_selector.md`).
 - **API**: `POST /api/plans` with `engine=auto` returns the choice with an explanation (predicted regret per engine plus the tree rule). `GET /api/plans/{id}` returns the plan; the validator's verdict is in `feasible`.
-- **Tests**: 18 new in `tests/test_selector.py`. Full backend suite passed (P5 files only; see the P6 entries for later counts).
+- **Tests**: 18 new in `tests/test_selector.py` (the P5 API tests moved to `tests/test_plans_api.py` in 6b).
+
+### Phase 6 (platform), 4 Nov 2026, unattended session (partly done)
+- **6a done** (commit ecc2b37): SQLAlchemy 2 models (`backend/app/db/models.py`: tenants, api_keys, plans, audit_log) and Alembic migration `backend/migrations/versions/0001_*`. Tenant isolation at the data layer (`app/db/session.py`): every ORM query on a tenant session is filtered, and writes for another tenant are rejected. API keys are stored as SHA-256 only (`app/db/keys.py`). Admin CLI: `backend/manage.py`. 13 tests in `tests/test_tenancy.py` try to break the isolation and the key checks (PK lookup, explicit filter, bulk update/delete, foreign insert, moving a row, forged/tampered/revoked keys, migration = models). Known limit: raw SQL bypasses the filter (decision 0008).
+- **6b done** (commit 5a1146b): `POST /api/plans` and `GET /api/plans/{id}` need `X-API-Key`. The instance is sent inline and stored per tenant. Another tenant's plan gives 404. OpenAPI security scheme added; audit rows for create/complete. The DB is migrated on start-up. 6 tests in `tests/test_plans_api.py` (decision 0009).
+- **6c done** (commit 7c117f1): `POST /api/orders/import` (auth) for .csv/.xlsx files. Reports every problem with its spreadsheet row number; customers are returned only if all rows are valid; each import gets an audit row. 13 tests in `tests/test_order_import.py`.
+- **6d half done** (committed as modules only, not wired): `app/services/webhooks.py` (HMAC-SHA256 signature `t=..,v1=..`, verification with replay window, retries on 5xx/429/network errors with back-off, no retry on other 4xx, `FakeSender` adapter for offline tests) and `app/services/ratelimit.py` (token bucket per key). 6 tests in `tests/test_webhooks_ratelimit.py`. Audit log table and rows exist (6a/6b/6c).
+- **Tests (4 Nov 2026, Python 3.14.7 / OR-Tools 9.15.6755 / scikit-learn 1.9.1 / SQLAlchemy 2.1.8):** backend **177 passed**, 0 failed (4 library deprecation warnings). `python -m ruff check .` passes. Frontend not re-run (no frontend change this session; last result 15 passed).
 
 ## First solver observations from P1 (5 s, one seed, Rohit's laptop; indicative only, do not quote; superseded for OR-Tools by the P2 audit)
 | Instance | OR-Tools (default) | GA (with repair) |
@@ -54,23 +61,38 @@ Last updated: 4 Nov 2026, P5 done (unattended session). Current phase: **P6 in p
 | X-n101-k25 (BKS 27591) | +5.7% | +8.1% |
 
 ## Not done / not verified
+- **6d wiring (half done):** still missing a `webhooks` table + migration 0002 (tenant_id, url, secret, events, active) and a deliveries table; `POST/GET/DELETE /api/webhooks`; sending `plan.completed` from `PlanService._execute` on a separate small thread pool (not the solver thread) through `HttpxSender`, with `FakeSender` injected in tests; calling `RateLimiter.check(principal.key_id)` in `app/api/auth.py:require_principal` (429 + `Retry-After`); and `GET /api/audit` for the tenant. Only allow http(s) URLs and think about SSRF (private addresses) before exposing it.
+- Rest of P6 not started: replan endpoint, job queue beyond the single thread, Docker Compose / Postgres, `.env.example`.
+- The research endpoints (`/api/instances`, `/api/runs`, `/api/experiments`) are still unauthenticated and not tenant-scoped (decision 0009).
+- Selector: the data is synthetic only, there are 2 budgets, and it is not checked on Solomon/CVRPLIB. It is not a proven improvement over always-hybrid (model card). The OR-Tools-settings selector was not built (not needed under the 80% rule).
 - Gehring-Homberger instances not downloaded (parser supports them; `--sets homberger`).
-- GA alone (no local search) is still far from OR-Tools on time-window instances (77 to 95% gap); with local search 12 to 14%. The hybrid's OR-Tools share (0.5) and the GA's ls_rate (0.2) are untuned.
-- Hybrid not in the frontend yet (API only); the API experiment endpoint still compares OR-Tools vs GA only.
-- P3 comparison used 2 seeds and 10 instances; too few to claim a general winner on CVRP.
-- Audit evidence covers at most 100 customers, budgets up to 10 s and one laptop; budgets above 10 s use the "long" defaults untested.
-- No synthetic time-window instances yet (generator has no time windows; P5 dataset generator).
-- Frontend does not show time windows yet (no UI change in P1).
+- GA alone (no local search) is still far from OR-Tools on time-window instances (77 to 95% gap); with local search 12 to 14%. The hybrid's `ortools_share` (0.5) and `ls_rate` (0.2) are still untuned.
+- Hybrid and `engine=auto` are not in the frontend yet (API only).
+- Audit evidence covers at most 100 customers, budgets up to 10 s and one laptop.
+- Frontend does not show time windows yet.
 - Team answers still missing: weeks remaining, review dates, workstream owners, pilot data, mentor deliverables (docs/decisions/0002).
-- Docker and Ollama not installed yet (needed before P4/P6 and P8).
+- Docker and Ollama not installed yet (needed for P4 OSRM, Postgres in Compose, and P8).
 
 ## Known quirks
 - Instance ids hash coordinates as given: `10` and `10.0` give different ids (baseline behaviour, kept so old ids stay valid). The API always sends floats.
 
 ## Next steps
-1. Team: fill in the open answers in docs/decisions/0002 (weeks remaining decides the cut line).
-2. P4 (distance provider: haversine + self-hosted OSRM, flagged fallback) needs Docker; P5 (selector) can start without it. The selector's dataset should include GA + local search and the hybrid as candidates and treat the budget as a feature.
-3. Close memory-heavy programs before long benchmark runs (the P2 audit was stopped once for low memory).
+1. Finish 6d: webhooks table + migration 0002, the webhook endpoints, delivery on plan completion through the adapter, the rate limiter in `require_principal`, and `GET /api/audit`, with tests (the modules and their tests already exist).
+2. Grow the selector dataset (more seeds, 1/3/10 s budgets, sizes up to 100+) and re-run `experiments/selector_dataset.py` (it has `--estimate-only` and `--resume`) and `experiments/selector_train_eval.py`. Keep the served model only if it beats always-hybrid on both CV splits.
+3. Put the research endpoints behind tenants or keep them local-only, then do P4 (OSRM, needs Docker) or the rest of P6 (Docker Compose + Postgres).
 
 ## Restart commands
 See CLAUDE.md "Commands". In a new session: read CLAUDE.md, PLAN.md and PROGRESS.md, run the backend tests and report the real result.
+
+Exact commands used this session (from the repo root, Git Bash):
+```
+"$TEMP/lmv/Scripts/python" -m pip install -r backend/requirements.txt     # adds scikit-learn, sqlalchemy, alembic, openpyxl, python-multipart
+"$TEMP/lmv/Scripts/python" experiments/selector_win_counts.py             # P5 step 1, no solver runs
+"$TEMP/lmv/Scripts/python" experiments/selector_dataset.py --estimate-only # 324 runs, ~12.4 min
+"$TEMP/lmv/Scripts/python" experiments/selector_dataset.py [--resume]
+"$TEMP/lmv/Scripts/python" experiments/selector_train_eval.py
+cd backend && "$TEMP/lmv/Scripts/python" -m pytest -q                      # 177 passed
+"$TEMP/lmv/Scripts/python" -m ruff check .                                 # from the repo root
+cd backend && LOGIMIND_DATABASE_URL=sqlite:///<path>.db "$TEMP/lmv/Scripts/python" manage.py create-tenant "Name"
+```
+

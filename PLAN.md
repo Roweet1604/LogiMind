@@ -29,6 +29,8 @@ Effort is a rough estimate in *team-weeks* (all three members working on the pha
 
 **Status:** P3 done on 2 Nov 2026: fleet repair fixes the GA on R101; local search, hybrid and wall-clock guard added; equal-clock comparison and ablation (240 runs, docs/decisions/0006). Notes carried forward: the hybrid is not a clear win over OR-Tools at 3 to 10 s with the untuned 50/50 split (negative result, keep it reported); GA + local search is competitive on CVRP; P5 should include all engines and tune `ortools_share` / `ls_rate` on instances separate from the evaluation set.
 
+**Status:** P5 done on 4 Nov 2026: no engine wins 80% of the P3 cases, so the engine picker was built (decision 0007). The served regret trees are not a proven improvement over always-hybrid (model card; negative result, keep it reported). P6 partly done on 4 Nov 2026: 6a DB/tenants/keys, 6b plans API, 6c order import; 6d webhooks/rate limit exist as tested modules but are not wired (see PROGRESS.md).
+
 The phases are done in order, but P4, P6 and P9 can run in parallel with the solver phases if the team splits work by person. Even with parallel work, the full must-have list needs roughly **7 to 9 calendar weeks**. That estimate is uncertain.
 
 ## Proposed cut line (depends on weeks remaining)
