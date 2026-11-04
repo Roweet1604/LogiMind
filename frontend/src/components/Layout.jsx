@@ -1,4 +1,4 @@
-import { BookOpen, Check, ClipboardList, FlaskConical, KeyRound, LayoutGrid, Play, Route as RouteIcon, Scale, SlidersHorizontal } from 'lucide-react'
+import { BookOpen, Check, ClipboardList, FlaskConical, KeyRound, LayoutGrid, MessageSquare, Play, Route as RouteIcon, Scale, SlidersHorizontal } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useApp } from '../state/AppContext'
 import { useAuth } from '../state/AuthContext'
@@ -61,6 +61,7 @@ function Stepper() {
 
 const OPS = [
   { to: '/plans', label: 'Plans', icon: ClipboardList },
+  { to: '/copilot', label: 'Copilot', icon: MessageSquare },
   { to: '/login', label: 'API key', icon: KeyRound },
 ]
 const RESEARCH_PATHS = [...FLOW, ...MORE.filter((m) => m.to === '/benchmark')].map((s) => s.to)

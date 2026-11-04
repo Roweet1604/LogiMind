@@ -74,6 +74,10 @@ export const api = {
   getPlan: (id) => request(`/api/plans/${id}`),
   createPlan: (body) => request('/api/plans', { method: 'POST', body }),
   replan: (id, body) => request(`/api/plans/${id}/replan`, { method: 'POST', body }),
+  copilotStatus: () => request('/api/copilot/status'),
+  copilotChat: (message, sessionId) => request('/api/copilot/chat', { method: 'POST', body: { message, session_id: sessionId || null } }),
+  copilotConfirm: (sessionId, pendingId, approve) =>
+    request('/api/copilot/confirm', { method: 'POST', body: { session_id: sessionId, pending_id: pendingId, approve } }),
   importOrders: (file) => {
     const form = new FormData()
     form.append('file', file)

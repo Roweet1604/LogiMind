@@ -10,6 +10,7 @@ import Methodology from './pages/Methodology'
 import Login from './pages/Login'
 import Plans from './pages/Plans'
 import PlanDetail from './pages/PlanDetail'
+import Copilot from './pages/Copilot'
 
 export default function App() {
   return (
@@ -25,6 +26,7 @@ export default function App() {
         <Route path="login" element={<Login />} />
         <Route path="plans" element={<Plans />} />
         <Route path="plans/:id" element={<PlanDetail />} />
+        <Route path="copilot" element={<Copilot />} />
         <Route path="*" element={<p>Page not found.</p>} />
       </Route>
     </Routes>
