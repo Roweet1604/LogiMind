@@ -52,6 +52,10 @@ class Plan(TenantOwned, Base):
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # P7 replanning: the plan this one replaces, the disruption event, and the replan record
+    parent_id: Mapped[str | None] = mapped_column(String(40), ForeignKey("plans.id"), nullable=True, index=True)
+    event: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    replan: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
 
 class AuditLog(TenantOwned, Base):

@@ -75,8 +75,11 @@ def run_algorithm(instance: Instance, algorithm: str, config: dict[str, Any] | N
     if algorithm == "ortools":
         res = solve_ortools(instance, **config)
     elif algorithm == "ga":
+        initial_tours = config.pop("initial_tours", None)  # P7 warm start; not a GAConfig field
         try:
-            res = solve_ga(instance, GAConfig(**config))
+            res = solve_ga(instance, GAConfig(**config), initial_tours=initial_tours)
+            if initial_tours is not None:
+                res.config = {**res.config, "initial_tours": len(initial_tours)}
         except TypeError as exc:  # unknown GA setting
             res = R.SolveResult(instance.instance_id, "ga", R.INVALID_INPUT, 0.0, None, config,
                                 seed=config.get("seed"), message=f"invalid GA config: {exc}")

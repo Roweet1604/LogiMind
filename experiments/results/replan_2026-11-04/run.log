@@ -1,0 +1,141 @@
+6 base plans + 96 replans, estimated solver time 2.7 min
+base uniform/none: solved feasible=True
+base uniform/loose: solved feasible=True
+base clustered/none: solved feasible=True
+base clustered/loose: solved feasible=True
+base mixed/none: solved feasible=True
+base mixed/loose: solved feasible=True
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+W0000 00:00:1793787375.502525    8732 routing.cc:2567] Model already closed
+[1/96] uniform/none vehicle_breakdown ortools b=0.5 warm=True: solved feasible=True dist=786.1476097346042 warm_result=used
+[2/96] uniform/none vehicle_breakdown ortools b=0.5 warm=False: solved feasible=True dist=803.068476895621 warm_result=not given
+W0000 00:00:1793787376.509646    8732 routing.cc:2567] Model already closed
+[3/96] uniform/none vehicle_breakdown ortools b=2.0 warm=True: solved feasible=True dist=786.1476097346042 warm_result=used
+[4/96] uniform/none vehicle_breakdown ortools b=2.0 warm=False: solved feasible=True dist=786.1476097346042 warm_result=not given
+W0000 00:00:1793787380.518069    8732 routing.cc:2567] Model already closed
+[5/96] uniform/none failed_delivery ortools b=0.5 warm=True: solved feasible=True dist=720.0605963075917 warm_result=used
+[6/96] uniform/none failed_delivery ortools b=0.5 warm=False: solved feasible=True dist=720.0605963075917 warm_result=not given
+W0000 00:00:1793787381.525610    8732 routing.cc:2567] Model already closed
+[7/96] uniform/none failed_delivery ortools b=2.0 warm=True: solved feasible=True dist=720.0605963075917 warm_result=used
+[8/96] uniform/none failed_delivery ortools b=2.0 warm=False: solved feasible=True dist=720.0605963075917 warm_result=not given
+W0000 00:00:1793787385.533014    8732 routing.cc:2567] Model already closed
+[9/96] uniform/none urgent_order ortools b=0.5 warm=True: solved feasible=True dist=754.9327310553897 warm_result=used
+[10/96] uniform/none urgent_order ortools b=0.5 warm=False: solved feasible=True dist=755.9767193840074 warm_result=not given
+W0000 00:00:1793787386.538665    8732 routing.cc:2567] Model already closed
+[11/96] uniform/none urgent_order ortools b=2.0 warm=True: solved feasible=True dist=754.9327310553897 warm_result=used
+[12/96] uniform/none urgent_order ortools b=2.0 warm=False: solved feasible=True dist=755.9767193840074 warm_result=not given
+[13/96] uniform/none urgent_order_predispatch ga b=0.5 warm=True: solved feasible=True dist=740.3224571363945 warm_result=None
+[14/96] uniform/none urgent_order_predispatch ga b=0.5 warm=False: solved feasible=True dist=712.9095985225521 warm_result=None
+[15/96] uniform/none urgent_order_predispatch ga b=2.0 warm=True: solved feasible=True dist=687.0726487060651 warm_result=None
+[16/96] uniform/none urgent_order_predispatch ga b=2.0 warm=False: solved feasible=True dist=704.9801743944524 warm_result=None
+W0000 00:00:1793787395.559582    8732 routing.cc:2567] Model already closed
+[17/96] uniform/loose vehicle_breakdown ortools b=0.5 warm=True: solved feasible=True dist=813.4520921233857 warm_result=used
+[18/96] uniform/loose vehicle_breakdown ortools b=0.5 warm=False: solved feasible=True dist=841.8096199118158 warm_result=not given
+W0000 00:00:1793787396.572920    8732 routing.cc:2567] Model already closed
+[19/96] uniform/loose vehicle_breakdown ortools b=2.0 warm=True: solved feasible=True dist=801.3582392068462 warm_result=used
+[20/96] uniform/loose vehicle_breakdown ortools b=2.0 warm=False: solved feasible=True dist=794.8608170074685 warm_result=not given
+W0000 00:00:1793787400.582734    8732 routing.cc:2567] Model already closed
+[21/96] uniform/loose failed_delivery ortools b=0.5 warm=True: solved feasible=True dist=740.8185612560629 warm_result=used
+[22/96] uniform/loose failed_delivery ortools b=0.5 warm=False: solved feasible=True dist=787.1500356278333 warm_result=not given
+W0000 00:00:1793787401.590745    8732 routing.cc:2567] Model already closed
+[23/96] uniform/loose failed_delivery ortools b=2.0 warm=True: solved feasible=True dist=740.8185612560629 warm_result=used
+[24/96] uniform/loose failed_delivery ortools b=2.0 warm=False: solved feasible=True dist=740.8185612560629 warm_result=not given
+W0000 00:00:1793787405.601715    8732 routing.cc:2567] Model already closed
+[25/96] uniform/loose urgent_order ortools b=0.5 warm=True: solved feasible=True dist=745.7805016974588 warm_result=used
+[26/96] uniform/loose urgent_order ortools b=0.5 warm=False: solved feasible=True dist=816.3753752867128 warm_result=not given
+W0000 00:00:1793787406.612126    8732 routing.cc:2567] Model already closed
+[27/96] uniform/loose urgent_order ortools b=2.0 warm=True: solved feasible=True dist=745.7805016974588 warm_result=used
+[28/96] uniform/loose urgent_order ortools b=2.0 warm=False: solved feasible=True dist=795.6286661114616 warm_result=not given
+[29/96] uniform/loose urgent_order_predispatch ga b=0.5 warm=True: solved feasible=True dist=744.1388393921044 warm_result=None
+[30/96] uniform/loose urgent_order_predispatch ga b=0.5 warm=False: solved feasible=True dist=776.3650609045407 warm_result=None
+[31/96] uniform/loose urgent_order_predispatch ga b=2.0 warm=True: solved feasible=True dist=744.1388393921044 warm_result=None
+[32/96] uniform/loose urgent_order_predispatch ga b=2.0 warm=False: solved feasible=True dist=742.5149977457206 warm_result=None
+W0000 00:00:1793787414.654384    8732 routing.cc:2567] Model already closed
+[33/96] clustered/none vehicle_breakdown ortools b=0.5 warm=True: solved feasible=True dist=512.8729319804276 warm_result=used
+[34/96] clustered/none vehicle_breakdown ortools b=0.5 warm=False: solved feasible=True dist=558.4228522519842 warm_result=not given
+W0000 00:00:1793787415.659848    8732 routing.cc:2567] Model already closed
+[35/96] clustered/none vehicle_breakdown ortools b=2.0 warm=True: solved feasible=True dist=512.8729319804276 warm_result=used
+[36/96] clustered/none vehicle_breakdown ortools b=2.0 warm=False: solved feasible=True dist=523.3352811550012 warm_result=not given
+W0000 00:00:1793787419.668496    8732 routing.cc:2567] Model already closed
+[37/96] clustered/none failed_delivery ortools b=0.5 warm=True: solved feasible=True dist=496.6715853105102 warm_result=used
+[38/96] clustered/none failed_delivery ortools b=0.5 warm=False: solved feasible=True dist=514.1320317265979 warm_result=not given
+W0000 00:00:1793787420.676245    8732 routing.cc:2567] Model already closed
+[39/96] clustered/none failed_delivery ortools b=2.0 warm=True: solved feasible=True dist=491.0362104165577 warm_result=used
+[40/96] clustered/none failed_delivery ortools b=2.0 warm=False: solved feasible=True dist=485.6832499626115 warm_result=not given
+W0000 00:00:1793787424.684356    8732 routing.cc:2567] Model already closed
+[41/96] clustered/none urgent_order ortools b=0.5 warm=True: solved feasible=True dist=509.4087741668606 warm_result=used
+[42/96] clustered/none urgent_order ortools b=0.5 warm=False: solved feasible=True dist=537.335411911921 warm_result=not given
+W0000 00:00:1793787425.691857    8732 routing.cc:2567] Model already closed
+[43/96] clustered/none urgent_order ortools b=2.0 warm=True: solved feasible=True dist=498.69086863616485 warm_result=used
+[44/96] clustered/none urgent_order ortools b=2.0 warm=False: solved feasible=True dist=513.8630852952659 warm_result=not given
+[45/96] clustered/none urgent_order_predispatch ga b=0.5 warm=True: solved feasible=True dist=487.5065876901903 warm_result=None
+[46/96] clustered/none urgent_order_predispatch ga b=0.5 warm=False: solved feasible=True dist=511.71741936792216 warm_result=None
+[47/96] clustered/none urgent_order_predispatch ga b=2.0 warm=True: solved feasible=True dist=476.4736573908783 warm_result=None
+[48/96] clustered/none urgent_order_predispatch ga b=2.0 warm=False: solved feasible=True dist=477.2431333863623 warm_result=None
+W0000 00:00:1793787434.714143    8732 routing.cc:2567] Model already closed
+[49/96] clustered/loose vehicle_breakdown ortools b=0.5 warm=True: solved feasible=True dist=797.5340722525657 warm_result=used
+[50/96] clustered/loose vehicle_breakdown ortools b=0.5 warm=False: solved feasible=True dist=715.4043416298977 warm_result=not given
+W0000 00:00:1793787435.728029    8732 routing.cc:2567] Model already closed
+[51/96] clustered/loose vehicle_breakdown ortools b=2.0 warm=True: solved feasible=True dist=719.1142935787187 warm_result=used
+[52/96] clustered/loose vehicle_breakdown ortools b=2.0 warm=False: solved feasible=True dist=700.6758066350578 warm_result=not given
+W0000 00:00:1793787439.739979    8732 routing.cc:2567] Model already closed
+[53/96] clustered/loose failed_delivery ortools b=0.5 warm=True: solved feasible=True dist=630.974976012065 warm_result=used
+[54/96] clustered/loose failed_delivery ortools b=0.5 warm=False: solved feasible=True dist=654.0539919573791 warm_result=not given
+W0000 00:00:1793787440.751477    8732 routing.cc:2567] Model already closed
+[55/96] clustered/loose failed_delivery ortools b=2.0 warm=True: solved feasible=True dist=630.974976012065 warm_result=used
+[56/96] clustered/loose failed_delivery ortools b=2.0 warm=False: solved feasible=True dist=654.0539919573791 warm_result=not given
+W0000 00:00:1793787444.009603    8732 routing.cc:2567] Model already closed
+[57/96] clustered/loose urgent_order ortools b=0.5 warm=True: solved feasible=True dist=649.3936740345539 warm_result=used
+[58/96] clustered/loose urgent_order ortools b=0.5 warm=False: solved feasible=True dist=672.472689979868 warm_result=not given
+W0000 00:00:1793787445.021095    8732 routing.cc:2567] Model already closed
+[59/96] clustered/loose urgent_order ortools b=2.0 warm=True: solved feasible=True dist=649.3936740345539 warm_result=used
+[60/96] clustered/loose urgent_order ortools b=2.0 warm=False: solved feasible=True dist=649.3936740345539 warm_result=not given
+[61/96] clustered/loose urgent_order_predispatch ga b=0.5 warm=True: solved feasible=True dist=637.3703177353374 warm_result=None
+[62/96] clustered/loose urgent_order_predispatch ga b=0.5 warm=False: solved feasible=True dist=655.8527009541551 warm_result=None
+[63/96] clustered/loose urgent_order_predispatch ga b=2.0 warm=True: solved feasible=True dist=620.701208038186 warm_result=None
+[64/96] clustered/loose urgent_order_predispatch ga b=2.0 warm=False: solved feasible=True dist=620.701208038186 warm_result=None
+W0000 00:00:1793787454.047440    8732 routing.cc:2567] Model already closed
+[65/96] mixed/none vehicle_breakdown ortools b=0.5 warm=True: solved feasible=True dist=652.1937854524678 warm_result=used
+[66/96] mixed/none vehicle_breakdown ortools b=0.5 warm=False: solved feasible=True dist=712.7884879210692 warm_result=not given
+W0000 00:00:1793787455.056904    8732 routing.cc:2567] Model already closed
+[67/96] mixed/none vehicle_breakdown ortools b=2.0 warm=True: solved feasible=True dist=652.1937854524678 warm_result=used
+[68/96] mixed/none vehicle_breakdown ortools b=2.0 warm=False: solved feasible=True dist=652.1937854524678 warm_result=not given
+W0000 00:00:1793787459.065339    8732 routing.cc:2567] Model already closed
+[69/96] mixed/none failed_delivery ortools b=0.5 warm=True: solved feasible=True dist=570.9060145649602 warm_result=used
+[70/96] mixed/none failed_delivery ortools b=0.5 warm=False: solved feasible=True dist=645.8802967651259 warm_result=not given
+W0000 00:00:1793787460.075291    8732 routing.cc:2567] Model already closed
+[71/96] mixed/none failed_delivery ortools b=2.0 warm=True: solved feasible=True dist=565.3575566121533 warm_result=used
+[72/96] mixed/none failed_delivery ortools b=2.0 warm=False: solved feasible=True dist=565.3575566121533 warm_result=not given
+W0000 00:00:1793787464.082074    8732 routing.cc:2567] Model already closed
+[73/96] mixed/none urgent_order ortools b=0.5 warm=True: solved feasible=True dist=577.9386730231697 warm_result=used
+[74/96] mixed/none urgent_order ortools b=0.5 warm=False: solved feasible=True dist=586.9383420056301 warm_result=not given
+W0000 00:00:1793787465.089218    8732 routing.cc:2567] Model already closed
+[75/96] mixed/none urgent_order ortools b=2.0 warm=True: solved feasible=True dist=572.3902150703628 warm_result=used
+[76/96] mixed/none urgent_order ortools b=2.0 warm=False: solved feasible=True dist=586.9383420056301 warm_result=not given
+[77/96] mixed/none urgent_order_predispatch ga b=0.5 warm=True: solved feasible=True dist=578.7280990416252 warm_result=None
+[78/96] mixed/none urgent_order_predispatch ga b=0.5 warm=False: solved feasible=True dist=587.56890152095 warm_result=None
+[79/96] mixed/none urgent_order_predispatch ga b=2.0 warm=True: solved feasible=True dist=577.9386730231697 warm_result=None
+[80/96] mixed/none urgent_order_predispatch ga b=2.0 warm=False: solved feasible=True dist=571.347111734183 warm_result=None
+W0000 00:00:1793787474.110976    8732 routing.cc:2567] Model already closed
+[81/96] mixed/loose vehicle_breakdown ortools b=0.5 warm=True: solved feasible=True dist=814.059902308954 warm_result=used
+[82/96] mixed/loose vehicle_breakdown ortools b=0.5 warm=False: solved feasible=True dist=856.9315362563951 warm_result=not given
+W0000 00:00:1793787475.122810    8732 routing.cc:2567] Model already closed
+[83/96] mixed/loose vehicle_breakdown ortools b=2.0 warm=True: solved feasible=True dist=814.059902308954 warm_result=used
+[84/96] mixed/loose vehicle_breakdown ortools b=2.0 warm=False: solved feasible=True dist=815.286600282918 warm_result=not given
+W0000 00:00:1793787479.136035    8732 routing.cc:2567] Model already closed
+[85/96] mixed/loose failed_delivery ortools b=0.5 warm=True: solved feasible=True dist=738.2101166848896 warm_result=used
+[86/96] mixed/loose failed_delivery ortools b=0.5 warm=False: solved feasible=True dist=779.3576129314808 warm_result=not given
+W0000 00:00:1793787480.145954    8732 routing.cc:2567] Model already closed
+[87/96] mixed/loose failed_delivery ortools b=2.0 warm=True: solved feasible=True dist=738.2101166848896 warm_result=used
+[88/96] mixed/loose failed_delivery ortools b=2.0 warm=False: solved feasible=True dist=740.3405644056998 warm_result=not given
+W0000 00:00:1793787483.116769    8732 routing.cc:2567] Model already closed
+[89/96] mixed/loose urgent_order ortools b=0.5 warm=True: solved feasible=True dist=739.6155906965025 warm_result=used
+[90/96] mixed/loose urgent_order ortools b=0.5 warm=False: solved feasible=True dist=850.6133120198468 warm_result=not given
+W0000 00:00:1793787484.126793    8732 routing.cc:2567] Model already closed
+[91/96] mixed/loose urgent_order ortools b=2.0 warm=True: solved feasible=True dist=739.6155906965025 warm_result=used
+[92/96] mixed/loose urgent_order ortools b=2.0 warm=False: solved feasible=True dist=741.1441931179925 warm_result=not given
+[93/96] mixed/loose urgent_order_predispatch ga b=0.5 warm=True: solved feasible=True dist=712.6061418147642 warm_result=None
+[94/96] mixed/loose urgent_order_predispatch ga b=0.5 warm=False: solved feasible=True dist=740.5099453683808 warm_result=None
+[95/96] mixed/loose urgent_order_predispatch ga b=2.0 warm=True: solved feasible=True dist=712.6061418147642 warm_result=None
+[96/96] mixed/loose urgent_order_predispatch ga b=2.0 warm=False: solved feasible=True dist=720.7869906872122 warm_result=None
+done in 2.1 min

@@ -1,0 +1,97 @@
+budget_s,data_label,disruption_to_feasible_s,engine,event,family,feasible,first_solution_s,frozen_stops,git_commit,ortools_version,python,replan_violations,seed,solver_seconds,status,stops_changed_vehicle,tightness,total_distance,warm,warm_given,warm_start_result
+0.5,synthetic,0.5044,ortools,vehicle_breakdown,uniform,True,0.0056,12,4e65afc,9.15.6755,3.14.7,0,0,0.501192900002934,solved,9,none,786.1476097346042,True,current plan (adjusted),used
+0.5,synthetic,0.5033,ortools,vehicle_breakdown,uniform,True,0.0069,12,4e65afc,9.15.6755,3.14.7,0,0,0.5004065000102855,solved,15,none,803.068476895621,False,none (cold start),not given
+2.0,synthetic,2.0045,ortools,vehicle_breakdown,uniform,True,0.0051,12,4e65afc,9.15.6755,3.14.7,0,0,2.0017391000292264,solved,9,none,786.1476097346042,True,current plan (adjusted),used
+2.0,synthetic,2.0043,ortools,vehicle_breakdown,uniform,True,0.0066,12,4e65afc,9.15.6755,3.14.7,0,0,2.001050300023053,solved,9,none,786.1476097346042,False,none (cold start),not given
+0.5,synthetic,0.504,ortools,failed_delivery,uniform,True,0.0047,12,4e65afc,9.15.6755,3.14.7,0,0,0.5011781000066549,solved,0,none,720.0605963075917,True,current plan (adjusted),used
+0.5,synthetic,0.5026,ortools,failed_delivery,uniform,True,0.0075,12,4e65afc,9.15.6755,3.14.7,0,0,0.49981249996926636,solved,0,none,720.0605963075917,False,none (cold start),not given
+2.0,synthetic,2.0032,ortools,failed_delivery,uniform,True,0.0051,12,4e65afc,9.15.6755,3.14.7,0,0,2.000648200046271,solved,0,none,720.0605963075917,True,current plan (adjusted),used
+2.0,synthetic,2.0035,ortools,failed_delivery,uniform,True,0.0065,12,4e65afc,9.15.6755,3.14.7,0,0,2.000903100008145,solved,0,none,720.0605963075917,False,none (cold start),not given
+0.5,synthetic,0.5039,ortools,urgent_order,uniform,True,0.0058,12,4e65afc,9.15.6755,3.14.7,0,0,0.5013326000189409,solved,0,none,754.9327310553897,True,current plan (adjusted),used
+0.5,synthetic,0.5021,ortools,urgent_order,uniform,True,0.0074,12,4e65afc,9.15.6755,3.14.7,0,0,0.4997379999840632,solved,3,none,755.9767193840074,False,none (cold start),not given
+2.0,synthetic,2.0041,ortools,urgent_order,uniform,True,0.005,12,4e65afc,9.15.6755,3.14.7,0,0,2.0015283000539057,solved,0,none,754.9327310553897,True,current plan (adjusted),used
+2.0,synthetic,2.0025,ortools,urgent_order,uniform,True,0.0073,12,4e65afc,9.15.6755,3.14.7,0,0,1.9996756999753416,solved,3,none,755.9767193840074,False,none (cold start),not given
+0.5,synthetic,0.5025,ga,urgent_order_predispatch,uniform,True,,0,4e65afc,9.15.6755,3.14.7,0,0,0.5002548999618739,solved,30,none,740.3224571363945,True,current plan (adjusted),
+0.5,synthetic,0.5026,ga,urgent_order_predispatch,uniform,True,,0,4e65afc,9.15.6755,3.14.7,0,0,0.5002766000106931,solved,40,none,712.9095985225521,False,none (cold start),
+2.0,synthetic,2.0023,ga,urgent_order_predispatch,uniform,True,,0,4e65afc,9.15.6755,3.14.7,0,0,2.000258800049778,solved,19,none,687.0726487060651,True,current plan (adjusted),
+2.0,synthetic,2.0027,ga,urgent_order_predispatch,uniform,True,,0,4e65afc,9.15.6755,3.14.7,0,0,2.000280299980659,solved,30,none,704.9801743944524,False,none (cold start),
+0.5,synthetic,0.5074,ortools,vehicle_breakdown,uniform,True,0.0068,12,4e65afc,9.15.6755,3.14.7,0,0,0.5016022000345401,solved,8,loose,813.4520921233857,True,current plan (adjusted),used
+0.5,synthetic,0.5063,ortools,vehicle_breakdown,uniform,True,0.0094,12,4e65afc,9.15.6755,3.14.7,0,0,0.5012723000254482,solved,14,loose,841.8096199118158,False,none (cold start),not given
+2.0,synthetic,2.0061,ortools,vehicle_breakdown,uniform,True,0.0066,12,4e65afc,9.15.6755,3.14.7,0,0,2.001304400037043,solved,6,loose,801.3582392068462,True,current plan (adjusted),used
+2.0,synthetic,2.0049,ortools,vehicle_breakdown,uniform,True,0.0089,12,4e65afc,9.15.6755,3.14.7,0,0,1.9998208999750204,solved,10,loose,794.8608170074685,False,none (cold start),not given
+0.5,synthetic,0.5043,ortools,failed_delivery,uniform,True,0.0063,12,4e65afc,9.15.6755,3.14.7,0,0,0.5008705000509508,solved,0,loose,740.8185612560629,True,current plan (adjusted),used
+0.5,synthetic,0.5033,ortools,failed_delivery,uniform,True,0.0091,12,4e65afc,9.15.6755,3.14.7,0,0,0.4998851999989711,solved,6,loose,787.1500356278333,False,none (cold start),not given
+2.0,synthetic,2.0055,ortools,failed_delivery,uniform,True,0.0062,12,4e65afc,9.15.6755,3.14.7,0,0,2.000875600031577,solved,0,loose,740.8185612560629,True,current plan (adjusted),used
+2.0,synthetic,2.0046,ortools,failed_delivery,uniform,True,0.009,12,4e65afc,9.15.6755,3.14.7,0,0,2.0008345000096597,solved,0,loose,740.8185612560629,False,none (cold start),not given
+0.5,synthetic,0.5054,ortools,urgent_order,uniform,True,0.0071,12,4e65afc,9.15.6755,3.14.7,0,0,0.501740499981679,solved,0,loose,745.7805016974588,True,current plan (adjusted),used
+0.5,synthetic,0.5046,ortools,urgent_order,uniform,True,0.0091,12,4e65afc,9.15.6755,3.14.7,0,0,0.5008238999871537,solved,9,loose,816.3753752867128,False,none (cold start),not given
+2.0,synthetic,2.0062,ortools,urgent_order,uniform,True,0.0074,12,4e65afc,9.15.6755,3.14.7,0,0,2.00224669999443,solved,0,loose,745.7805016974588,True,current plan (adjusted),used
+2.0,synthetic,1.021,ortools,urgent_order,uniform,True,0.0099,12,4e65afc,9.15.6755,3.14.7,0,0,1.017447300022468,solved,7,loose,795.6286661114616,False,none (cold start),not given
+0.5,synthetic,0.5037,ga,urgent_order_predispatch,uniform,True,,0,4e65afc,9.15.6755,3.14.7,0,0,0.5004853999707848,solved,32,loose,744.1388393921044,True,current plan (adjusted),
+0.5,synthetic,0.5038,ga,urgent_order_predispatch,uniform,True,,0,4e65afc,9.15.6755,3.14.7,0,0,0.5004592999466695,solved,33,loose,776.3650609045407,False,none (cold start),
+2.0,synthetic,2.004,ga,urgent_order_predispatch,uniform,True,,0,4e65afc,9.15.6755,3.14.7,0,0,2.0004847000236623,solved,32,loose,744.1388393921044,True,current plan (adjusted),
+2.0,synthetic,2.0037,ga,urgent_order_predispatch,uniform,True,,0,4e65afc,9.15.6755,3.14.7,0,0,2.0004224000149406,solved,39,loose,742.5149977457206,False,none (cold start),
+0.5,synthetic,0.5035,ortools,vehicle_breakdown,clustered,True,0.0053,11,4e65afc,9.15.6755,3.14.7,0,0,0.49985139997443184,solved,13,none,512.8729319804276,True,current plan (adjusted),used
+0.5,synthetic,0.5026,ortools,vehicle_breakdown,clustered,True,0.0072,11,4e65afc,9.15.6755,3.14.7,0,0,0.49963000003481284,solved,12,none,558.4228522519842,False,none (cold start),not given
+2.0,synthetic,2.0045,ortools,vehicle_breakdown,clustered,True,0.0047,11,4e65afc,9.15.6755,3.14.7,0,0,2.0012295999913476,solved,13,none,512.8729319804276,True,current plan (adjusted),used
+2.0,synthetic,2.0048,ortools,vehicle_breakdown,clustered,True,0.0069,11,4e65afc,9.15.6755,3.14.7,0,0,2.0013180000241846,solved,11,none,523.3352811550012,False,none (cold start),not given
+0.5,synthetic,0.5035,ortools,failed_delivery,clustered,True,0.0048,11,4e65afc,9.15.6755,3.14.7,0,0,0.5012419000267982,solved,0,none,496.6715853105102,True,current plan (adjusted),used
+0.5,synthetic,0.5038,ortools,failed_delivery,clustered,True,0.0068,11,4e65afc,9.15.6755,3.14.7,0,0,0.5010605999850668,solved,8,none,514.1320317265979,False,none (cold start),not given
+2.0,synthetic,2.0038,ortools,failed_delivery,clustered,True,0.0048,11,4e65afc,9.15.6755,3.14.7,0,0,2.00136829999974,solved,5,none,491.0362104165577,True,current plan (adjusted),used
+2.0,synthetic,2.004,ortools,failed_delivery,clustered,True,0.0072,11,4e65afc,9.15.6755,3.14.7,0,0,2.0011880999663845,solved,9,none,485.6832499626115,False,none (cold start),not given
+0.5,synthetic,0.5037,ortools,urgent_order,clustered,True,0.0048,11,4e65afc,9.15.6755,3.14.7,0,0,0.5013303000014275,solved,1,none,509.4087741668606,True,current plan (adjusted),used
+0.5,synthetic,0.5032,ortools,urgent_order,clustered,True,0.0077,11,4e65afc,9.15.6755,3.14.7,0,0,0.5009124999633059,solved,10,none,537.335411911921,False,none (cold start),not given
+2.0,synthetic,2.0032,ortools,urgent_order,clustered,True,0.005,11,4e65afc,9.15.6755,3.14.7,0,0,2.000581400003284,solved,5,none,498.69086863616485,True,current plan (adjusted),used
+2.0,synthetic,2.0035,ortools,urgent_order,clustered,True,0.007,11,4e65afc,9.15.6755,3.14.7,0,0,2.0011642000172287,solved,13,none,513.8630852952659,False,none (cold start),not given
+0.5,synthetic,0.503,ga,urgent_order_predispatch,clustered,True,,0,4e65afc,9.15.6755,3.14.7,0,0,0.500271100027021,solved,29,none,487.5065876901903,True,current plan (adjusted),
+0.5,synthetic,0.5027,ga,urgent_order_predispatch,clustered,True,,0,4e65afc,9.15.6755,3.14.7,0,0,0.5002238999586552,solved,30,none,511.71741936792216,False,none (cold start),
+2.0,synthetic,2.0026,ga,urgent_order_predispatch,clustered,True,,0,4e65afc,9.15.6755,3.14.7,0,0,2.0002719999756664,solved,36,none,476.4736573908783,True,current plan (adjusted),
+2.0,synthetic,2.0026,ga,urgent_order_predispatch,clustered,True,,0,4e65afc,9.15.6755,3.14.7,0,0,2.000255099963397,solved,30,none,477.2431333863623,False,none (cold start),
+0.5,synthetic,0.5072,ortools,vehicle_breakdown,clustered,True,0.007,10,4e65afc,9.15.6755,3.14.7,0,0,0.5016245999722742,solved,9,loose,797.5340722525657,True,current plan (adjusted),used
+0.5,synthetic,0.506,ortools,vehicle_breakdown,clustered,True,0.0096,10,4e65afc,9.15.6755,3.14.7,0,0,0.5001494999742135,solved,18,loose,715.4043416298977,False,none (cold start),not given
+2.0,synthetic,2.0074,ortools,vehicle_breakdown,clustered,True,0.007,10,4e65afc,9.15.6755,3.14.7,0,0,2.0017301999614574,solved,15,loose,719.1142935787187,True,current plan (adjusted),used
+2.0,synthetic,2.0062,ortools,vehicle_breakdown,clustered,True,0.0096,10,4e65afc,9.15.6755,3.14.7,0,0,2.0002196000423282,solved,15,loose,700.6758066350578,False,none (cold start),not given
+0.5,synthetic,0.5056,ortools,failed_delivery,clustered,True,0.007,10,4e65afc,9.15.6755,3.14.7,0,0,0.5016230999608524,solved,0,loose,630.974976012065,True,current plan (adjusted),used
+0.5,synthetic,0.505,ortools,failed_delivery,clustered,True,0.0097,10,4e65afc,9.15.6755,3.14.7,0,0,0.5013763000024483,solved,3,loose,654.0539919573791,False,none (cold start),not given
+2.0,synthetic,1.251,ortools,failed_delivery,clustered,True,0.0075,10,4e65afc,9.15.6755,3.14.7,0,0,1.2467625999706797,solved,0,loose,630.974976012065,True,current plan (adjusted),used
+2.0,synthetic,2.007,ortools,failed_delivery,clustered,True,0.0097,10,4e65afc,9.15.6755,3.14.7,0,0,2.0018642999930307,solved,3,loose,654.0539919573791,False,none (cold start),not given
+0.5,synthetic,0.5061,ortools,urgent_order,clustered,True,0.0072,10,4e65afc,9.15.6755,3.14.7,0,0,0.5018997000297531,solved,0,loose,649.3936740345539,True,current plan (adjusted),used
+0.5,synthetic,0.5051,ortools,urgent_order,clustered,True,0.0097,10,4e65afc,9.15.6755,3.14.7,0,0,0.5002457000082359,solved,3,loose,672.472689979868,False,none (cold start),not given
+2.0,synthetic,2.005,ortools,urgent_order,clustered,True,0.007,10,4e65afc,9.15.6755,3.14.7,0,0,2.000819800014142,solved,0,loose,649.3936740345539,True,current plan (adjusted),used
+2.0,synthetic,2.0049,ortools,urgent_order,clustered,True,0.0096,10,4e65afc,9.15.6755,3.14.7,0,0,2.00073450000491,solved,0,loose,649.3936740345539,False,none (cold start),not given
+0.5,synthetic,0.5041,ga,urgent_order_predispatch,clustered,True,,0,4e65afc,9.15.6755,3.14.7,0,0,0.5004855000297539,solved,9,loose,637.3703177353374,True,current plan (adjusted),
+0.5,synthetic,0.504,ga,urgent_order_predispatch,clustered,True,,0,4e65afc,9.15.6755,3.14.7,0,0,0.5004793000407517,solved,35,loose,655.8527009541551,False,none (cold start),
+2.0,synthetic,2.0042,ga,urgent_order_predispatch,clustered,True,,0,4e65afc,9.15.6755,3.14.7,0,0,2.0004603000124916,solved,34,loose,620.701208038186,True,current plan (adjusted),
+2.0,synthetic,2.004,ga,urgent_order_predispatch,clustered,True,,0,4e65afc,9.15.6755,3.14.7,0,0,2.000496099994052,solved,35,loose,620.701208038186,False,none (cold start),
+0.5,synthetic,0.5052,ortools,vehicle_breakdown,mixed,True,0.006,12,4e65afc,9.15.6755,3.14.7,0,0,0.5018022999865934,solved,18,none,652.1937854524678,True,current plan (adjusted),used
+0.5,synthetic,0.5048,ortools,vehicle_breakdown,mixed,True,0.0108,12,4e65afc,9.15.6755,3.14.7,0,0,0.5013610000023618,solved,20,none,712.7884879210692,False,none (cold start),not given
+2.0,synthetic,2.0044,ortools,vehicle_breakdown,mixed,True,0.0055,12,4e65afc,9.15.6755,3.14.7,0,0,2.0012612999998964,solved,18,none,652.1937854524678,True,current plan (adjusted),used
+2.0,synthetic,2.0052,ortools,vehicle_breakdown,mixed,True,0.0083,12,4e65afc,9.15.6755,3.14.7,0,0,2.0017414999892935,solved,18,none,652.1937854524678,False,none (cold start),not given
+0.5,synthetic,0.5037,ortools,failed_delivery,mixed,True,0.0048,12,4e65afc,9.15.6755,3.14.7,0,0,0.501272700028494,solved,0,none,570.9060145649602,True,current plan (adjusted),used
+0.5,synthetic,0.5045,ortools,failed_delivery,mixed,True,0.0074,12,4e65afc,9.15.6755,3.14.7,0,0,0.5017420999938622,solved,16,none,645.8802967651259,False,none (cold start),not given
+2.0,synthetic,2.0041,ortools,failed_delivery,mixed,True,0.0058,12,4e65afc,9.15.6755,3.14.7,0,0,2.001323400007095,solved,3,none,565.3575566121533,True,current plan (adjusted),used
+2.0,synthetic,2.0035,ortools,failed_delivery,mixed,True,0.0071,12,4e65afc,9.15.6755,3.14.7,0,0,2.001403299975209,solved,3,none,565.3575566121533,False,none (cold start),not given
+0.5,synthetic,0.5043,ortools,urgent_order,mixed,True,0.0049,12,4e65afc,9.15.6755,3.14.7,0,0,0.50168390001636,solved,0,none,577.9386730231697,True,current plan (adjusted),used
+0.5,synthetic,0.5024,ortools,urgent_order,mixed,True,0.0075,12,4e65afc,9.15.6755,3.14.7,0,0,0.4998757000430487,solved,4,none,586.9383420056301,False,none (cold start),not given
+2.0,synthetic,2.004,ortools,urgent_order,mixed,True,0.0048,12,4e65afc,9.15.6755,3.14.7,0,0,2.001271699962672,solved,3,none,572.3902150703628,True,current plan (adjusted),used
+2.0,synthetic,2.0029,ortools,urgent_order,mixed,True,0.007,12,4e65afc,9.15.6755,3.14.7,0,0,2.0003189999843016,solved,4,none,586.9383420056301,False,none (cold start),not given
+0.5,synthetic,0.5023,ga,urgent_order_predispatch,mixed,True,,0,4e65afc,9.15.6755,3.14.7,0,0,0.5002881000400521,solved,31,none,578.7280990416252,True,current plan (adjusted),
+0.5,synthetic,0.5027,ga,urgent_order_predispatch,mixed,True,,0,4e65afc,9.15.6755,3.14.7,0,0,0.5002431999891996,solved,38,none,587.56890152095,False,none (cold start),
+2.0,synthetic,2.0027,ga,urgent_order_predispatch,mixed,True,,0,4e65afc,9.15.6755,3.14.7,0,0,2.0002459000097588,solved,31,none,577.9386730231697,True,current plan (adjusted),
+2.0,synthetic,2.0026,ga,urgent_order_predispatch,mixed,True,,0,4e65afc,9.15.6755,3.14.7,0,0,2.00027499999851,solved,39,none,571.347111734183,False,none (cold start),
+0.5,synthetic,0.5072,ortools,vehicle_breakdown,mixed,True,0.0074,11,4e65afc,9.15.6755,3.14.7,0,0,0.5021934999967925,solved,7,loose,814.059902308954,True,current plan (adjusted),used
+0.5,synthetic,0.5053,ortools,vehicle_breakdown,mixed,True,0.0096,11,4e65afc,9.15.6755,3.14.7,0,0,0.500268200004939,solved,15,loose,856.9315362563951,False,none (cold start),not given
+2.0,synthetic,2.0067,ortools,vehicle_breakdown,mixed,True,0.0069,11,4e65afc,9.15.6755,3.14.7,0,0,2.0016439000028186,solved,7,loose,814.059902308954,True,current plan (adjusted),used
+2.0,synthetic,2.0072,ortools,vehicle_breakdown,mixed,True,0.0098,11,4e65afc,9.15.6755,3.14.7,0,0,2.0024366000434384,solved,14,loose,815.286600282918,False,none (cold start),not given
+0.5,synthetic,0.5052,ortools,failed_delivery,mixed,True,0.0067,11,4e65afc,9.15.6755,3.14.7,0,0,0.5013578999787569,solved,0,loose,738.2101166848896,True,current plan (adjusted),used
+0.5,synthetic,0.5039,ortools,failed_delivery,mixed,True,0.0092,11,4e65afc,9.15.6755,3.14.7,0,0,0.49990759999491274,solved,8,loose,779.3576129314808,False,none (cold start),not given
+2.0,synthetic,0.964,ortools,failed_delivery,mixed,True,0.0069,11,4e65afc,9.15.6755,3.14.7,0,0,0.959753799950704,solved,0,loose,738.2101166848896,True,current plan (adjusted),used
+2.0,synthetic,2.0069,ortools,failed_delivery,mixed,True,0.01,11,4e65afc,9.15.6755,3.14.7,0,0,2.002314200042747,solved,2,loose,740.3405644056998,False,none (cold start),not given
+0.5,synthetic,0.5052,ortools,urgent_order,mixed,True,0.0066,11,4e65afc,9.15.6755,3.14.7,0,0,0.5013199999812059,solved,0,loose,739.6155906965025,True,current plan (adjusted),used
+0.5,synthetic,0.5034,ortools,urgent_order,mixed,True,0.0092,11,4e65afc,9.15.6755,3.14.7,0,0,0.49980170000344515,solved,16,loose,850.6133120198468,False,none (cold start),not given
+2.0,synthetic,2.0067,ortools,urgent_order,mixed,True,0.0084,11,4e65afc,9.15.6755,3.14.7,0,0,2.002976600022521,solved,0,loose,739.6155906965025,True,current plan (adjusted),used
+2.0,synthetic,2.0052,ortools,urgent_order,mixed,True,0.0102,11,4e65afc,9.15.6755,3.14.7,0,0,2.0014423000393435,solved,2,loose,741.1441931179925,False,none (cold start),not given
+0.5,synthetic,0.5044,ga,urgent_order_predispatch,mixed,True,,0,4e65afc,9.15.6755,3.14.7,0,0,0.5005400000372902,solved,38,loose,712.6061418147642,True,current plan (adjusted),
+0.5,synthetic,0.5041,ga,urgent_order_predispatch,mixed,True,,0,4e65afc,9.15.6755,3.14.7,0,0,0.500496499997098,solved,31,loose,740.5099453683808,False,none (cold start),
+2.0,synthetic,2.0036,ga,urgent_order_predispatch,mixed,True,,0,4e65afc,9.15.6755,3.14.7,0,0,2.000474700005725,solved,38,loose,712.6061418147642,True,current plan (adjusted),
+2.0,synthetic,2.0039,ga,urgent_order_predispatch,mixed,True,,0,4e65afc,9.15.6755,3.14.7,0,0,2.0004904000088573,solved,40,loose,720.7869906872122,False,none (cold start),

@@ -114,9 +114,20 @@ def solve_ortools(
     time_limit_s: float = 10.0,
     first_solution: str | None = None,
     metaheuristic: str | None = None,
+    frozen: list[list[int]] | None = None,
+    blocked: list[int] | None = None,
+    initial_routes: list[list[int]] | None = None,
 ) -> R.SolveResult:
     """first_solution / metaheuristic = None means: use the audited default for this
-    problem type and budget class. The config records which choice was made."""
+    problem type and budget class. The config records which choice was made.
+
+    Replanning (P7) options, all customer ids:
+    * frozen[v]: stops vehicle v has already completed; they stay its first stops, in order.
+    * blocked: vehicles that get no further stops (breakdown); their route ends after frozen[v].
+    * initial_routes[v]: warm start. Read with ReadAssignmentFromRoutes; if OR-Tools rejects them
+      (not feasible for the model), the search starts cold and the diagnostics say so.
+    (The current time of a replan is applied by the caller as a later ready time, app/replan/events.py.)
+    With any of them set, the time of the first solution found is also recorded."""
     explicit = (first_solution is not None, metaheuristic is not None)
     default_fs, default_mh = default_search(instance.has_time_windows, time_limit_s)
     first_solution = first_solution or default_fs
@@ -128,6 +139,15 @@ def solve_ortools(
                   explicit, "partly_audited_default")}
     if instance.has_time_windows:
         config["time_scale"] = TIME_SCALE
+    replanning = any(x is not None for x in (frozen, blocked, initial_routes))
+    if (frozen and any(frozen) or blocked) and first_solution == "SAVINGS" and not explicit[0]:
+        # P7 finding: SAVINGS found no first solution with frozen prefixes or blocked vehicles on every
+        # instance we tried; the insertion heuristics extend the locked routes (decision 0012).
+        first_solution = config["first_solution_strategy"] = "PARALLEL_CHEAPEST_INSERTION"
+        config["search_choice"] = "replan_override: SAVINGS -> PARALLEL_CHEAPEST_INSERTION"
+    if replanning:
+        config["replan"] = {"frozen_stops": sum(len(f) for f in frozen or []), "blocked": sorted(blocked or []),
+                            "warm_start_given": initial_routes is not None}
 
     def result(status: str, runtime: float, routes=None, message="", diag=None) -> R.SolveResult:
         return R.SolveResult(instance.instance_id, "ortools", status, runtime, routes, config,
@@ -166,21 +186,66 @@ def solve_ortools(
         if instance.has_time_windows:
             _add_time_dimension(instance, manager, routing)
 
+        idx_of = instance.index_of()
+        if frozen or blocked:
+            solver = routing.solver()
+            for v in range(instance.vehicle_count):
+                prev = routing.Start(v)
+                for cid in (frozen[v] if frozen and v < len(frozen) else []):
+                    node_index = manager.NodeToIndex(idx_of[cid])
+                    # Chained from Start(v), so the stop stays on vehicle v.
+                    solver.Add(routing.NextVar(prev) == node_index)
+                    prev = node_index
+                if blocked and v in blocked:
+                    solver.Add(routing.NextVar(prev) == routing.End(v))
+            frozen_ids = {c for f in frozen or [] for c in f}
+            for v in blocked or []:  # a broken vehicle may not take any unfinished stop
+                for c in instance.customers:
+                    if c.id not in frozen_ids:
+                        routing.VehicleVar(manager.NodeToIndex(idx_of[c.id])).RemoveValue(v)
         params = pywrapcp.DefaultRoutingSearchParameters()
         params.first_solution_strategy = getattr(routing_enums_pb2.FirstSolutionStrategy, first_solution)
         params.local_search_metaheuristic = getattr(routing_enums_pb2.LocalSearchMetaheuristic, metaheuristic)
+        first_found: list[float] = []
+        if replanning:
+            routing.AddAtSolutionCallback(lambda: first_found or first_found.append(time.perf_counter() - start))
         build_s = time.perf_counter() - start
         search_limit_s = max(MIN_SEARCH_S, time_limit_s - build_s)
         params.time_limit.FromMilliseconds(max(1, int(search_limit_s * 1000)))
 
-        solution = routing.SolveWithParameters(params)
+        def replan_diag_base() -> dict:
+            return {"warm_start": "not given", "first_solution_s": None}
+
+        warm = None
+        if frozen and any(frozen):
+            # Hard constraints above keep the frozen stops; the locks also hand them to the first-solution
+            # heuristic as a partial plan (without them the heuristics often found nothing).
+            routing.CloseModelWithParameters(params)
+            locks = [[manager.NodeToIndex(idx_of[c]) for c in (frozen[v] if v < len(frozen) else [])]
+                     for v in range(instance.vehicle_count)]
+            if not routing.ApplyLocksToAllVehicles(locks, False):
+                return result(R.INVALID_INPUT, time.perf_counter() - start,
+                              message="frozen stops do not form valid route prefixes", diag=replan_diag_base())
+        if initial_routes is not None:
+            routing.CloseModelWithParameters(params)
+            nodes = [[idx_of[c] for c in r] for r in initial_routes]
+            nodes += [[] for _ in range(instance.vehicle_count - len(nodes))]
+            assignment = routing.ReadAssignmentFromRoutes(nodes, True)
+            warm = "used" if assignment is not None else "rejected: initial routes not feasible for the model"
+            solution = (routing.SolveFromAssignmentWithParameters(assignment, params) if assignment is not None
+                        else routing.SolveWithParameters(params))
+        else:
+            solution = routing.SolveWithParameters(params)
         status_name = ROUTING_STATUS.get(routing.status(), str(routing.status()))
+        replan_diag = ({"warm_start": warm or "not given",
+                        "first_solution_s": round(first_found[0], 4) if first_found else None}
+                       if replanning else {})
         if solution is None:
             runtime = time.perf_counter() - start
             st = R.TIMEOUT_NO_SOLUTION if status_name == "FAIL_TIMEOUT" else R.NO_SOLUTION
             return result(st, runtime, message=f"OR-Tools returned no solution ({status_name})",
                           diag={"ortools_status": status_name, "build_seconds": round(build_s, 4),
-                                "search_limit_s": round(search_limit_s, 4)})
+                                "search_limit_s": round(search_limit_s, 4), **replan_diag})
 
         routes: list[list[int]] = []
         ids = instance.node_ids
@@ -195,6 +260,6 @@ def solve_ortools(
         runtime = time.perf_counter() - start
         return result(R.SOLVED, runtime, routes, diag={
             "ortools_status": status_name, "solver_objective_scaled": solution.ObjectiveValue(),
-            "build_seconds": round(build_s, 4), "search_limit_s": round(search_limit_s, 4)})
+            "build_seconds": round(build_s, 4), "search_limit_s": round(search_limit_s, 4), **replan_diag})
     except Exception as exc:  # surfaced explicitly, never converted into a fake success
         return result(R.ERROR, time.perf_counter() - start, message=f"{type(exc).__name__}: {exc}")

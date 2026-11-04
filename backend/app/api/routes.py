@@ -13,10 +13,11 @@ from app.benchmarks import catalog
 from app.db.keys import Principal
 from app.db.session import tenant_session
 from app.models.problem import Customer, Instance, InstanceValidationError
+from app.replan.events import ReplanError, ReplanIn
 from app.services.export import summarize
 from app.services.generator import generate_instance
 from app.services.order_import import ImportFileError, parse_orders
-from app.services.plans import audit
+from app.services.plans import PlanStateError, audit
 from app.services.runner import environment_info
 from app.services.store import Store
 
@@ -205,6 +206,27 @@ def get_plan(plan_id: str, request: Request, who: Principal = Depends(require_pr
 
 
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+
+
+@router.post("/plans/{plan_id}/replan", status_code=202, tags=["plans"])
+def replan_plan(plan_id: str, body: ReplanIn, request: Request, who: Principal = Depends(require_principal)) -> dict:
+    """Replan a completed, feasible plan after a disruption (vehicle_breakdown, failed_delivery, urgent_order).
+
+    Completed stops (event.completed: vehicle -> stops done) are frozen. OR-Tools starts from the current plan
+    (initial assignment); the GA, seeded with the current plan, is allowed only when no stop is frozen. The new
+    plan is `feasible` only if it passes the validator AND the frozen-stop check. GET it for the result and
+    replan.timing.disruption_to_feasible_s (time from receiving this request to a validated plan)."""
+    check_time(body.time_limit_s, "time_limit_s")
+    try:
+        out = request.app.state.plans.replan(who, plan_id, body.event, body.engine, body.time_limit_s,
+                                             body.warm_start, body.seed)
+    except PlanStateError as exc:
+        raise HTTPException(409, detail=str(exc))
+    except (ReplanError, InstanceValidationError) as exc:
+        raise HTTPException(422, detail=str(exc))
+    if out is None:
+        raise HTTPException(404, detail=f"plan {plan_id} not found")
+    return out
 
 
 @router.post("/orders/import", tags=["orders"])

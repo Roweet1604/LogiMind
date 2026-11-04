@@ -1,0 +1,31 @@
+{
+  "created_at": "2026-11-04T10:16:05+00:00",
+  "data": "synthetic",
+  "n_customers": 40,
+  "families": [
+    "uniform",
+    "clustered",
+    "mixed"
+  ],
+  "tightness": [
+    "none",
+    "loose"
+  ],
+  "base_budget_s": 2.0,
+  "budgets": [
+    0.5,
+    2.0
+  ],
+  "estimate_min": 2.71,
+  "env": {
+    "python": "3.14.7",
+    "platform": "Windows-11-10.0.26300-SP0",
+    "processor": "AMD64 Family 23 Model 96 Stepping 1, AuthenticAMD",
+    "cpu_count": 16,
+    "ortools": "9.15.6755",
+    "numpy": "2.5.4",
+    "pandas": "3.1.0"
+  },
+  "git_commit": "4e65afc",
+  "note": "frozen = first third of every route; uncommitted P7 code if git_commit is the P6 commit"
+}
