@@ -4,16 +4,19 @@ import io
 import os
 
 import pandas as pd
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import Response
 
 from app.api import schemas as S
 from app.api.auth import require_principal
 from app.benchmarks import catalog
 from app.db.keys import Principal
+from app.db.session import tenant_session
 from app.models.problem import Customer, Instance, InstanceValidationError
 from app.services.export import summarize
 from app.services.generator import generate_instance
+from app.services.order_import import ImportFileError, parse_orders
+from app.services.plans import audit
 from app.services.runner import environment_info
 from app.services.store import Store
 
@@ -181,6 +184,32 @@ def get_plan(plan_id: str, request: Request, who: Principal = Depends(require_pr
     if plan is None:
         raise HTTPException(404, detail=f"plan {plan_id} not found")
     return plan
+
+
+MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+
+
+@router.post("/orders/import", tags=["orders"])
+async def import_orders(request: Request, file: UploadFile = File(..., description=".csv or .xlsx"),
+                        who: Principal = Depends(require_principal)) -> dict:
+    """Validate an order file row by row. Columns: id, demand, x/y or lon/lat, optional ready_time,
+    due_time, service_time. Returns every problem with its spreadsheet row number; `customers` is filled
+    (ready for a plan's `instance.customers`) only when every row is valid. Nothing is stored."""
+    data = await file.read(MAX_UPLOAD_BYTES + 1)
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(413, detail=f"file larger than {MAX_UPLOAD_BYTES // (1024 * 1024)} MB")
+    try:
+        report = parse_orders(file.filename or "", data).to_dict()
+    except ImportFileError as exc:
+        report = None
+        error = str(exc)
+    with tenant_session(request.app.state.db, who.tenant_id) as s:
+        audit(s, who.tenant_id, who.key_id, "orders.import", file.filename or "",
+              ok=bool(report and report["ok"]), rows=report["rows"] if report else 0)
+        s.commit()
+    if report is None:
+        raise HTTPException(422, detail={"message": error, "issues": []})
+    return report
 
 
 @router.get("/runs")
