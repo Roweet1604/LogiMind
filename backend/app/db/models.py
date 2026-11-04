@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -64,4 +64,28 @@ class AuditLog(TenantOwned, Base):
     at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
-TENANT_MODELS = (ApiKey, Plan, AuditLog)
+class Webhook(TenantOwned, Base):
+    """Endpoint that receives signed events. The secret signs payloads, so it is stored (shown once)."""
+    __tablename__ = "webhooks"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    url: Mapped[str] = mapped_column(String(2000), nullable=False)
+    secret: Mapped[str] = mapped_column(String(100), nullable=False)
+    events: Mapped[list] = mapped_column(JSON, nullable=False)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class WebhookDelivery(TenantOwned, Base):
+    __tablename__ = "webhook_deliveries"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    webhook_id: Mapped[str] = mapped_column(String(40), ForeignKey("webhooks.id"), index=True, nullable=False)
+    event: Mapped[str] = mapped_column(String(80), nullable=False)
+    target: Mapped[str] = mapped_column(String(120), default="")
+    delivered: Mapped[bool] = mapped_column(Boolean, default=False)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    last_status: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    errors: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+TENANT_MODELS = (ApiKey, Plan, AuditLog, Webhook, WebhookDelivery)

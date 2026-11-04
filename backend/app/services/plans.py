@@ -18,9 +18,14 @@ from app.db.session import tenant_session
 from app.models.problem import Instance
 from app.selector.dataset import ENGINE_CONFIGS
 from app.selector.model import ENGINE_LABELS, get_selector
+from app.services.notify import WebhookNotifier
 from app.services.store import Store, _clean
 
 API_ENGINE = {"ortools": "ortools", "hybrid": "hybrid", "ga": "ga_ls"}  # the API's "ga" is GA + local search
+
+
+def cfg_engine(algorithm: str) -> str:
+    return {"ga": "ga_ls"}.get(algorithm, algorithm)
 
 
 def audit(s: Session, tenant_id: str, actor: str, action: str, target: str = "", **detail: Any) -> None:
@@ -28,9 +33,10 @@ def audit(s: Session, tenant_id: str, actor: str, action: str, target: str = "",
 
 
 class PlanService:
-    def __init__(self, factory: sessionmaker[Session], store: Store):
+    def __init__(self, factory: sessionmaker[Session], store: Store, notifier: WebhookNotifier | None = None):
         self.factory = factory
         self.store = store
+        self.notifier = notifier
 
     def submit(self, who: Principal, instance: Instance, engine: str, time_limit_s: float, seed: int = 0) -> dict:
         if engine == "auto":
@@ -72,9 +78,15 @@ class PlanService:
             for k, v in update.items():
                 setattr(plan, k, v)
             plan.finished_at = utcnow()
-            audit(s, tenant_id, "system", f"plan.{update['state']}", plan_id,
-                  status=(update["result"] or {}).get("solve", {}).get("status"))
+            status = (update["result"] or {}).get("solve", {}).get("status")
+            audit(s, tenant_id, "system", f"plan.{update['state']}", plan_id, status=status)
             s.commit()
+        if self.notifier is not None:
+            validation = (update["result"] or {}).get("validation") or {}
+            self.notifier.emit(tenant_id, f"plan.{update['state']}", plan_id,
+                               {"plan_id": plan_id, "state": update["state"], "status": status,
+                                "feasible": validation.get("feasible") if update["result"] else None,
+                                "engine": cfg_engine(algorithm), "error": update["error"]})
 
     def get(self, who: Principal, plan_id: str) -> dict | None:
         with tenant_session(self.factory, who.tenant_id) as s:

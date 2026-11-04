@@ -7,6 +7,8 @@ Environment variables
   ROUTEOPT_MAX_TIME_LIMIT_S    cap on per-run time limits (default 300)
   LOGIMIND_DATABASE_URL        tenant database (default: SQLite file logimind.db in the data dir);
                                migrated to the Alembic head on start-up
+  LOGIMIND_RATE_PER_MIN        requests per minute per API key (default 60), LOGIMIND_RATE_BURST (default 20)
+  LOGIMIND_WEBHOOK_ALLOW_PRIVATE  "1" allows webhook URLs on localhost/private addresses (dev only; off)
 """
 from __future__ import annotations
 
@@ -16,11 +18,15 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.platform import router as platform_router
 from app.api.routes import router
 from app.db.migrate import upgrade_to_head
 from app.db.session import make_engine, make_session_factory
+from app.services.notify import WebhookNotifier
 from app.services.plans import PlanService
+from app.services.ratelimit import RateLimiter
 from app.services.store import Store
+from app.services.webhooks import HttpxSender
 
 
 def create_app(data_dir: Path | None = None) -> FastAPI:
@@ -38,8 +44,11 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
         f"sqlite:///{(data_dir / 'logimind.db').as_posix()}"
     upgrade_to_head(url)
     app.state.db = make_session_factory(make_engine(url))
-    app.state.plans = PlanService(app.state.db, app.state.store)
+    app.state.ratelimiter = RateLimiter()
+    app.state.notifier = WebhookNotifier(app.state.db, HttpxSender())
+    app.state.plans = PlanService(app.state.db, app.state.store, app.state.notifier)
     app.include_router(router)
+    app.include_router(platform_router)
     return app
 
 

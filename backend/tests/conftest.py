@@ -3,6 +3,9 @@ import tempfile
 
 # Keep the module-level `app` in app.main from writing into the repo during tests.
 os.environ.setdefault("ROUTEOPT_DATA_DIR", tempfile.mkdtemp(prefix="routeopt_test_"))
+# Test clients poll plans many times a second; the rate limiter has its own tests with small limits.
+os.environ.setdefault("LOGIMIND_RATE_PER_MIN", "1000000")
+os.environ.setdefault("LOGIMIND_RATE_BURST", "100000")
 
 import pytest
 from app.models.problem import Customer, Instance
