@@ -137,4 +137,37 @@ class PodPhoto(TenantOwned, Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
-TENANT_MODELS = (ApiKey, Plan, AuditLog, Webhook, WebhookDelivery, DriverLink, StopEvent, PodPhoto)
+class CustomerContact(TenantOwned, Base):
+    """How to reach a customer (by the customer id used in the tenant's orders) and whether they opted in.
+    Messages are sent only while opt_in is true; the default is false (explicit opt-in)."""
+    __tablename__ = "customer_contacts"
+    __table_args__ = (UniqueConstraint("tenant_id", "customer_id", name="uq_customer_contacts_customer"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    customer_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    name: Mapped[str] = mapped_column(String(200), default="")
+    channel: Mapped[str] = mapped_column(String(10), nullable=False)  # "sms" or "email"
+    address: Mapped[str] = mapped_column(String(320), nullable=False)
+    opt_in: Mapped[bool] = mapped_column(Boolean, default=False)
+    opt_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    opt_out_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class NotificationLog(TenantOwned, Base):
+    """Every customer message LogiMind sent or decided not to send, with the reason. The recipient is masked."""
+    __tablename__ = "notification_log"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    plan_id: Mapped[str | None] = mapped_column(String(40), ForeignKey("plans.id"), index=True, nullable=True)
+    customer_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    template: Mapped[str] = mapped_column(String(40), nullable=False)
+    channel: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    recipient: Mapped[str | None] = mapped_column(String(80), nullable=True)  # masked
+    message: Mapped[str | None] = mapped_column(Text, nullable=True)  # None when not sent
+    status: Mapped[str] = mapped_column(String(30), nullable=False)
+    provider: Mapped[str] = mapped_column(String(20), nullable=False)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+TENANT_MODELS = (ApiKey, Plan, AuditLog, Webhook, WebhookDelivery, DriverLink, StopEvent, PodPhoto,
+                 CustomerContact, NotificationLog)

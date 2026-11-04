@@ -25,3 +25,26 @@ def tiny() -> Instance:
         customers=[Customer(1, 3, 0, 2), Customer(2, 3, 4, 2), Customer(3, -3, 0, 2), Customer(4, -3, -4, 2)],
         vehicle_count=2, vehicle_capacity=4, metric="euclidean",
         fixed_vehicle_cost=0.0, cost_per_distance=1.0, name="tiny")
+
+
+T0 = 1_800_000_000.0  # fixed clock for driver-link expiry tests (no real clock checks)
+
+
+@pytest.fixture
+def env(tmp_path):
+    """App with two tenants (Acme Couriers, Beta Freight), their API keys and a settable clock (P9 tests)."""
+    from app.db.keys import create_tenant, issue_key
+    from app.db.session import admin_session
+    from app.main import create_app
+    from fastapi.testclient import TestClient
+
+    now = [T0]
+    app = create_app(tmp_path, clock=lambda: now[0])
+    with TestClient(app) as c:
+        with admin_session(app.state.db) as s:
+            a, b = create_tenant(s, "Acme Couriers"), create_tenant(s, "Beta Freight")
+            _, ka = issue_key(s, a.id)
+            _, kb = issue_key(s, b.id)
+            s.commit()
+        yield {"c": c, "app": app, "now": now, "a": a.id, "b": b.id, "ha": {"X-API-Key": ka},
+               "hb": {"X-API-Key": kb}, "dir": tmp_path}

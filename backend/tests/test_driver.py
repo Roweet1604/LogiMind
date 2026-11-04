@@ -4,19 +4,16 @@ import json
 import uuid
 
 import pytest
-from app.db.keys import create_tenant, issue_key
 from app.db.models import AuditLog, Plan, PodPhoto, StopEvent
 from app.db.session import admin_session
 from app.driver.links import LinkClaims, LinkSigner, _b64, secret_from_env
 from app.evaluation.validator import validate_routes
-from app.main import create_app
 from app.models.problem import Customer, Instance
-from fastapi.testclient import TestClient
 from sqlalchemy import select
 
+from tests.conftest import T0
 from tests.test_plans_api import TINY, wait_plan
 
-T0 = 1_800_000_000.0
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
 JPEG = b"\xff\xd8\xff\xe0" + b"\x00" * 64
 
@@ -44,20 +41,6 @@ def add_plan(app, tenant_id, routes=((1, 2), (3, 4)), metric="euclidean", feasib
                    time_limit_s=1, state="completed", result=result, parent_id=parent))
         s.commit()
     return pid
-
-
-@pytest.fixture
-def env(tmp_path):
-    now = [T0]
-    app = create_app(tmp_path, clock=lambda: now[0])
-    with TestClient(app) as c:
-        with admin_session(app.state.db) as s:
-            a, b = create_tenant(s, "Acme Couriers"), create_tenant(s, "Beta Freight")
-            _, ka = issue_key(s, a.id)
-            _, kb = issue_key(s, b.id)
-            s.commit()
-        yield {"c": c, "app": app, "now": now, "a": a.id, "b": b.id, "ha": {"X-API-Key": ka},
-               "hb": {"X-API-Key": kb}, "dir": tmp_path}
 
 
 def link(env, plan_id, route_index=0, headers=None, **kw):

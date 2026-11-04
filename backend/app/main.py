@@ -16,6 +16,7 @@ Environment variables
   LOGIMIND_DRIVER_LINK_SECRET  signs driver links (>= 32 chars). Unset: a random per-process secret, so links
                                stop working on restart (development only)
   LOGIMIND_DRIVER_APP_URL      base URL of the driver PWA used in driver links (default http://localhost:5174)
+  LOGIMIND_NOTIFY_PROVIDER     customer messages: "stub" only (logs, never sends; no paid provider exists)
 """
 from __future__ import annotations
 
@@ -27,6 +28,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.copilot import router as copilot_router
 from app.api.driver import router as driver_router
+from app.api.notifications import router as notifications_router
 from app.api.platform import router as platform_router
 from app.api.routes import legacy_open_from_env, router
 from app.copilot.agent import Copilot
@@ -35,6 +37,8 @@ from app.db.migrate import upgrade_to_head
 from app.db.session import make_engine, make_session_factory
 from app.driver.links import LinkSigner, secret_from_env
 from app.driver.service import DriverService
+from app.messaging.senders import sender_from_env
+from app.messaging.service import NotificationService
 from app.services.notify import WebhookNotifier
 from app.services.plans import PlanService
 from app.services.ratelimit import RateLimiter
@@ -61,13 +65,16 @@ def create_app(data_dir: Path | None = None, legacy_open: bool | None = None, cl
     app.state.ratelimiter = RateLimiter()
     app.state.notifier = WebhookNotifier(app.state.db, HttpxSender())
     app.state.plans = PlanService(app.state.db, app.state.store, app.state.notifier)
-    driver_opts = {"clock": clock} if clock is not None else {}
-    app.state.driver = DriverService(app.state.db, data_dir, LinkSigner(secret_from_env()), **driver_opts)
+    clock_opts = {"clock": clock} if clock is not None else {}
+    app.state.notifications = NotificationService(app.state.db, sender_from_env(), **clock_opts)
+    app.state.driver = DriverService(app.state.db, data_dir, LinkSigner(secret_from_env()),
+                                     on_stop_event=app.state.notifications.on_stop_event, **clock_opts)
     app.include_router(router)
     app.state.copilot = Copilot(app.state.plans, llm_from_env())
     app.include_router(platform_router)
     app.include_router(copilot_router)
     app.include_router(driver_router)
+    app.include_router(notifications_router)
     return app
 
 

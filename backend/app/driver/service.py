@@ -88,7 +88,7 @@ class DriverService:
         self.signer = signer
         self.clock = clock
         self.app_url = (app_url or os.environ.get("LOGIMIND_DRIVER_APP_URL", "http://localhost:5174")).rstrip("/")
-        self.on_stop_event = on_stop_event  # P9 notifications hook: f(tenant_id, plan_id, customer_id, status)
+        self.on_stop_event = on_stop_event  # P9 notifications: f(tenant_id, plan_id, customer_id, status, reason)
 
     def _now(self) -> datetime:
         return datetime.fromtimestamp(self.clock(), tz=timezone.utc)
@@ -250,7 +250,7 @@ class DriverService:
                 return self._duplicate(dup, c, customer_id, status)
             view = {**self._event_view(ev), "duplicate": False}
         if self.on_stop_event is not None:
-            self.on_stop_event(c.tenant_id, c.plan_id, customer_id, status)
+            self.on_stop_event(c.tenant_id, c.plan_id, customer_id, status, reason)
         return view
 
     def _duplicate(self, dup: StopEvent, c: LinkClaims, customer_id: int, status: str) -> dict:
