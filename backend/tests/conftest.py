@@ -5,6 +5,8 @@ import tempfile
 os.environ.setdefault("ROUTEOPT_DATA_DIR", tempfile.mkdtemp(prefix="routeopt_test_"))
 # The research-endpoint tests run in dev mode; tests/test_research_lock.py checks that it is OFF by default.
 os.environ.setdefault("LOGIMIND_DEV_RESEARCH_ENDPOINTS", "1")
+# Tests never talk to a real model: the copilot tests inject the deterministic FakeLLM.
+os.environ.setdefault("LOGIMIND_LLM_PROVIDER", "none")
 # Test clients poll plans many times a second; the rate limiter has its own tests with small limits.
 os.environ.setdefault("LOGIMIND_RATE_PER_MIN", "1000000")
 os.environ.setdefault("LOGIMIND_RATE_BURST", "100000")

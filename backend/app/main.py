@@ -10,6 +10,8 @@ Environment variables
   LOGIMIND_RATE_PER_MIN        requests per minute per API key (default 60), LOGIMIND_RATE_BURST (default 20)
   LOGIMIND_DEV_RESEARCH_ENDPOINTS  "1" turns on /api/instances, /api/runs, /api/experiments, /api/benchmarks
                                (no tenants; local development only; OFF by default)
+  LOGIMIND_LLM_PROVIDER        copilot model: "ollama" (default; used only if Ollama answers) or "none"
+  LOGIMIND_OLLAMA_URL / LOGIMIND_OLLAMA_MODEL   default http://localhost:11434 / llama3.2:3b
   LOGIMIND_WEBHOOK_ALLOW_PRIVATE  "1" allows webhook URLs on localhost/private addresses (dev only; off)
 """
 from __future__ import annotations
@@ -20,8 +22,11 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.copilot import router as copilot_router
 from app.api.platform import router as platform_router
 from app.api.routes import legacy_open_from_env, router
+from app.copilot.agent import Copilot
+from app.copilot.llm import llm_from_env
 from app.db.migrate import upgrade_to_head
 from app.db.session import make_engine, make_session_factory
 from app.services.notify import WebhookNotifier
@@ -51,7 +56,9 @@ def create_app(data_dir: Path | None = None, legacy_open: bool | None = None) ->
     app.state.notifier = WebhookNotifier(app.state.db, HttpxSender())
     app.state.plans = PlanService(app.state.db, app.state.store, app.state.notifier)
     app.include_router(router)
+    app.state.copilot = Copilot(app.state.plans, llm_from_env())
     app.include_router(platform_router)
+    app.include_router(copilot_router)
     return app
 
 
