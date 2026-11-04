@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -92,4 +92,49 @@ class WebhookDelivery(TenantOwned, Base):
     at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
-TENANT_MODELS = (ApiKey, Plan, AuditLog, Webhook, WebhookDelivery)
+class DriverLink(TenantOwned, Base):
+    """A short-lived signed link that gives one driver access to one route of one plan (P9).
+    The token itself is not stored; this row lets a dispatcher list and revoke links."""
+    __tablename__ = "driver_links"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    plan_id: Mapped[str] = mapped_column(String(40), ForeignKey("plans.id"), index=True, nullable=False)
+    route_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    label: Mapped[str] = mapped_column(String(200), default="")
+    created_by: Mapped[str] = mapped_column(String(80), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class StopEvent(TenantOwned, Base):
+    """A driver's report for one stop: delivered, or failed with a reason. The latest event is the stop's status."""
+    __tablename__ = "stop_events"
+    __table_args__ = (UniqueConstraint("tenant_id", "client_event_id", name="uq_stop_events_client_event"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    plan_id: Mapped[str] = mapped_column(String(40), ForeignKey("plans.id"), index=True, nullable=False)
+    route_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    customer_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    reason: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    note: Mapped[str] = mapped_column(String(500), default="")
+    link_id: Mapped[str] = mapped_column(String(40), ForeignKey("driver_links.id"), nullable=False)
+    client_event_id: Mapped[str] = mapped_column(String(64), nullable=False)  # makes offline resends safe
+    occurred_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # driver's clock
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class PodPhoto(TenantOwned, Base):
+    """Proof-of-delivery photo. The file lives under <data dir>/pod/<tenant>/<id><ext>; the name is ours."""
+    __tablename__ = "pod_photos"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    plan_id: Mapped[str] = mapped_column(String(40), ForeignKey("plans.id"), index=True, nullable=False)
+    route_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    customer_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    link_id: Mapped[str] = mapped_column(String(40), ForeignKey("driver_links.id"), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+TENANT_MODELS = (ApiKey, Plan, AuditLog, Webhook, WebhookDelivery, DriverLink, StopEvent, PodPhoto)
