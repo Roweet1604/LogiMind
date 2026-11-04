@@ -1,17 +1,13 @@
-"""P5 selector: generator, features, labelling, grouped CV, explanation and POST /api/plans."""
+"""P5 selector: generator, features, labelling, grouped CV and explanation (API tests: test_plans_api.py)."""
 import math
 
 import numpy as np
 import pandas as pd
 import pytest
-from app.main import create_app
 from app.selector import model as M
 from app.selector.dataset import ENGINES, label_cases, plan_cases, regret_pct
 from app.selector.features import FEATURE_NAMES, extract_features
 from app.selector.generator import FAMILIES, TIGHTNESS, generate_family_instance
-from fastapi.testclient import TestClient
-
-from tests.test_api import wait_run
 
 
 @pytest.mark.parametrize("family", FAMILIES)
@@ -118,47 +114,3 @@ def test_committed_training_data_trains_a_model():
     assert sel.model is not None
     s = sel.choose(generate_family_instance("clustered", 50, "loose", 7), 3.0)
     assert s.engine in ENGINES
-
-
-@pytest.fixture
-def client(tmp_path):
-    with TestClient(create_app(tmp_path)) as c:
-        yield c
-
-
-def _instance_id(client):
-    body = {"name": "plan-test", "metric": "euclidean", "depot_x": 0, "depot_y": 0, "vehicle_count": 2,
-            "vehicle_capacity": 4, "fixed_vehicle_cost": 0,
-            "customers": [{"id": 1, "x": 3, "y": 0, "demand": 2}, {"id": 2, "x": 3, "y": 4, "demand": 2},
-                          {"id": 3, "x": -3, "y": 0, "demand": 2}, {"id": 4, "x": -3, "y": -4, "demand": 2}]}
-    r = client.post("/api/instances", json=body)
-    assert r.status_code == 201, r.text
-    return r.json()["instance_id"]
-
-
-def test_post_plan_auto_returns_explanation_and_a_validated_plan(client):
-    iid = _instance_id(client)
-    r = client.post("/api/plans", json={"instance_id": iid, "engine": "auto", "time_limit_s": 1})
-    assert r.status_code == 202, r.text
-    body = r.json()
-    assert body["engine"] in ENGINES and body["selection"]["explanation"]
-    wait_run(client, body["plan_id"])
-    plan = client.get(f"/api/plans/{body['plan_id']}").json()
-    assert plan["state"] == "completed" and plan["feasible"] is True
-    assert plan["validation"]["validator_version"]
-    assert plan["selection"]["engine"] == body["engine"] and plan["requested_engine"] == "auto"
-
-
-def test_post_plan_explicit_engine_and_errors(client):
-    iid = _instance_id(client)
-    r = client.post("/api/plans", json={"instance_id": iid, "engine": "ga", "time_limit_s": 0.5})
-    assert r.status_code == 202 and r.json()["engine"] == "ga_ls"
-    assert r.json()["selection"]["method"] == "requested"
-    wait_run(client, r.json()["plan_id"])
-    assert client.post("/api/plans", json={"instance_id": "nope", "engine": "auto"}).status_code == 404
-    assert client.post("/api/plans", json={"instance_id": iid, "engine": "magic"}).status_code == 422
-    assert client.get("/api/plans/run-doesnotexist").status_code == 404
-    # A plain run is not a plan.
-    run_id = client.post("/api/runs", json={"instance_id": iid, "algorithm": "ortools", "time_limit_s": 0.5}).json()
-    wait_run(client, run_id["run_id"])
-    assert client.get(f"/api/plans/{run_id['run_id']}").status_code == 404

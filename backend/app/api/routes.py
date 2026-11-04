@@ -4,14 +4,14 @@ import io
 import os
 
 import pandas as pd
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 
 from app.api import schemas as S
+from app.api.auth import require_principal
 from app.benchmarks import catalog
+from app.db.keys import Principal
 from app.models.problem import Customer, Instance, InstanceValidationError
-from app.selector.dataset import ENGINE_CONFIGS
-from app.selector.model import ENGINE_LABELS, get_selector
 from app.services.export import summarize
 from app.services.generator import generate_instance
 from app.services.runner import environment_info
@@ -64,7 +64,11 @@ def health() -> dict:
 # ---- instances ----------------------------------------------------------
 @router.post("/instances", status_code=201)
 def create_instance(body: S.InstanceIn, request: Request) -> dict:
-    inst = Instance(
+    return register(request, instance_from(body))
+
+
+def instance_from(body: S.InstanceIn) -> Instance:
+    return Instance(
         depot_x=body.depot_x, depot_y=body.depot_y,
         customers=[Customer(c.id, c.x, c.y, c.demand, ready_time=c.ready_time, due_time=c.due_time,
                             service_time=c.service_time) for c in body.customers],
@@ -73,7 +77,6 @@ def create_instance(body: S.InstanceIn, request: Request) -> dict:
         cost_per_distance=body.cost_per_distance, name=body.name or "user-instance", source="user",
         depot_ready_time=body.depot_ready_time, depot_due_time=body.depot_due_time,
         time_per_distance=body.time_per_distance, time_unit=body.time_unit)
-    return register(request, inst)
 
 
 @router.post("/instances/generate", status_code=201)
@@ -152,44 +155,32 @@ def start_run(body: S.RunIn, request: Request) -> dict:
     return {"run_id": run_id, "state": "queued"}
 
 
-# ---- plans (P5: engine=auto) -------------------------------------------
-API_ENGINE = {"ortools": "ortools", "hybrid": "hybrid", "ga": "ga_ls"}  # the API's "ga" is GA + local search
+# ---- plans (P5 engine=auto, P6b tenant API) ----------------------------------
+@router.post("/plans", status_code=202, tags=["plans"])
+def create_plan(body: S.PlanIn, request: Request, who: Principal = Depends(require_principal)) -> dict:
+    """Queue a plan for the caller's tenant. With engine="auto" the selector picks the engine and the
+    reply explains the choice.
 
-
-@router.post("/plans", status_code=202)
-def create_plan(body: S.PlanIn, request: Request) -> dict:
-    """Queue a plan. With engine="auto" the selector picks the engine and the reply explains the choice.
-
-    The plan is a normal guarded run: the solver's routes go through the independent validator and the
-    result reports feasibility, timeouts or failures as they are.
+    The instance is sent inline and stored with the plan (tenant-owned). The solver's routes go through
+    the independent validator; GET the plan for `feasible`, the solver status and the metrics. Timeouts
+    and failures are reported as what they are.
     """
-    store = store_of(request)
-    if body.instance_id not in store.instances:
-        raise HTTPException(404, detail=f"instance {body.instance_id} not found")
     check_time(body.time_limit_s, "time_limit_s")
-    if body.engine == "auto":
-        selection = get_selector().choose(store.instances[body.instance_id], body.time_limit_s).to_dict()
-        engine = selection["engine"]
-    else:
-        engine = API_ENGINE[body.engine]
-        selection = {"engine": engine, "engine_label": ENGINE_LABELS[engine], "method": "requested",
-                     "explanation": f"Engine {ENGINE_LABELS[engine]} was requested explicitly."}
-    algorithm, base = ENGINE_CONFIGS[engine]
-    cfg = {**base, "time_limit_s": body.time_limit_s}
-    if algorithm != "ortools":
-        cfg["seed"] = body.seed
-    plan_id = store.submit_run(body.instance_id, algorithm, cfg,
-                               meta={"kind": "plan", "requested_engine": body.engine, "selection": selection})
-    return {"plan_id": plan_id, "state": "queued", "engine": engine, "selection": selection}
+    inst = instance_from(body.instance)
+    try:
+        inst.validate()
+    except InstanceValidationError as exc:
+        raise HTTPException(422, detail={"message": "invalid instance", "errors": exc.errors})
+    return request.app.state.plans.submit(who, inst, body.engine, body.time_limit_s, body.seed)
 
 
-@router.get("/plans/{plan_id}")
-def get_plan(plan_id: str, request: Request) -> dict:
-    run = store_of(request).get_run(plan_id)
-    if run is None or run.get("kind") != "plan":
+@router.get("/plans/{plan_id}", tags=["plans"])
+def get_plan(plan_id: str, request: Request, who: Principal = Depends(require_principal)) -> dict:
+    """One plan of the caller's tenant. Another tenant's plan gives the same 404 as a missing plan."""
+    plan = request.app.state.plans.get(who, plan_id)
+    if plan is None:
         raise HTTPException(404, detail=f"plan {plan_id} not found")
-    feasible = (run.get("validation") or {}).get("feasible")
-    return {"plan_id": plan_id, **run, "feasible": feasible}
+    return plan
 
 
 @router.get("/runs")
