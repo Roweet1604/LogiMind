@@ -33,6 +33,8 @@ Effort is a rough estimate in *team-weeks* (all three members working on the pha
 
 **Status:** P6 slices 6a to 6d done on 4 Nov 2026 (DB, tenants, keys, plans API, import, webhooks, rate limit, audit log; research endpoints locked behind a dev switch). Docker Compose / Postgres and the job queue remain. P7 done on 4 Nov 2026: replan endpoint for three events, frozen stops, warm starts, timing (decision 0012). Notes carried forward: the GA cannot keep frozen stops yet; warm start helps mainly at short budgets.
 
+**Status:** P8 built on 4 Nov 2026 (LangGraph copilot, six tools, constrained intents, confirmation, chat panel), tested with the fake LLM only; no real model has been run yet (Ollama not installed). The ops console now uses the tenant API. Draft eval set of 50 instructions awaits team review.
+
 The phases are done in order, but P4, P6 and P9 can run in parallel with the solver phases if the team splits work by person. Even with parallel work, the full must-have list needs roughly **7 to 9 calendar weeks**. That estimate is uncertain.
 
 ## Proposed cut line (depends on weeks remaining)

@@ -1,6 +1,6 @@
 # LogiMind progress
 
-Last updated: 4 Nov 2026, second unattended session: 6d and P7 done. Current phase: **P6 rest (Docker Compose / Postgres, job queue) or P8**; see Next steps.
+Last updated: 4 Nov 2026, third unattended session: ops console on the tenant API, P8 copilot (fake LLM only), draft eval set. Current phase: **P8 needs a real-model check (Ollama), then P9 / rest of P6**; see Next steps.
 
 ## Done and verified
 ### Phase 0
@@ -60,6 +60,32 @@ Last updated: 4 Nov 2026, second unattended session: 6d and P7 done. Current pha
 - **Test-run anomaly:** the first full run of `tests/test_replan.py` (older code) took 82 min; the cause was not found, and the laptop may have slept. Since then the file takes 27 s; test commands use `timeout` (decision 0012).
 - **Tests (4 Nov 2026, Python 3.14.7 / OR-Tools 9.15.6755):** backend **207 passed**, 0 failed (4 library deprecation warnings). `python -m ruff check .` passes. Frontend not re-run (no frontend change; last result 15 passed).
 
+### Ops console on the tenant API, 4 Nov 2026 (commit d4e76ee, decision 0013)
+- API-key sign-in (`/login`). The key is checked with the new `GET /api/whoami` and kept only in sessionStorage for the tab.
+- `/plans`: CSV/Excel import with the row-level report, or a seeded "synthetic sample"; fleet and engine form; the tenant's plan list from the new `GET /api/plans`.
+- `/plans/:id`: validator verdict, metrics, engine explanation, replan lineage and timing, map, route table, and replan forms for breakdown, failed delivery and urgent order. GA is disabled when stops are completed.
+- `/api/health` reports `research_endpoints`; the research pages show a banner when they are off. GET plan now also returns the instance.
+- Found and fixed a real bug: the time-budget inputs (`min=0.1`, `step=0.5`) made 3 s an invalid value, so the browser blocked the form.
+- **Verified:** frontend 26 tests at that commit; production build OK. A live smoke run against uvicorn with the research endpoints OFF and a temp DB worked: login, import, a feasible auto plan, and a 403 on `/api/instances`.
+- **Not verified:** the console was **not opened in a real browser** this session; only component tests and the build.
+
+### Phase 8 (copilot), 4 Nov 2026 (commits f28d2a0 backend, 4aea890 chat panel; decision 0014)
+- `backend/app/copilot/`: a LangGraph agent. The LLM only returns one Pydantic `IntentEnvelope` (solve / validate / compare / explain / reroute / clarify / refuse), with `extra="forbid"` and **no route fields**; that is tested.
+- Six tools: `solve_with_ortools`, `solve_with_ga`, `run_hybrid`, `validate_routes`, `compare_results` (with a fairness note), `reroute`.
+- Replies are templates over tool outputs. A grounding check blocks any number that no tool produced.
+- One retry with the error, then a clarifying question. Unknown plan: a clarifying question listing recent plans. Reroute waits for `POST /api/copilot/confirm`. Sessions are per tenant.
+- LLM interface with a deterministic `FakeLLM`, an `OllamaLLM` (langchain-ollama, used only if the server answers and has the model) and `NoLLM`. With no model, the API and the console say plainly "no local model available ... run `ollama pull llama3.2:3b`".
+- Chat panel `/copilot`: model status, replies with a kind badge, the tool results used, plan links, Confirm/Cancel.
+- Tests: 16 backend (`tests/test_copilot.py`, fake LLM only) and 4 frontend (`test/copilot.test.jsx`).
+- **Negative / not verified:** Ollama is not installed on this laptop, so **no real model was run**. How well llama3.2:3b (or qwen2.5:7b) turns instructions into intents is unknown. Chat calls block while the solver runs.
+
+### Draft copilot evaluation set
+- `docs/eval/copilot_instructions_DRAFT.json`: 50 hand-style instructions with the expected intents, against a fictional three-plan context.
+  - Categories: 10 solve, 5 validate, 5 compare, 4 explain, 6 breakdown, 5 failed delivery, 5 urgent order, 5 clarify, 5 refuse.
+- Every item is marked DRAFT for the team to review. A test checks only that each expected intent fits the schema. **Nothing was run on it and no numbers exist.**
+
+- **Tests at the end of this session (4 Nov 2026, Python 3.14.7 / OR-Tools 9.15.6755 / langgraph 1.2.19 / langchain-ollama 1.1.0):** backend **224 passed**, 0 failed (16 library deprecation warnings: SWIG, langsmith). Frontend **30 passed**. `python -m ruff check .` passes.
+
 ## First solver observations from P1 (5 s, one seed, Rohit's laptop; indicative only, do not quote; superseded for OR-Tools by the P2 audit)
 | Instance | OR-Tools (default) | GA (with repair) |
 | --- | --- | --- |
@@ -70,21 +96,23 @@ Last updated: 4 Nov 2026, second unattended session: 6d and P7 done. Current pha
 | X-n101-k25 (BKS 27591) | +5.7% | +8.1% |
 
 ## Not done / not verified
-- Rest of P6 not started: job queue beyond the single solver thread, Docker Compose / Postgres, `.env.example`. Migrations were tested on SQLite only.
+- **Copilot with a real model:** not run (Ollama not installed). Next: install Ollama, `ollama pull llama3.2:3b`, have the team review and freeze the DRAFT eval set, then measure the share of exact intent matches. Report the numbers for that exact model only.
+- The ops console was not checked in a real browser this session (component tests, build and an API-level live smoke run only).
+- Copilot sessions are in memory (lost on restart). Chat requests block until the solver finishes.
+- Rest of P6 not started: job queue beyond the single solver thread, Docker Compose / Postgres, `.env.example`. Migrations tested on SQLite only.
 - Webhook SSRF guard does not resolve host names (decision 0010). The rate limiter is in-process only.
-- Frontend: the ops console still uses the research endpoints (needs `LOGIMIND_DEV_RESEARCH_ENDPOINTS=1`). Plans, replans, `engine=auto`, the hybrid and time windows are not in the UI yet.
-- Replanning: the GA cannot keep frozen stops (OR-Tools only in that case). The failed attempt's own travel is not modelled. Frozen stops are assumed served on the planned schedule. The experiment used 6 synthetic instances, 40 customers and one seed (indicative only).
-- Selector: synthetic data only, two budgets, not checked on Solomon/CVRPLIB; not a proven improvement over always-hybrid (model card).
-- Gehring-Homberger instances not downloaded. The hybrid's `ortools_share` and `ls_rate` are untuned. Audit evidence covers at most 100 customers and 10 s on one laptop.
-- Team answers still missing (docs/decisions/0002). Docker and Ollama not installed (needed for P4 OSRM, Compose/Postgres, P8).
+- Replanning: the GA cannot keep frozen stops. The failed attempt's own travel is not modelled. The experiment covered 6 synthetic instances with one seed.
+- Selector: synthetic data only; not a proven improvement over always-hybrid (model card).
+- P9 driver PWA, P4 OSRM and P10 not started. Gehring-Homberger not downloaded; hybrid split untuned.
+- Team answers still missing (docs/decisions/0002). Docker and Ollama not installed.
 
 ## Known quirks
 - Instance ids hash coordinates as given: `10` and `10.0` give different ids (baseline behaviour, kept so old ids stay valid). The API always sends floats.
 
 ## Next steps
-1. Frontend: move the ops console to the tenant API (`/api/plans` with a key, replan buttons for the three events), so the research endpoints can stay off.
-2. P8 copilot (LangGraph + Ollama behind the adapter, fake LLM for tests). Its tools can call `/api/plans` and `/api/plans/{id}/replan`; this needs Ollama installed.
-3. Rest of P6 and P4: Docker Compose with Postgres (run the Alembic migrations there), `.env.example`, resolve-and-check for webhook URLs, then OSRM (needs Docker).
+1. Team: review and freeze `docs/eval/copilot_instructions_DRAFT.json`. Then install Ollama (`ollama pull llama3.2:3b`) and run the copilot on the frozen set; record the model, version and results honestly.
+2. Open the ops console in a browser against a backend started without the dev switch. Walk through sign-in, import, plan, replan and copilot, and fix what the component tests missed.
+3. P9 driver PWA (stop list per vehicle from `/api/plans/{id}`, delivered/failed buttons that call the replan endpoint), then Docker Compose with Postgres.
 
 ## Restart commands
 See CLAUDE.md "Commands". In a new session: read CLAUDE.md, PLAN.md and PROGRESS.md, run the backend tests and report the real result.
@@ -107,5 +135,12 @@ Commands added in the second unattended session (Git Bash, repo root):
 "$TEMP/lmv/Scripts/python" experiments/replan_experiment.py                    # writes experiments/results/replan_2026-11-04
 cd backend && timeout 900 "$TEMP/lmv/Scripts/python" -m pytest -q               # 207 passed
 LOGIMIND_DEV_RESEARCH_ENDPOINTS=1 uvicorn app.main:app --port 8000              # local dev with the ops console
+```
+
+Commands added in the third unattended session:
+```
+"$TEMP/lmv/Scripts/python" -m pip install -r backend/requirements.txt   # now also langgraph, langchain-core, langchain-ollama
+# frontend tests: copy frontend/src etc. to %TEMP%\lmfe_s3 (npm ci there once), then:  npx vitest run   # 30 passed
+LOGIMIND_LLM_PROVIDER=none uvicorn app.main:app --port 8000             # copilot off on purpose; default "ollama" uses it only if running
 ```
 

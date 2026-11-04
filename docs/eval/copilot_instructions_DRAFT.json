@@ -1,0 +1,826 @@
+{
+  "status": "DRAFT",
+  "draft_notice": "DRAFT for the team to review. Not validated by the team, not run against any model, and no results exist for it. Do not report numbers from this file until the team has reviewed and frozen it.",
+  "created": "2026-11-04",
+  "author": "Claude Code (unattended session), for review by the team",
+  "schema": "Each 'expected' is the 'intent' of backend/app/copilot/schemas.py:IntentEnvelope. Defaults (engine 'ortools', time_limit_s 5, retry true, completed {}) are written out in full.",
+  "grading_proposal": "DRAFT proposal: exact match of the action and of every field written in 'expected' (for clarify/refuse only the action). Customer ids and coordinates must match exactly.",
+  "context": {
+    "note": "Fictional plan list shown to the copilot for every item (newest first). Ids are placeholders.",
+    "plans": [
+      {
+        "plan_id": "plan-0000000000a1",
+        "name": "Tuesday north depot",
+        "engine": "ortools",
+        "state": "completed",
+        "feasible": true,
+        "n_customers": 15,
+        "vehicles": 3,
+        "time_windows": false
+      },
+      {
+        "plan_id": "plan-0000000000b2",
+        "name": "Tuesday city centre (time windows)",
+        "engine": "hybrid",
+        "state": "completed",
+        "feasible": true,
+        "n_customers": 25,
+        "vehicles": 4,
+        "time_windows": true
+      },
+      {
+        "plan_id": "plan-0000000000c3",
+        "name": "Monday north depot",
+        "engine": "ga_ls",
+        "state": "completed",
+        "feasible": true,
+        "n_customers": 15,
+        "vehicles": 3,
+        "time_windows": false
+      }
+    ]
+  },
+  "items": [
+    {
+      "id": "ci-001",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "solve",
+      "instruction": "Re-run the latest plan with OR-Tools.",
+      "expected": {
+        "action": "solve",
+        "plan_id": "plan-0000000000a1",
+        "engine": "ortools",
+        "time_limit_s": 5.0
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-002",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "solve",
+      "instruction": "Try the genetic algorithm on the Tuesday north depot plan.",
+      "expected": {
+        "action": "solve",
+        "plan_id": "plan-0000000000a1",
+        "engine": "ga",
+        "time_limit_s": 5.0
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-003",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "solve",
+      "instruction": "Run the hybrid on plan-0000000000a1 with 10 seconds.",
+      "expected": {
+        "action": "solve",
+        "plan_id": "plan-0000000000a1",
+        "engine": "hybrid",
+        "time_limit_s": 10
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-004",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "solve",
+      "instruction": "Solve the city centre plan again with OR-Tools, give it 3 s.",
+      "expected": {
+        "action": "solve",
+        "plan_id": "plan-0000000000b2",
+        "engine": "ortools",
+        "time_limit_s": 3
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-005",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "solve",
+      "instruction": "can u redo monday's plan using GA",
+      "expected": {
+        "action": "solve",
+        "plan_id": "plan-0000000000c3",
+        "engine": "ga",
+        "time_limit_s": 5.0
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-006",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "solve",
+      "instruction": "Use the hybrid engine for the time-window plan.",
+      "expected": {
+        "action": "solve",
+        "plan_id": "plan-0000000000b2",
+        "engine": "hybrid",
+        "time_limit_s": 5.0
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-007",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "solve",
+      "instruction": "Give OR-Tools 20 seconds on plan-0000000000c3.",
+      "expected": {
+        "action": "solve",
+        "plan_id": "plan-0000000000c3",
+        "engine": "ortools",
+        "time_limit_s": 20
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-008",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "solve",
+      "instruction": "Resolve Tuesday north with ortools and a 1 second budget",
+      "expected": {
+        "action": "solve",
+        "plan_id": "plan-0000000000a1",
+        "engine": "ortools",
+        "time_limit_s": 1
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-009",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "solve",
+      "instruction": "Run GA plus local search on the newest plan for 8 s.",
+      "expected": {
+        "action": "solve",
+        "plan_id": "plan-0000000000a1",
+        "engine": "ga",
+        "time_limit_s": 8
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-010",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "solve",
+      "instruction": "Hybrid, 5 seconds, city centre.",
+      "expected": {
+        "action": "solve",
+        "plan_id": "plan-0000000000b2",
+        "engine": "hybrid",
+        "time_limit_s": 5
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-011",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "validate",
+      "instruction": "Is the latest plan valid?",
+      "expected": {
+        "action": "validate",
+        "plan_id": "plan-0000000000a1"
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-012",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "validate",
+      "instruction": "Check plan-0000000000b2 with the validator.",
+      "expected": {
+        "action": "validate",
+        "plan_id": "plan-0000000000b2"
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-013",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "validate",
+      "instruction": "Does Monday's plan break any capacity limits?",
+      "expected": {
+        "action": "validate",
+        "plan_id": "plan-0000000000c3"
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-014",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "validate",
+      "instruction": "validate city centre",
+      "expected": {
+        "action": "validate",
+        "plan_id": "plan-0000000000b2"
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-015",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "validate",
+      "instruction": "Run the checker on the Tuesday north plan please.",
+      "expected": {
+        "action": "validate",
+        "plan_id": "plan-0000000000a1"
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-016",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "compare",
+      "instruction": "Compare Tuesday north with Monday north.",
+      "expected": {
+        "action": "compare",
+        "plan_ids": [
+          "plan-0000000000a1",
+          "plan-0000000000c3"
+        ]
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-017",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "compare",
+      "instruction": "Which is shorter, plan-0000000000a1 or plan-0000000000c3?",
+      "expected": {
+        "action": "compare",
+        "plan_ids": [
+          "plan-0000000000a1",
+          "plan-0000000000c3"
+        ]
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-018",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "compare",
+      "instruction": "Compare all three plans.",
+      "expected": {
+        "action": "compare",
+        "plan_ids": [
+          "plan-0000000000a1",
+          "plan-0000000000b2",
+          "plan-0000000000c3"
+        ]
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-019",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "compare",
+      "instruction": "How does the city centre plan compare to the latest one?",
+      "expected": {
+        "action": "compare",
+        "plan_ids": [
+          "plan-0000000000b2",
+          "plan-0000000000a1"
+        ]
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-020",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "compare",
+      "instruction": "Put Monday and Tuesday north side by side.",
+      "expected": {
+        "action": "compare",
+        "plan_ids": [
+          "plan-0000000000c3",
+          "plan-0000000000a1"
+        ]
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-021",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "explain",
+      "instruction": "Why was this engine chosen for the latest plan?",
+      "expected": {
+        "action": "explain",
+        "plan_id": "plan-0000000000a1"
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-022",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "explain",
+      "instruction": "Explain the result of plan-0000000000b2.",
+      "expected": {
+        "action": "explain",
+        "plan_id": "plan-0000000000b2"
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-023",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "explain",
+      "instruction": "What happened with Monday's plan?",
+      "expected": {
+        "action": "explain",
+        "plan_id": "plan-0000000000c3"
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-024",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "explain",
+      "instruction": "Summarise the city centre plan.",
+      "expected": {
+        "action": "explain",
+        "plan_id": "plan-0000000000b2"
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-025",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "reroute_breakdown",
+      "instruction": "Truck 2 broke down on the latest plan.",
+      "expected": {
+        "action": "reroute",
+        "plan_id": "plan-0000000000a1",
+        "event": {
+          "type": "vehicle_breakdown",
+          "vehicle": 2,
+          "completed": {}
+        },
+        "engine": "ortools",
+        "time_limit_s": 5.0
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-026",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "reroute_breakdown",
+      "instruction": "Vehicle 0 on plan-0000000000a1 broke down after 3 stops.",
+      "expected": {
+        "action": "reroute",
+        "plan_id": "plan-0000000000a1",
+        "event": {
+          "type": "vehicle_breakdown",
+          "vehicle": 0,
+          "completed": {
+            "0": 3
+          }
+        },
+        "engine": "ortools",
+        "time_limit_s": 5.0
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-027",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "reroute_breakdown",
+      "instruction": "Van 1 in the city centre plan is out of service; vans 0 and 1 have done 2 stops each.",
+      "expected": {
+        "action": "reroute",
+        "plan_id": "plan-0000000000b2",
+        "event": {
+          "type": "vehicle_breakdown",
+          "vehicle": 1,
+          "completed": {
+            "0": 2,
+            "1": 2
+          }
+        },
+        "engine": "ortools",
+        "time_limit_s": 5.0
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-028",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "reroute_breakdown",
+      "instruction": "Breakdown: vehicle 2, Monday plan, use the GA, nothing delivered yet.",
+      "expected": {
+        "action": "reroute",
+        "plan_id": "plan-0000000000c3",
+        "event": {
+          "type": "vehicle_breakdown",
+          "vehicle": 2,
+          "completed": {}
+        },
+        "engine": "ga",
+        "time_limit_s": 5.0
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-029",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "reroute_breakdown",
+      "instruction": "Truck 1 died. Tuesday north. Give it 2 seconds.",
+      "expected": {
+        "action": "reroute",
+        "plan_id": "plan-0000000000a1",
+        "event": {
+          "type": "vehicle_breakdown",
+          "vehicle": 1,
+          "completed": {}
+        },
+        "engine": "ortools",
+        "time_limit_s": 2
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-030",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "reroute_breakdown",
+      "instruction": "Vehicle 3 broke down in the city centre after 4 deliveries.",
+      "expected": {
+        "action": "reroute",
+        "plan_id": "plan-0000000000b2",
+        "event": {
+          "type": "vehicle_breakdown",
+          "vehicle": 3,
+          "completed": {
+            "3": 4
+          }
+        },
+        "engine": "ortools",
+        "time_limit_s": 5.0
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-031",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "reroute_failed",
+      "instruction": "Delivery to customer 7 failed on the latest plan; try again later.",
+      "expected": {
+        "action": "reroute",
+        "plan_id": "plan-0000000000a1",
+        "event": {
+          "type": "failed_delivery",
+          "customer_id": 7,
+          "retry": true,
+          "completed": {}
+        },
+        "engine": "ortools",
+        "time_limit_s": 5.0
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-032",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "reroute_failed",
+      "instruction": "Customer 12 wasn't home (plan-0000000000b2). Drop them for today.",
+      "expected": {
+        "action": "reroute",
+        "plan_id": "plan-0000000000b2",
+        "event": {
+          "type": "failed_delivery",
+          "customer_id": 12,
+          "retry": false,
+          "completed": {}
+        },
+        "engine": "ortools",
+        "time_limit_s": 5.0
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-033",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "reroute_failed",
+      "instruction": "Failed drop at customer 3, Monday plan, vehicle 0 had done 1 stop. Retry it.",
+      "expected": {
+        "action": "reroute",
+        "plan_id": "plan-0000000000c3",
+        "event": {
+          "type": "failed_delivery",
+          "customer_id": 3,
+          "retry": true,
+          "completed": {
+            "0": 1
+          }
+        },
+        "engine": "ortools",
+        "time_limit_s": 5.0
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-034",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "reroute_failed",
+      "instruction": "Couldn't deliver to 9 on Tuesday north, skip it.",
+      "expected": {
+        "action": "reroute",
+        "plan_id": "plan-0000000000a1",
+        "event": {
+          "type": "failed_delivery",
+          "customer_id": 9,
+          "retry": false,
+          "completed": {}
+        },
+        "engine": "ortools",
+        "time_limit_s": 5.0
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-035",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "reroute_failed",
+      "instruction": "Customer 21 refused the parcel in the city centre plan; reattempt later.",
+      "expected": {
+        "action": "reroute",
+        "plan_id": "plan-0000000000b2",
+        "event": {
+          "type": "failed_delivery",
+          "customer_id": 21,
+          "retry": true,
+          "completed": {}
+        },
+        "engine": "ortools",
+        "time_limit_s": 5.0
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-036",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "reroute_urgent",
+      "instruction": "Add urgent order 100 at (52, 48) with demand 2 to the latest plan.",
+      "expected": {
+        "action": "reroute",
+        "plan_id": "plan-0000000000a1",
+        "event": {
+          "type": "urgent_order",
+          "customer": {
+            "id": 100,
+            "x": 52,
+            "y": 48,
+            "demand": 2
+          },
+          "completed": {}
+        },
+        "engine": "ortools",
+        "time_limit_s": 5.0
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-037",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "reroute_urgent",
+      "instruction": "New rush order 31 at x=10 y=90, 1 unit, city centre, due by 600.",
+      "expected": {
+        "action": "reroute",
+        "plan_id": "plan-0000000000b2",
+        "event": {
+          "type": "urgent_order",
+          "customer": {
+            "id": 31,
+            "x": 10,
+            "y": 90,
+            "demand": 1,
+            "due_time": 600
+          },
+          "completed": {}
+        },
+        "engine": "ortools",
+        "time_limit_s": 5.0
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-038",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "reroute_urgent",
+      "instruction": "Squeeze in order 16 (demand 3) at 75,20 on Monday's plan using the GA.",
+      "expected": {
+        "action": "reroute",
+        "plan_id": "plan-0000000000c3",
+        "event": {
+          "type": "urgent_order",
+          "customer": {
+            "id": 16,
+            "x": 75,
+            "y": 20,
+            "demand": 3
+          },
+          "completed": {}
+        },
+        "engine": "ga",
+        "time_limit_s": 5.0
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-039",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "reroute_urgent",
+      "instruction": "Urgent: customer 101 at (5, 5), demand 1, plan-0000000000a1, vehicle 1 has done 2 stops.",
+      "expected": {
+        "action": "reroute",
+        "plan_id": "plan-0000000000a1",
+        "event": {
+          "type": "urgent_order",
+          "customer": {
+            "id": 101,
+            "x": 5,
+            "y": 5,
+            "demand": 1
+          },
+          "completed": {
+            "1": 2
+          }
+        },
+        "engine": "ortools",
+        "time_limit_s": 5.0
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-040",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "reroute_urgent",
+      "instruction": "Add a priority delivery, id 40, at 60 40, two boxes, city centre, ready from 120.",
+      "expected": {
+        "action": "reroute",
+        "plan_id": "plan-0000000000b2",
+        "event": {
+          "type": "urgent_order",
+          "customer": {
+            "id": 40,
+            "x": 60,
+            "y": 40,
+            "demand": 2,
+            "ready_time": 120
+          },
+          "completed": {}
+        },
+        "engine": "ortools",
+        "time_limit_s": 5.0
+      },
+      "notes": ""
+    },
+    {
+      "id": "ci-041",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "clarify",
+      "instruction": "A truck broke down.",
+      "expected": {
+        "action": "clarify"
+      },
+      "notes": "Ambiguous or missing a required value (plan, vehicle, order details or engine). Graders check that the action is clarify; the question text is not graded."
+    },
+    {
+      "id": "ci-042",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "clarify",
+      "instruction": "Re-run it.",
+      "expected": {
+        "action": "clarify"
+      },
+      "notes": "Ambiguous or missing a required value (plan, vehicle, order details or engine). Graders check that the action is clarify; the question text is not graded."
+    },
+    {
+      "id": "ci-043",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "clarify",
+      "instruction": "Add an urgent order to the latest plan.",
+      "expected": {
+        "action": "clarify"
+      },
+      "notes": "Ambiguous or missing a required value (plan, vehicle, order details or engine). Graders check that the action is clarify; the question text is not graded."
+    },
+    {
+      "id": "ci-044",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "clarify",
+      "instruction": "Compare the plans from last week.",
+      "expected": {
+        "action": "clarify"
+      },
+      "notes": "Ambiguous or missing a required value (plan, vehicle, order details or engine). Graders check that the action is clarify; the question text is not graded."
+    },
+    {
+      "id": "ci-045",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "clarify",
+      "instruction": "Use a faster engine.",
+      "expected": {
+        "action": "clarify"
+      },
+      "notes": "Ambiguous or missing a required value (plan, vehicle, order details or engine). Graders check that the action is clarify; the question text is not graded."
+    },
+    {
+      "id": "ci-046",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "refuse",
+      "instruction": "Move customer 5 to truck 2 and put it first.",
+      "expected": {
+        "action": "refuse"
+      },
+      "notes": "Outside the copilot's tools (hand-written routes, other tenants, other topics). Graders check the action only."
+    },
+    {
+      "id": "ci-047",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "refuse",
+      "instruction": "Here are my routes: 1-4-2, 3-5. Save them as the plan.",
+      "expected": {
+        "action": "refuse"
+      },
+      "notes": "Outside the copilot's tools (hand-written routes, other tenants, other topics). Graders check the action only."
+    },
+    {
+      "id": "ci-048",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "refuse",
+      "instruction": "What will fuel cost tomorrow?",
+      "expected": {
+        "action": "refuse"
+      },
+      "notes": "Outside the copilot's tools (hand-written routes, other tenants, other topics). Graders check the action only."
+    },
+    {
+      "id": "ci-049",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "refuse",
+      "instruction": "Delete all plans of the other depot account.",
+      "expected": {
+        "action": "refuse"
+      },
+      "notes": "Outside the copilot's tools (hand-written routes, other tenants, other topics). Graders check the action only."
+    },
+    {
+      "id": "ci-050",
+      "draft": true,
+      "review_status": "DRAFT - team to review",
+      "category": "refuse",
+      "instruction": "Write me a poem about logistics.",
+      "expected": {
+        "action": "refuse"
+      },
+      "notes": "Outside the copilot's tools (hand-written routes, other tenants, other topics). Graders check the action only."
+    }
+  ]
+}

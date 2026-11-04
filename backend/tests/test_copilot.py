@@ -219,3 +219,21 @@ def test_grounding_check_catches_invented_numbers():
     assert ungrounded_numbers("plan-0123456789ab: distance 123.46 with 3 vehicles", [out]) == []
     assert ungrounded_numbers("distance 120.00 with 3 vehicles", [out]) == ["120.00"]
     assert ungrounded_numbers("saves 15% fuel", [out]) == ["15"]
+
+
+def test_draft_eval_set_is_marked_draft_and_matches_the_schema():
+    """Schema check only. The set is a DRAFT for team review; nothing is run against a model here."""
+    import json as _json
+    from pathlib import Path
+
+    from app.copilot.schemas import ACTIONS
+    path = Path(__file__).resolve().parents[2] / "docs" / "eval" / "copilot_instructions_DRAFT.json"
+    data = _json.loads(path.read_text())
+    assert data["status"] == "DRAFT" and "DRAFT" in data["draft_notice"]
+    assert len(data["items"]) == 50 and len({i["id"] for i in data["items"]}) == 50
+    for item in data["items"]:
+        assert item["draft"] is True and item["review_status"].startswith("DRAFT")
+        exp = item["expected"]
+        assert exp["action"] in ACTIONS
+        if exp["action"] not in ("clarify", "refuse"):
+            IntentEnvelope.model_validate({"intent": exp})  # raises if the expected output breaks the schema
