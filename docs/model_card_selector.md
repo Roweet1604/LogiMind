@@ -41,6 +41,6 @@ Leave-one-size-out CV (train on two sizes, test on the third): regret trees 1.06
 
 ## Limits and intended use
 - Trained only on synthetic instances: up to 80 customers, budgets 1 to 3 s, one seed per engine and case, one laptop (AMD, Windows 11, Python 3.14.7, OR-Tools 9.15.6755). For an instance outside the training range, the explanation adds a caution.
-- Not checked on Solomon or CVRPLIB instances, or on real orders.
+- Checked out of distribution on 24 held-out Solomon / CVRPLIB instances at 3 s and 10 s (5 Nov 2026; the 10 s runs are PARTIAL), against the stored runs of all three engines: `docs/report/evaluation.md`, section 2.2. Mixed result: lowest mean regret over all 48 cases, but always GA + LS was better on CVRP and always hybrid was better at 3 s; on VRPTW it always picked OR-Tools. As on the synthetic data, it made the same choice at both budgets. No significance test (the cases are not independent). Not checked on real orders.
 - Use: a default for `engine=auto` that can be explained. Do not use it to claim that one engine is better. Fair comparisons stay in the P3/P10 benchmark runs.
 - Next: more seeds, budgets of 1/3/10 s and sizes up to 100+. Then re-run `experiments/selector_dataset.py` and `selector_train_eval.py`, and keep the served model only if it still beats "always hybrid".

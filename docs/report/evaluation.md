@@ -1,6 +1,6 @@
 # LogiMind evaluation (P10)
 
-Generated 2026-11-05 08:28 UTC by `experiments/p10_report.py` from **stored runs only**. Every number below comes from the committed
+Generated 2026-11-05 08:32 UTC by `experiments/p10_report.py` from **stored runs only**. Every number below comes from the committed
 files under `experiments/results/`; nothing was typed in by hand. Machine for all runs: Rohit's laptop
 (AMD64 Family 23 Model 96 Stepping 1, AuthenticAMD, 16 logical CPUs),
 Python 3.14.7, OR-Tools 9.15.6755.
@@ -226,7 +226,71 @@ hybrid is close, and in the leave-one-size-out CV (`experiments/results/selector
 always-hybrid is better.
 
 ### 2.2 Out-of-distribution test on the held-out benchmarks
-Not run yet (needs `experiments/selector_heldout_eval.py`).
+The selector was trained on 108 SYNTHETIC cases (sizes
+20-80 customers, budgets
+1, 3 s). Here it picks an engine for each held-out
+**benchmark** case (48 cases = 24 instances x 2 budgets;
+39 are outside its training range in size or budget, and all are
+outside its training families). Its pick is scored against the
+stored runs of all three engines; **no extra solver runs**. Regret = % extra distance over the best engine of the
+case (mean over feasible repeats); "correct" = within 0.01% of the best; a pick with no feasible run is a
+failure. Results in `experiments/results/selector_heldout_2026-11-05/`.
+
+| scope | strategy | cases | correct | failures | mean_regret_pct | median_regret_pct | max_regret_pct |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| all | selector (served regret model) | 48 | 33 | 0 | 0.49 | 0.00 | 4.72 |
+| all | always ortools | 48 | 24 | 0 | 1.02 | 0.04 | 5.89 |
+| all | always hybrid | 48 | 24 | 0 | 0.62 | 0.01 | 7.90 |
+| all | always ga_ls | 48 | 19 | 0 | 5.11 | 1.08 | 23.17 |
+| all | oracle | 48 | 48 | 0 | 0.00 | 0.00 | 0.00 |
+| all | random (expected) | 48 | 22.3 | 0 | 2.25 | - | - |
+| CVRP | selector (served regret model) | 24 | 15 | 0 | 0.64 | 0.00 | 4.72 |
+| CVRP | always ortools | 24 | 6 | 0 | 1.71 | 1.56 | 5.89 |
+| CVRP | always hybrid | 24 | 8 | 0 | 0.66 | 0.31 | 3.89 |
+| CVRP | always ga_ls | 24 | 17 | 0 | 0.31 | 0.00 | 3.33 |
+| CVRP | oracle | 24 | 24 | 0 | 0.00 | 0.00 | 0.00 |
+| CVRP | random (expected) | 24 | 10.3 | 0 | 0.90 | - | - |
+| VRPTW | selector (served regret model) | 24 | 18 | 0 | 0.34 | 0.00 | 3.48 |
+| VRPTW | always ortools | 24 | 18 | 0 | 0.34 | 0.00 | 3.48 |
+| VRPTW | always hybrid | 24 | 16 | 0 | 0.58 | 0.00 | 7.90 |
+| VRPTW | always ga_ls | 24 | 2 | 0 | 9.91 | 6.99 | 23.17 |
+| VRPTW | oracle | 24 | 24 | 0 | 0.00 | 0.00 | 0.00 |
+| VRPTW | random (expected) | 24 | 12 | 0 | 3.61 | - | - |
+| 3 s | selector (served regret model) | 24 | 18 | 0 | 0.56 | 0.00 | 4.72 |
+| 3 s | always ortools | 24 | 13 | 0 | 1.09 | 0.00 | 5.89 |
+| 3 s | always hybrid | 24 | 12 | 0 | 0.51 | 0.01 | 3.89 |
+| 3 s | always ga_ls | 24 | 9 | 0 | 5.55 | 1.18 | 23.17 |
+| 3 s | oracle | 24 | 24 | 0 | 0.00 | 0.00 | 0.00 |
+| 3 s | random (expected) | 24 | 11.3 | 0 | 2.38 | - | - |
+| 10 s | selector (served regret model) | 24 | 15 | 0 | 0.41 | 0.00 | 3.48 |
+| 10 s | always ortools | 24 | 11 | 0 | 0.96 | 0.23 | 4.04 |
+| 10 s | always hybrid | 24 | 12 | 0 | 0.73 | 0.02 | 7.90 |
+| 10 s | always ga_ls | 24 | 10 | 0 | 4.67 | 0.57 | 19.68 |
+| 10 s | oracle | 24 | 24 | 0 | 0.00 | 0.00 | 0.00 |
+| 10 s | random (expected) | 24 | 11 | 0 | 2.12 | - | - |
+
+What it picked (cases per budget and problem type):
+
+| budget_s | problem | ga_ls | hybrid | ortools |
+| --- | --- | --- | --- | --- |
+| 3.0 | CVRP | 8 | 1 | 3 |
+| 3.0 | VRPTW | 0 | 0 | 12 |
+| 10.0 | CVRP | 8 | 1 | 3 |
+| 10.0 | VRPTW | 0 | 0 | 12 |
+
+**Reading (mean regret per scope; computed from the table above):**
+- **all:** selector 0.49%; not beaten by any fixed choice.
+- **CVRP:** selector 0.64%; **beaten by always ga_ls (0.31%)**.
+- **VRPTW:** selector 0.34%; not beaten by any fixed choice (equal to always ortools).
+- **3 s:** selector 0.56%; **beaten by always hybrid (0.51%)**.
+- **10 s:** selector 0.41%; not beaten by any fixed choice.
+
+**Negative result:** in CVRP, 3 s a single fixed engine choice beats the selector.
+The 10 s cases come from the PARTIAL 10 s run (1 to 2 repeats; section 1.3), so every scope that includes them is preliminary.
+No significance test was run on these regrets: each instance appears at both budgets (the cases are not
+independent), so differences of a few tenths of a percent are not a proven gain or loss.
+This is a test of transfer from synthetic training data to public benchmarks, not of real fleets.
+
 
 ## 3. Replanning, stored 4 Nov 2026, SYNTHETIC data
 6 synthetic instances (40 customers), one seed; the first third of each route frozen. Feasible = validator **and**

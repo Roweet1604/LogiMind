@@ -457,6 +457,8 @@ What it picked (cases per budget and problem type):
 {("**Negative result:** in " + ", ".join(losses) + " a single fixed engine choice beats the selector.")
  if losses else "In every scope the selector was at least as good as each fixed choice."}
 {partial_note}
+No significance test was run on these regrets: each instance appears at both budgets (the cases are not
+independent), so differences of a few tenths of a percent are not a proven gain or loss.
 This is a test of transfer from synthetic training data to public benchmarks, not of real fleets.
 """
 
