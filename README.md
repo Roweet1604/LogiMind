@@ -2,7 +2,7 @@
 
 An API-first hybrid optimization platform with an AI dispatch copilot for small-fleet logistics (Capstone ASAC-CP-056).
 
-**Status:** P1-P3, P5, P7 and P9 done; P4 road matrix done offline (not yet run against a self-hosted OSRM); P6 partly (Docker Compose files written but UNTESTED, no job queue yet); P8 copilot built but tested only with a fake LLM (no real model run yet). Route solvers (OR-Tools, our own GA, a hybrid), an engine picker, a tenant API with plans, imports, webhooks and replanning, a dispatch copilot, a driver PWA and stub ETA notifications. See `PROGRESS.md` for what works and what does not yet; `PLAN.md` has the roadmap.
+**Status:** P1-P3, P5, P7 and P9 done; P4 road matrix done offline (not yet run against a self-hosted OSRM); P6 done except that Docker Compose is written but UNTESTED (durable job queue and worker process added 5 Nov 2026); P8 copilot built but tested only with a fake LLM (no real model run yet). Route solvers (OR-Tools, our own GA, a hybrid), an engine picker, a tenant API with plans, imports, webhooks and replanning, a dispatch copilot, a driver PWA and stub ETA notifications. See `PROGRESS.md` for what works and what does not yet; `PLAN.md` has the roadmap.
 
 ## Quick start (Windows)
 Keep the virtual environment and `node_modules` **outside OneDrive** (OneDrive sync and long paths break installs).
@@ -15,8 +15,11 @@ pip install -r backend\requirements.txt
 cd backend
 python -m pytest -q
 uvicorn app.main:app --port 8000
+python -m app.jobs.worker        # second terminal, also from backend\: runs the solver jobs
 ```
 API docs: http://localhost:8000/docs
+
+Plans, replans and research runs are jobs in a database queue (decision 0021). The API never runs a solver itself: without a worker, plans stay `queued`. For a one-process development setup, `set LOGIMIND_WORKER=inline` before starting uvicorn (the API then runs the same worker loop in a thread). Benchmark (research) jobs always run alone; `GET /api/health` shows the queue (`jobs`).
 
 The research endpoints used by the ops console (`/api/instances`, `/api/runs`, `/api/experiments`, `/api/benchmarks`) have no tenants and are OFF by default. For local development only, start the backend with `set LOGIMIND_DEV_RESEARCH_ENDPOINTS=1` first (decision 0011). Tenant endpoints (`/api/plans`, `/api/orders/import`, `/api/webhooks`, `/api/audit`, `/api/contacts`, `/api/notifications`) need an `X-API-Key` from `python manage.py create-tenant "<name>"`.
 
@@ -57,7 +60,7 @@ rem edit .env: set POSTGRES_PASSWORD and LOGIMIND_DRIVER_LINK_SECRET (32+ charac
 docker compose up --build
 docker compose exec api python manage.py create-tenant "My fleet"
 ```
-Then: ops console http://localhost:8080, driver app http://localhost:8081, API docs http://localhost:8000/docs. Services: `postgres` (data in the `pgdata` volume), `api` (FastAPI and its solver worker process; matrix cache and photos in the `appdata` volume), `console` and `driver` (nginx serving the builds and proxying `/api`). There is **no separate worker service** yet: jobs run in the API container, one at a time (decision 0020). Copilot: Ollama runs on the host, not in Compose.
+Then: ops console http://localhost:8080, driver app http://localhost:8081, API docs http://localhost:8000/docs. Services: `postgres` (data in the `pgdata` volume), `api` (FastAPI; matrix cache and photos in the `appdata` volume), `worker` (runs the queued solver jobs; `--scale worker=2` for more planning capacity; decision 0021), `console` and `driver` (nginx serving the builds and proxying `/api`). Copilot: Ollama runs on the host, not in Compose.
 
 Optional OSRM (profile `osrm`):
 1. Put an OpenStreetMap extract at `osrm-data\region.osm.pbf`. No small official Bengaluru extract was found: Geofabrik's smallest file that contains Bengaluru, `https://download.geofabrik.de/asia/india/southern-zone-latest.osm.pbf`, was 559 MB on 5 Nov 2026 (not downloaded; see decision 0020). Record the URL, the date and `certutil -hashfile osrm-data\region.osm.pbf SHA256` when you download one.

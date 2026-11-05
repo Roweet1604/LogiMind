@@ -171,3 +171,35 @@ class NotificationLog(TenantOwned, Base):
 
 TENANT_MODELS = (ApiKey, Plan, AuditLog, Webhook, WebhookDelivery, DriverLink, StopEvent, PodPhoto,
                  CustomerContact, NotificationLog)
+
+
+class Job(Base):
+    """A durable solver job (P6 queue, decision 0021). Not TenantOwned: benchmark jobs have no tenant, and only
+    the worker reads this table (admin session). The worker writes a job's results through a tenant session for
+    `tenant_id`, so a job can never change another tenant's plan. Tenants see their own jobs only through
+    their plans (an explicit tenant filter)."""
+    __tablename__ = "jobs"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)        # plan | replan | benchmark
+    lane: Mapped[str] = mapped_column(String(20), nullable=False)        # planning | benchmark
+    tenant_id: Mapped[str | None] = mapped_column(String(40), ForeignKey("tenants.id"), index=True, nullable=True)
+    plan_id: Mapped[str | None] = mapped_column(String(40), ForeignKey("plans.id"), index=True, nullable=True)
+    payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+    state: Mapped[str] = mapped_column(String(20), nullable=False, index=True)  # queued|running|completed|failed
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    max_attempts: Mapped[int] = mapped_column(Integer, default=2)
+    worker_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    result: Mapped[dict | None] = mapped_column(JSON, nullable=True)     # benchmark jobs only
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    history: Mapped[list | None] = mapped_column(JSON, nullable=True)    # requeues after a worker stopped
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class QueueLock(Base):
+    """One row. Every claim first updates it, which serializes claims on SQLite and PostgreSQL alike."""
+    __tablename__ = "queue_lock"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    claims: Mapped[int] = mapped_column(Integer, default=0)

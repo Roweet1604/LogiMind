@@ -11,7 +11,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from app.replan.events import ReplanError, ReplanSetup, _with_customers
+from app.models.problem import Instance
+from app.replan.events import ReplanError, ReplanSetup, _with_customers, not_before
 from app.selector.dataset import GA_TIME_ONLY
 
 REPLAN_ENGINES = ("ortools", "ga")
@@ -64,3 +65,15 @@ def routes_by_vehicle(job: ReplanJob, routes: list[list[int]], vehicle_count: in
         out[v] = list(r)
     # More routes than free vehicles: keep them, so the validator reports too_many_vehicles (never hidden).
     return out + [list(r) for r in used[len(job.vehicle_map):]]
+
+
+def setup_payload(setup: ReplanSetup, now: float | None) -> dict[str, Any]:
+    """What a replan job must carry so the worker can rebuild the exact solver job (the instance is on the plan)."""
+    return {"frozen": setup.frozen, "blocked": setup.blocked, "warm_routes": setup.warm_routes,
+            "to_insert": setup.to_insert, "dropped": setup.dropped, "notes": setup.notes, "now": now}
+
+
+def setup_from(instance: Instance, p: dict[str, Any]) -> ReplanSetup:
+    frozen_ids = {c for f in p["frozen"] for c in f}
+    return ReplanSetup(instance, not_before(instance, frozen_ids, p.get("now")), p["frozen"], p["blocked"],
+                       p["warm_routes"], p["to_insert"], p.get("dropped") or [], p.get("notes") or [])

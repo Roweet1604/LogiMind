@@ -6,8 +6,9 @@
 #                                  API http://localhost:8000/docs
 #   docker compose --profile osrm up --build   (also road distances; prepare the map data first, see README)
 #
-# There is no separate "worker" service: plan jobs run in the API container's guarded solver worker
-# process, one at a time (decision 0020). Keep ONE API container with ONE uvicorn worker.
+# Solver jobs wait in the database job queue (decision 0021) and run in the "worker" service, never in
+# the API container. More planning capacity: docker compose up --scale worker=2 (benchmark jobs still
+# run alone). Keep ONE API container with ONE uvicorn worker (rate limiter and copilot sessions are in-process).
 name: logimind
 
 services:
@@ -42,12 +43,23 @@ services:
       LOGIMIND_OLLAMA_MODEL: ${LOGIMIND_OLLAMA_MODEL:-llama3.2:3b}
       LOGIMIND_NOTIFY_PROVIDER: stub
       LOGIMIND_DEV_RESEARCH_ENDPOINTS: "0"
+      LOGIMIND_WORKER: external
     extra_hosts:
       - "host.docker.internal:host-gateway"  # Ollama runs on the host, outside Compose
     volumes:
       - appdata:/data                        # matrix cache, proof-of-delivery photos
     ports:
       - "8000:8000"
+
+  worker:
+    build: ./backend
+    command: ["python", "-m", "app.jobs.worker"]
+    depends_on: [api]   # the API migrates the database; the worker waits for the jobs table
+    environment:
+      LOGIMIND_DATABASE_URL: postgresql+psycopg://logimind:${POSTGRES_PASSWORD}@postgres:5432/logimind
+      LOGIMIND_JOB_STALE_S: "30"
+    stop_grace_period: 60s
+    restart: unless-stopped
 
   console:
     build: ./frontend

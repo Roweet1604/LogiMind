@@ -22,6 +22,9 @@ Environment variables
                                LOGIMIND_OSRM_TIMEOUT_S (10), LOGIMIND_MATRIX_MAX_NODES (250),
                                LOGIMIND_MATRIX_CACHE_DAYS (30; cache file matrix_cache.sqlite in the data dir)
   LOGIMIND_DETOUR_FACTOR / LOGIMIND_FALLBACK_SPEED_KMH   straight-line estimate (1.3 / 25 km/h; assumptions)
+  LOGIMIND_WORKER              "external" (default): solver jobs wait in the database queue for a worker process
+                               (python -m app.jobs.worker). "inline": the API runs the same worker loop in a thread
+                               (development and tests only). See app/jobs/worker.py for the worker's settings.
 """
 from __future__ import annotations
 
@@ -43,6 +46,8 @@ from app.db.session import make_engine, make_session_factory
 from app.distances.service import DistanceService, distance_service_from_env
 from app.driver.links import LinkSigner, secret_from_env
 from app.driver.service import DriverService
+from app.jobs.queue import JobQueue
+from app.jobs.worker import worker_from_env
 from app.messaging.senders import sender_from_env
 from app.messaging.service import NotificationService
 from app.services.notify import WebhookNotifier
@@ -53,7 +58,7 @@ from app.services.webhooks import HttpxSender
 
 
 def create_app(data_dir: Path | None = None, legacy_open: bool | None = None, clock=None,
-               distances: DistanceService | None = None) -> FastAPI:
+               distances: DistanceService | None = None, worker: str | None = None) -> FastAPI:
     default_dir = Path(__file__).resolve().parents[2] / "experiments" / "results" / "api_data"
     app = FastAPI(title="LogiMind API", version="0.2.0",
                   description="Route planning with OR-Tools, GA and hybrid engines. Tenant endpoints "
@@ -63,16 +68,23 @@ def create_app(data_dir: Path | None = None, legacy_open: bool | None = None, cl
                        allow_methods=["*"], allow_headers=["*"])
     explicit_dir = data_dir is not None
     data_dir = Path(data_dir or os.environ.get("ROUTEOPT_DATA_DIR", default_dir))
-    app.state.store = Store(data_dir)
     url = (None if explicit_dir else os.environ.get("LOGIMIND_DATABASE_URL")) or \
         f"sqlite:///{(data_dir / 'logimind.db').as_posix()}"
     upgrade_to_head(url)
     app.state.db = make_session_factory(make_engine(url))
+    app.state.queue = JobQueue(app.state.db)
+    app.state.store = Store(data_dir, app.state.queue)
     app.state.legacy_open = legacy_open_from_env() if legacy_open is None else legacy_open
     app.state.ratelimiter = RateLimiter()
     app.state.notifier = WebhookNotifier(app.state.db, HttpxSender())
     app.state.distances = distances or distance_service_from_env(data_dir)
-    app.state.plans = PlanService(app.state.db, app.state.store, app.state.notifier, app.state.distances)
+    app.state.plans = PlanService(app.state.db, app.state.queue, app.state.distances)
+    app.state.worker_mode = (worker or os.environ.get("LOGIMIND_WORKER", "external")).strip().lower()
+    if app.state.worker_mode not in ("external", "inline"):
+        raise ValueError(f"LOGIMIND_WORKER must be 'external' or 'inline', not {app.state.worker_mode!r}")
+    app.state.worker = None
+    if app.state.worker_mode == "inline":  # development and tests: the same loop, in a thread of this process
+        app.state.worker = worker_from_env(app.state.db, app.state.notifier, queue=app.state.queue).start_thread()
     clock_opts = {"clock": clock} if clock is not None else {}
     app.state.notifications = NotificationService(app.state.db, sender_from_env(), **clock_opts)
     app.state.driver = DriverService(app.state.db, data_dir, LinkSigner(secret_from_env()),

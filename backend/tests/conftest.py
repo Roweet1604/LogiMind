@@ -10,6 +10,9 @@ os.environ.setdefault("LOGIMIND_LLM_PROVIDER", "none")
 # Test clients poll plans many times a second; the rate limiter has its own tests with small limits.
 os.environ.setdefault("LOGIMIND_RATE_PER_MIN", "1000000")
 os.environ.setdefault("LOGIMIND_RATE_BURST", "100000")
+# API tests run the queue's worker loop in a thread of the test app (the same code as the worker process);
+# tests/test_jobs.py also runs real worker PROCESSES, including a crash and a restart.
+os.environ.setdefault("LOGIMIND_WORKER", "inline")
 
 import pytest
 from app.models.problem import Customer, Instance

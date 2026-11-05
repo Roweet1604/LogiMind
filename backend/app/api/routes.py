@@ -85,7 +85,8 @@ def health(request: Request) -> dict:
     """research_endpoints tells the ops console whether the dev-only research pages can be used."""
     return {"status": "ok", "environment": environment_info(),
             "research_endpoints": bool(request.app.state.legacy_open),
-            "distances": request.app.state.distances.status()}
+            "distances": request.app.state.distances.status(),
+            "jobs": {"worker_mode": request.app.state.worker_mode, **request.app.state.queue.stats()}}
 
 
 @router.get("/whoami", tags=["plans"])

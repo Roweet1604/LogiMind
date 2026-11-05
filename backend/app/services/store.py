@@ -1,10 +1,10 @@
-"""In-process store + JSON-file persistence + single-worker execution.
+"""Research store (dev-only endpoints) + JSON-file persistence; runs go through the job queue.
 
-One worker thread runs solver jobs strictly one at a time, each inside the
-guarded worker process (services/guard.py: a run that overruns its time limit
-is killed and reported as hard_timeout). This is deliberate:
-runs are compared by wall-clock time, so concurrent jobs would compete for CPU
-and make the comparison unfair.
+Each run becomes a **benchmark** job (decision 0021): a worker runs it inside the guarded solver
+process (a run that overruns its time limit is killed and reported as hard_timeout), and the queue
+starts a benchmark job only when nothing else runs. Runs are compared by wall-clock time, so
+concurrent jobs would compete for CPU and make the comparison unfair. One thread here submits the
+runs one by one and waits for each.
 
 Files under data_dir: instances/<id>.json, runs/<id>.json, experiments/<id>.json
 (completed runs and experiments only; queued runs do not survive a restart).
@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import math
 import threading
+import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
@@ -24,8 +25,6 @@ import pandas as pd
 
 from app.models.problem import Instance
 from app.services.export import summarize
-from app.services.guard import GuardedWorker
-from app.services.runner import RunRecord
 
 TERMINAL = {"completed", "failed"}
 
@@ -48,13 +47,13 @@ def _now() -> str:
 
 
 class Store:
-    def __init__(self, data_dir: Path):
+    def __init__(self, data_dir: Path, queue=None, poll_s: float = 0.1):
         self.dir = Path(data_dir)
+        self.queue, self.poll_s = queue, poll_s  # app.jobs.queue.JobQueue
         for sub in ("instances", "runs", "experiments"):
             (self.dir / sub).mkdir(parents=True, exist_ok=True)
         self.lock = threading.RLock()
-        self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="solver")
-        self.guard = GuardedWorker()
+        self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="research-runs")
         self.instances: dict[str, Instance] = {}
         self.runs: dict[str, dict[str, Any]] = {}
         self.experiments: dict[str, dict[str, Any]] = {}
@@ -100,17 +99,11 @@ class Store:
 
     def _execute(self, run_id: str, config: dict[str, Any]) -> None:
         with self.lock:
-            self.runs[run_id] = {**self.runs[run_id], "state": "running"}
             base = self.runs[run_id]
         try:
-            rec: RunRecord = self.guard.run(self.instances[base["instance_id"]], base["algorithm"], config)
-            rec.result.run_id = run_id
-            update = {
-                "state": "completed", "started_at": rec.started_at, "result": rec.result.to_dict(),
-                "validation": rec.validation.to_dict() if rec.validation else None,
-                "metrics": rec.metrics.to_dict() if rec.metrics else None,
-                "row": rec.to_row(),
-            }
+            out = self._run_benchmark_job(run_id, self.instances[base["instance_id"]], base["algorithm"], config)
+            out["result"]["run_id"] = run_id
+            update = {"state": "completed", **out}
         except Exception as exc:  # reported, never hidden
             update = {"state": "failed", "error": f"{type(exc).__name__}: {exc}"}
         with self.lock:
@@ -119,6 +112,29 @@ class Store:
                 final["row"]["run_id"] = run_id
             self.runs[run_id] = final
             self._write("runs", run_id, final)
+
+    def _run_benchmark_job(self, run_id: str, instance: Instance, algorithm: str, config: dict) -> dict:
+        """Queue one benchmark job and wait for it; the run shows "running" once a worker has claimed it."""
+        if self.queue is None:
+            raise RuntimeError("no job queue configured")
+        with self.queue.factory() as s:
+            job_id = self.queue.enqueue(s, "benchmark", {"instance": instance.to_dict(), "algorithm": algorithm,
+                                                         "config": config, "run_id": run_id})
+            s.commit()
+        self.queue.notify()
+        with self.lock:
+            self.runs[run_id] = {**self.runs[run_id], "job_id": job_id}
+        while True:
+            job = self.queue.get(job_id)
+            if job.state == "running":
+                with self.lock:
+                    if self.runs[run_id]["state"] == "queued":
+                        self.runs[run_id] = {**self.runs[run_id], "state": "running"}
+            if job.state == "completed":
+                return dict(job.result)
+            if job.state == "failed":
+                raise RuntimeError(job.error or "benchmark job failed")
+            time.sleep(self.poll_s)
 
     def get_run(self, run_id: str) -> dict[str, Any] | None:
         with self.lock:
