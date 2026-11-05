@@ -32,7 +32,7 @@ Only features that were **verified** are in the main path. Each step says how it
 8. **Copilot status** (20 s). Copilot page: "No local model available". *Say:* "The copilot is built and tested with a fake model; the real-model evaluation has not been run." *(Verified in Chrome.)*
 9. **Evaluation** (2 min). Open `docs/report/evaluation.md`: the held-out benchmark table and figure, the significance tests, and the negative results (hybrid not a clear win; picker not a proven gain). *Say:* which results are synthetic.
 
-6b. **Breakdown and failed delivery** (optional, 60 s). On the replanned plan: Vehicle breakdown, vehicle 0 after 3 completed stops -> its unfinished stops move to another vehicle, the 3 done stops stay. Failed delivery: say plainly that the planner may schedule the retry as the very next stop (known limit). *(Verified in Chrome with a separate worker process, 5 Nov 2026.)*
+6b. **Breakdown and failed delivery** (optional, 60 s). On the replanned plan: Vehicle breakdown, vehicle 0 after 3 completed stops -> its unfinished stops move to another vehicle, the 3 done stops stay. Failed delivery: the retried customer is never planned as the very next stop, only later (or last, if nothing else is left; decision 0023; tests only since this fix, not re-walked in a browser). *(Verified in Chrome with a separate worker process, 5 Nov 2026.)*
 
 ## Optional, tests only (say so if shown)
 - Webhooks with signed deliveries (`GET /api/webhooks/{id}/deliveries`).

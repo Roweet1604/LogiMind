@@ -26,7 +26,7 @@ Last checked: 5 Nov 2026. Words: **UNTESTED** = written but never run; **NOT VER
 - **Engine picker**: trained and evaluated on synthetic data; not a proven improvement over always using the hybrid (model card).
 - **Hybrid**: the 50/50 split between OR-Tools and the GA is untuned; the hybrid is not a clear win over OR-Tools (P3 and the held-out set, see report).
 - **GA and frozen stops**: the GA cannot keep completed stops; replans with frozen stops must use OR-Tools.
-- **Replanning**: the failed attempt's own travel is not modelled, and nothing stops an **immediate retry**: in the browser check on 5 Nov 2026 a failed delivery to customer 1 (retry on) was planned again as the very next stop. A real dispatcher would usually want a minimum delay or a later slot. The experiment used 6 synthetic instances and one seed.
+- **Replanning**: the failed attempt's own travel is not modelled. A retried delivery is no longer planned as the very next stop (fixed 5 Nov 2026, decision 0023), but there is no minimum time delay, and the GA is refused for retries. The replanning experiment used 6 synthetic instances and one seed, and ran before the retry rule.
 - **Queue**: CLI experiment scripts run outside the queue (run them when no worker is busy); polling every 0.5 s; a crashed job's solve may run twice (the result is written once).
 - **Copilot sessions** live in the API process memory (lost on restart); chat requests block until the solver finishes.
 - **Webhook SSRF guard** does not resolve host names. **Rate limiter** is per process.

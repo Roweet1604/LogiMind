@@ -11,7 +11,9 @@ Events
   shared cost model has every route end at the depot).
 * failed_delivery: a stop that was attempted but not delivered. retry=True keeps the
   customer in the plan (it is re-visited later); retry=False drops it from the instance,
-  and the plan reports it as dropped.
+  and the plan reports it as dropped. **Retry rule (decision 0023):** a retried stop is never
+  a route's next unfinished stop, unless it is that route's only remaining stop (then it is
+  at the end). Going straight back to a customer who was just not home is rarely useful.
 * urgent_order: a new customer that must be served in the replanned plan.
 """
 from __future__ import annotations
@@ -82,6 +84,7 @@ class ReplanSetup:
     to_insert: list[int]              # customers that had no place in the adjusted plan
     dropped: list[int] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    retry: list[int] = field(default_factory=list)  # retried failed deliveries (retry rule)
 
     @property
     def has_frozen(self) -> bool:
@@ -117,6 +120,7 @@ def apply_event(instance: Instance, routes: list[list[int]], event: VehicleBreak
     customers = list(instance.customers)
     blocked: list[int] = []
     to_insert: list[int] = []
+    retry: list[int] = []
     dropped: list[int] = []
     notes: list[str] = []
     suffix = ""
@@ -139,7 +143,9 @@ def apply_event(instance: Instance, routes: list[list[int]], event: VehicleBreak
         rest = [[c for c in r if c != cid] for r in rest]
         if event.retry:
             to_insert = [cid]
-            notes.append(f"delivery to customer {cid} failed; it will be re-visited")
+            retry = [cid]
+            notes.append(f"delivery to customer {cid} failed; it will be re-visited, but not as a route's next stop "
+                         "(only as a route's last remaining stop)")
         else:
             customers = [c for c in customers if c.id != cid]
             dropped = [cid]
@@ -160,10 +166,10 @@ def apply_event(instance: Instance, routes: list[list[int]], event: VehicleBreak
     if event.now is not None and not new.has_time_windows:
         notes.append("now is ignored: the instance has no time windows")
     warm = [f + r for f, r in zip(frozen, rest)]
-    leftover = insert_cheapest(timing, warm, to_insert, frozen, blocked)
+    leftover = insert_cheapest(timing, warm, to_insert, frozen, blocked, not_next=retry)
     if leftover:
         notes.append(f"warm start: no feasible insertion found for {leftover}; OR-Tools may start cold")
-    return ReplanSetup(new, timing, frozen, blocked, warm, leftover, dropped, notes)
+    return ReplanSetup(new, timing, frozen, blocked, warm, leftover, dropped, notes, retry)
 
 
 def not_before(instance: Instance, frozen_ids: set[int], now: float | None) -> Instance:
@@ -188,10 +194,17 @@ def schedule_ok(instance: Instance, route: list[int]) -> bool:
     return not instance.has_time_windows or route_schedule(instance, route).total_lateness <= TIME_EPS
 
 
+def retry_too_soon(route: list[int], n_frozen: int, retry: list[int] | set[int]) -> int | None:
+    """The retried customer that breaks the retry rule on this route (it is the next unfinished stop and other
+    unfinished stops follow it), or None."""
+    rest = route[n_frozen:]
+    return rest[0] if len(rest) > 1 and rest[0] in set(retry) else None
+
+
 def insert_cheapest(instance: Instance, routes: list[list[int]], customers: list[int], frozen: list[list[int]],
-                    blocked: list[int]) -> list[int]:
+                    blocked: list[int], not_next: list[int] | tuple = ()) -> list[int]:
     """Insert each customer at its cheapest feasible position after the frozen prefix of a vehicle that is
-    not blocked (in place). Returns the customers that fit nowhere."""
+    not blocked (in place). Customers in `not_next` keep the retry rule. Returns the customers that fit nowhere."""
     d = instance.distance_matrix()
     idx = instance.index_of()
     leftover = []
@@ -204,7 +217,10 @@ def insert_cheapest(instance: Instance, routes: list[list[int]], customers: list
                 a = idx[r[pos - 1]] if pos > 0 else 0
                 b = idx[r[pos]] if pos < len(r) else 0
                 added = d[a][idx[cid]] + d[idx[cid]][b] - d[a][b]
-                if added < best[0] and schedule_ok(instance, r[:pos] + [cid] + r[pos:]):
+                candidate = r[:pos] + [cid] + r[pos:]
+                if retry_too_soon(candidate, len(frozen[v]), not_next) is not None:
+                    continue
+                if added < best[0] and schedule_ok(instance, candidate):
                     best = (added, v, pos)
         if best[1] < 0:
             leftover.append(cid)
@@ -214,8 +230,8 @@ def insert_cheapest(instance: Instance, routes: list[list[int]], customers: list
 
 
 def check_replan(routes: list[list[int]], setup: ReplanSetup) -> list[str]:
-    """Independent of the solver: frozen stops kept, blocked vehicles idle, nothing scheduled before `now`
-    (the last via the validator on the timing instance)."""
+    """Independent of the solver: frozen stops kept, blocked vehicles idle, the retry rule kept, nothing
+    scheduled before `now` (the last via the validator on the timing instance)."""
     instance = setup.timing_instance
     problems = []
     extra = [r for r in routes[instance.vehicle_count:] if r]
@@ -228,6 +244,10 @@ def check_replan(routes: list[list[int]], setup: ReplanSetup) -> list[str]:
     for v in setup.blocked:
         if routes[v] != setup.frozen[v]:
             problems.append(f"vehicle {v} broke down but has new stops {routes[v][len(setup.frozen[v]):]}")
+    for v, prefix in enumerate(setup.frozen):
+        early = retry_too_soon(routes[v], len(prefix), setup.retry)
+        if early is not None:
+            problems.append(f"vehicle {v}: retried customer {early} is the next stop (retry rule)")
     if setup.timing_instance is not setup.instance:
         timing = validate_routes(instance, routes)
         problems += [f"with the current time applied: {v.detail}" for v in timing.violations]

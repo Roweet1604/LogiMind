@@ -33,6 +33,8 @@ def build_job(setup: ReplanSetup, engine: str, time_limit_s: float, warm_start: 
     complete_warm = warm_start and not setup.to_insert
     if engine == "ortools":
         cfg: dict[str, Any] = {"time_limit_s": time_limit_s, "frozen": setup.frozen, "blocked": setup.blocked}
+        if setup.retry:
+            cfg["not_next"] = setup.retry
         if complete_warm:
             cfg["initial_routes"] = setup.warm_routes
         return ReplanJob(setup.timing_instance, "ortools", cfg, list(range(k)),
@@ -41,6 +43,9 @@ def build_job(setup: ReplanSetup, engine: str, time_limit_s: float, warm_start: 
         raise ReplanError(f"unknown replan engine {engine!r}; expected one of {REPLAN_ENGINES}")
     if setup.has_frozen:
         raise ReplanError("the GA cannot keep completed (frozen) stops in place; use engine=ortools")
+    if setup.retry:
+        raise ReplanError("the GA cannot keep the retry rule (a retried delivery is not the next stop); "
+                          "use engine=ortools")
     free = [v for v in range(k) if v not in setup.blocked]
     if not free:
         raise ReplanError("no vehicle left to serve the remaining stops")
@@ -70,10 +75,12 @@ def routes_by_vehicle(job: ReplanJob, routes: list[list[int]], vehicle_count: in
 def setup_payload(setup: ReplanSetup, now: float | None) -> dict[str, Any]:
     """What a replan job must carry so the worker can rebuild the exact solver job (the instance is on the plan)."""
     return {"frozen": setup.frozen, "blocked": setup.blocked, "warm_routes": setup.warm_routes,
-            "to_insert": setup.to_insert, "dropped": setup.dropped, "notes": setup.notes, "now": now}
+            "to_insert": setup.to_insert, "dropped": setup.dropped, "notes": setup.notes, "now": now,
+            "retry": setup.retry}
 
 
 def setup_from(instance: Instance, p: dict[str, Any]) -> ReplanSetup:
     frozen_ids = {c for f in p["frozen"] for c in f}
     return ReplanSetup(instance, not_before(instance, frozen_ids, p.get("now")), p["frozen"], p["blocked"],
-                       p["warm_routes"], p["to_insert"], p.get("dropped") or [], p.get("notes") or [])
+                       p["warm_routes"], p["to_insert"], p.get("dropped") or [], p.get("notes") or [],
+                       p.get("retry") or [])

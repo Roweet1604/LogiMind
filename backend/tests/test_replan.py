@@ -103,6 +103,9 @@ def test_failed_delivery_retry_or_drop(env, retry):
     served = {x for r_ in new for x in r_}
     if retry:
         assert failed in served and p["replan"]["dropped_customers"] == []
+        for r_ in new:  # retry rule: never a route's next unfinished stop, unless its last one
+            done = len(routes[v][:1]) if r_ is new[v] else 0
+            assert not (len(r_) - done > 1 and r_[done] == failed), new
     else:
         assert failed not in served and p["replan"]["dropped_customers"] == [failed]
         assert failed not in {cu["id"] for cu in c.get(f"/api/plans/{p['plan_id']}", headers=ha).json()
@@ -244,3 +247,53 @@ def test_check_replan_catches_changed_frozen_stops_busy_broken_vehicle_and_early
         apply_event(small, [[1, 2, 3]], FailedDelivery(type="failed_delivery", customer_id=3, now=6))
     with pytest.raises(ReplanError):
         apply_event(TW, routes, FailedDelivery(type="failed_delivery", customer_id=routes[v][0], completed={v: 1}))
+
+
+# ---- retry rule for failed deliveries (decision 0023) ----------------------------------------------------
+# 1 (1,0), 2 (2,0), 3 (3,0), 4 (3,1). After stop 1, going 2 -> 3 -> 4 -> depot costs 6.16, strictly the cheapest
+# (next best 1 -> 4 -> 3 -> 2 -> depot, 6.24), so without the rule the failed customer 2 is retried at once.
+LINE = Instance(depot_x=0, depot_y=0, vehicle_count=1, vehicle_capacity=10, metric="euclidean", fixed_vehicle_cost=0.0,
+                customers=[Customer(1, 1.0, 0.0, 1), Customer(2, 2.0, 0.0, 1), Customer(3, 3.0, 0.0, 1),
+                           Customer(4, 3.0, 1.0, 1)], name="line")
+
+
+def solve_setup(setup, **override):
+    from app.replan.jobs import build_job
+    job = build_job(setup, "ortools", 1.0)
+    res = solve_ortools(job.instance, **{**job.config, **override})
+    assert res.routes is not None, res.message
+    return [list(r) for r in res.routes]
+
+
+def test_retry_is_not_the_next_stop():
+    from app.replan.events import retry_too_soon
+    # Vehicle 0 did customer 1; the delivery to 2 failed (retry). 2 is closest, so without the rule it comes next.
+    setup = apply_event(LINE, [[1, 2, 3, 4]], FailedDelivery(type="failed_delivery", customer_id=2,
+                                                            completed={0: 1}))
+    assert setup.retry == [2] and retry_too_soon(setup.warm_routes[0], 1, [2]) is None  # warm start keeps the rule
+    free = solve_setup(setup, not_next=None)
+    assert free[0][:2] == [1, 2]  # the weakness this rule fixes: the cheapest plan retries at once
+    routes = solve_setup(setup)
+    assert routes[0][0] == 1 and routes[0][1] != 2 and sorted(routes[0]) == [1, 2, 3, 4]
+    assert check_replan(routes, setup) == [] and validate_routes(LINE, routes).feasible
+
+
+def test_retry_may_be_next_only_when_it_is_the_last_remaining_stop():
+    setup = apply_event(LINE, [[1, 2, 3, 4]], FailedDelivery(type="failed_delivery", customer_id=4,
+                                                            completed={0: 3}))
+    routes = solve_setup(setup)
+    assert routes[0] == [1, 2, 3, 4]  # nothing else is left: the retry goes to the end
+    assert check_replan(routes, setup) == []
+
+
+def test_independent_check_catches_a_too_early_retry_and_the_ga_is_refused():
+    from app.replan.jobs import build_job
+    setup = apply_event(LINE, [[1, 2, 3, 4]], FailedDelivery(type="failed_delivery", customer_id=2,
+                                                            completed={0: 1}))
+    assert any("retried customer 2 is the next stop" in p for p in check_replan([[1, 2, 3, 4]], setup))
+    nothing_done = apply_event(LINE, [[1, 2, 3, 4]], FailedDelivery(type="failed_delivery", customer_id=2))
+    with pytest.raises(ReplanError, match="retry rule"):
+        build_job(nothing_done, "ga", 1.0)
+    dropped = apply_event(LINE, [[1, 2, 3, 4]], FailedDelivery(type="failed_delivery", customer_id=2, retry=False,
+                                                              completed={0: 1}))
+    assert dropped.retry == [] and check_replan([[1, 3, 4]], dropped) == []  # no rule without a retry

@@ -23,6 +23,7 @@ Start every session by reading this file, `PLAN.md` and `PROGRESS.md`, then run 
 - Preserve working code; evolve the baseline instead of rewriting it.
 - Make ordinary decisions yourself and record them in `docs/decisions/` (one short file per decision, numbered `NNNN-title.md`). Ask the team only about blockers and the cut line.
 - Read real errors, fix the cause, rerun the affected tests. Never skip or weaken tests to make something pass.
+- Never pipe or wrap a test or lint command in a way that hides its exit code (no `| tail`, `| grep`, `|| true` on the command itself). Write output to a file if it is long, then check the exit code (`echo $?`). Run ruff and the tests directly, and check that they pass, before each commit.
 - No must-have functionality left as TODOs or placeholders.
 - Each phase ends with passing tests, a commit and a `PROGRESS.md` update. If context or usage runs low, stop at a clean point and write the handoff in `PROGRESS.md` first.
 

@@ -117,6 +117,7 @@ def solve_ortools(
     frozen: list[list[int]] | None = None,
     blocked: list[int] | None = None,
     initial_routes: list[list[int]] | None = None,
+    not_next: list[int] | None = None,
 ) -> R.SolveResult:
     """first_solution / metaheuristic = None means: use the audited default for this
     problem type and budget class. The config records which choice was made.
@@ -124,6 +125,8 @@ def solve_ortools(
     Replanning (P7) options, all customer ids:
     * frozen[v]: stops vehicle v has already completed; they stay its first stops, in order.
     * blocked: vehicles that get no further stops (breakdown); their route ends after frozen[v].
+    * not_next: retried failed deliveries. Such a stop is never a route's next unfinished stop (the node after
+      the frozen prefix, or after the depot), unless it is the route's last stop (decision 0023).
     * initial_routes[v]: warm start. Read with ReadAssignmentFromRoutes; if OR-Tools rejects them
       (not feasible for the model), the search starts cold and the diagnostics say so.
     (The current time of a replan is applied by the caller as a later ready time, app/replan/events.py.)
@@ -139,7 +142,7 @@ def solve_ortools(
                   explicit, "partly_audited_default")}
     if instance.has_time_windows:
         config["time_scale"] = TIME_SCALE
-    replanning = any(x is not None for x in (frozen, blocked, initial_routes))
+    replanning = any(x is not None for x in (frozen, blocked, initial_routes, not_next))
     if (frozen and any(frozen) or blocked) and first_solution == "SAVINGS" and not explicit[0]:
         # P7 finding: SAVINGS found no first solution with frozen prefixes or blocked vehicles on every
         # instance we tried; the insertion heuristics extend the locked routes (decision 0012).
@@ -147,7 +150,7 @@ def solve_ortools(
         config["search_choice"] = "replan_override: SAVINGS -> PARALLEL_CHEAPEST_INSERTION"
     if replanning:
         config["replan"] = {"frozen_stops": sum(len(f) for f in frozen or []), "blocked": sorted(blocked or []),
-                            "warm_start_given": initial_routes is not None}
+                            "warm_start_given": initial_routes is not None, "retry_not_next": sorted(not_next or [])}
 
     def result(status: str, runtime: float, routes=None, message="", diag=None) -> R.SolveResult:
         return R.SolveResult(instance.instance_id, "ortools", status, runtime, routes, config,
@@ -187,7 +190,7 @@ def solve_ortools(
             _add_time_dimension(instance, manager, routing)
 
         idx_of = instance.index_of()
-        if frozen or blocked:
+        if frozen or blocked or not_next:
             solver = routing.solver()
             for v in range(instance.vehicle_count):
                 prev = routing.Start(v)
@@ -198,6 +201,11 @@ def solve_ortools(
                     prev = node_index
                 if blocked and v in blocked:
                     solver.Add(routing.NextVar(prev) == routing.End(v))
+                    continue
+                for cid in not_next or []:  # retry rule: not next after `prev`, unless it is the last stop
+                    r = manager.NodeToIndex(idx_of[cid])
+                    solver.Add(solver.IsDifferentCstVar(routing.NextVar(prev), r)
+                               + solver.IsEqualCstVar(routing.NextVar(r), routing.End(v)) >= 1)
             frozen_ids = {c for f in frozen or [] for c in f}
             for v in blocked or []:  # a broken vehicle may not take any unfinished stop
                 for c in instance.customers:
