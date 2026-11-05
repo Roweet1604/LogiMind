@@ -41,6 +41,8 @@ Effort is a rough estimate in *team-weeks* (all three members working on the pha
 
 **Status:** 5 Nov 2026 (sixth session): P6 job queue done (decision 0021); P10 first version: held-out benchmark evaluation with significance tests (decision 0022), docs, deck draft. Still open: Docker/OSRM runs (UNTESTED), copilot real-model evaluation (NOT RUN), 10 s held-out runs.
 
+**Status:** 5 Nov 2026 (seventh session): retry rule for failed deliveries (decision 0023); the 10 s held-out run is PARTIAL (stopped for low memory, decision 0024); selector tested out of distribution on the benchmarks (mixed result, negative on CVRP and at 3 s).
+
 The phases are done in order, but P4, P6 and P9 can run in parallel with the solver phases if the team splits work by person. Even with parallel work, the full must-have list needs roughly **7 to 9 calendar weeks**. That estimate is uncertain.
 
 ## Proposed cut line (depends on weeks remaining)

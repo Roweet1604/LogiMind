@@ -1,6 +1,6 @@
 # LogiMind progress
 
-Last updated: 5 Nov 2026, sixth unattended session: durable job queue + worker process, P10 evaluation (first version, held-out benchmarks), docs, deck draft. Current phase: **run what is UNTESTED (Docker Compose, OSRM) and NOT RUN (copilot with a real model), then finish P10**; see Next steps.
+Last updated: 5 Nov 2026, seventh unattended session: retry rule for failed deliveries, 10 s held-out run (PARTIAL: stopped for low memory), selector tested on the benchmarks, deck updated. Current phase: **finish the 10 s run, then run what is UNTESTED (Docker Compose, OSRM) and NOT RUN (copilot with a real model)**; see Next steps.
 
 ## Done and verified
 ### Phase 0
@@ -168,6 +168,17 @@ Last updated: 5 Nov 2026, sixth unattended session: durable job queue + worker p
 - **Deck draft** (`docs/report/deck_draft.md`): slides 1, 3, 11, 12, 13, 15, 17, 18-19, 24 with short bullets, ~60 s notes and a diagram line; placeholders [weeks remaining], [review dates]; the .pptx was not edited. It asks the team to confirm which old demo result was 10 s and which 3 s (not recorded anywhere I could check).
 - **Tests at the end of this session (5 Nov 2026, Python 3.14.7 / OR-Tools 9.15.6755):** backend **265 passed**, 0 failed (16 library deprecation warnings); console **34 passed**; driver PWA **17 passed**; `python -m ruff check .` passes.
 
+### Seventh unattended session, 5 Nov 2026 (commits f8d2912, 569d074, 06e0de0, and the deck/PROGRESS commit)
+- **Opening run (exit codes checked directly):** ruff exit 0; backend 265 passed; console 34; driver PWA 17.
+- **CLAUDE.md rule added:** never pipe or wrap a test or lint command so that its exit code is hidden; check ruff and the tests directly before each commit (followed for every commit this session).
+- **Retry rule, done** (decision 0023, commit f8d2912). A retried failed delivery is never a route's next unfinished stop, unless it is that route's only remaining stop. OR-Tools: hard constraint (`not_next` in `backend/app/solvers/ortools_solver.py`); warm start: `insert_cheapest` skips the position; `check_replan` verifies it independently (`retry_too_soon` in `backend/app/replan/events.py`); the GA is refused for retries (`backend/app/replan/jobs.py`). 3 new tests in `backend/tests/test_replan.py`; one shows that without the rule OR-Tools retries at once on the test instance. My first test instance had a tie between two routes, so it did not show the problem; replaced by one where the immediate retry is strictly cheapest. Not re-walked in a browser.
+- **10 s held-out run: PARTIAL** (decision 0024, commit 569d074). The session stopped the run after **134 of 216 runs** because the laptop was critically low on memory; it was **not restarted** (session rule). All 24 instances have 1-2 repeats per engine instead of 3. One run (A-n69-k9, GA + LS, seed 1) reports 2412 s for a 10 s budget (machine stalled); runs longer than the guard limit (1.5 x budget + 5 s) are now left out of every statistic and listed (report section 1.7).
+  - **Preliminary answers:** the OR-Tools advantage with time windows **holds at 10 s** (OR-Tools better on 10 of 12, Holm p = 0.0176). The GA + LS advantage on capacity-only problems is in the **same direction but not significant at 10 s** (8 better / 2 ties / 2 worse, Holm p = 0.53). Hybrid vs OR-Tools: not significant at either budget.
+  - The report now has an instance-size table (32-119 customers; the Solomon instances have 100), per-budget Holm (9 tests each) and a "does it hold at 10 s" table whose verdicts are computed. PARTIAL banners are generated from the manifest and disappear when the run is complete.
+- **Selector out-of-distribution test, done** (commit 06e0de0; `experiments/selector_heldout_eval.py`, results in `experiments/results/selector_heldout_2026-11-05/`, report section 2.2). No solver runs: the served selector picks an engine for each of 48 benchmark cases (24 instances x 3 s / 10 s; 39 outside its training range), scored against the stored runs. Mean regret: **selector 0.49%**, always hybrid 0.62%, always OR-Tools 1.02%, always GA + LS 5.11%. **Negative results:** always GA + LS beats it on CVRP (0.31% vs 0.64%), always hybrid beats it at 3 s (0.51% vs 0.56%); on VRPTW it always picked OR-Tools; it made the same choice at both budgets for all 24 instances. The 10 s half uses the partial run. No significance test (cases not independent). Model card updated.
+- **Deck draft updated** (`docs/report/deck_draft.md`): Result A = 10 s run, Result B = 3 s run of the same instance (captions with distance and cost); new held-out and selector findings on slides 13, 15, 19, 24, marked preliminary where they use the 10 s run. Placeholders kept; the .pptx was not edited.
+- **Tests at the end of this session (5 Nov 2026, Python 3.14.7 / OR-Tools 9.15.6755; exit codes checked):** backend **268 passed** (exit 0, 16 library deprecation warnings); console **34 passed** (exit 0); driver PWA **17 passed** (exit 0); `python -m ruff check .` exit 0.
+
 ## First solver observations from P1 (5 s, one seed, Rohit's laptop; indicative only, do not quote; superseded for OR-Tools by the P2 audit)
 | Instance | OR-Tools (default) | GA (with repair) |
 | --- | --- | --- |
@@ -191,18 +202,18 @@ Last updated: 5 Nov 2026, sixth unattended session: durable job queue + worker p
 - P6: job queue done and tested on SQLite (incl. a killed worker process). Docker Compose (with the worker service), Postgres and `.env.example` are written but **UNTESTED** (no Docker). Migrations tested on SQLite only. CLI experiment scripts run outside the queue.
 - P4 limits: never run against a self-hosted OSRM; no OSRM map extract downloaded (559 MB smallest official file); detour factor 1.3 and 25 km/h are uncalibrated assumptions; OSRM durations are free-flow; the cache keeps whole matrices only.
 - Webhook SSRF guard does not resolve host names (decision 0010). The rate limiter is in-process only.
-- Replanning: the GA cannot keep frozen stops. The failed attempt's own travel is not modelled, and a retried failed delivery can be planned as the very next stop (seen 5 Nov 2026). The experiment covered 6 synthetic instances with one seed.
-- Selector: synthetic data only; not a proven improvement over always-hybrid (model card).
-- P10 first version only: 3 s on the held-out set (10 s not run: compute cap); copilot numbers NOT RUN; no calibration of the distance estimate. Gehring-Homberger not downloaded; hybrid split untuned. The full list is in `docs/limitations.md`.
+- Replanning: the GA cannot keep frozen stops or retries. The failed attempt's own travel is not modelled; a retried delivery is no longer the next stop (decision 0023), but there is no minimum time delay. The replanning experiment (6 synthetic instances, one seed) ran before the retry rule.
+- Selector: trained on synthetic data only; on the held-out benchmarks it had the lowest overall regret but lost to always-GA+LS on CVRP and to always-hybrid at 3 s; it ignores the budget (model card).
+- P10: the 10 s held-out run is PARTIAL (134 of 216 runs; decision 0024; resume command there); copilot numbers NOT RUN; no calibration of the distance estimate. Gehring-Homberger not downloaded; hybrid split untuned. The full list is in `docs/limitations.md`.
 - Team answers still missing (docs/decisions/0002). Docker and Ollama not installed.
 
 ## Known quirks
 - Instance ids hash coordinates as given: `10` and `10.0` give different ids (baseline behaviour, kept so old ids stay valid). The API always sends floats.
 
 ## Next steps
-1. Install Docker Desktop (WSL2); run `docker compose up --build` (API + worker + Postgres) and fix what breaks (migrations and the queue lock on Postgres first). Team: choose the OSRM map source (decision 0020), run `osrm-prepare`, create one plan with `distance_source=osrm`, and re-record the test fixture from the self-hosted server.
-2. Team: review and freeze `docs/eval/copilot_instructions_DRAFT.json`; install Ollama (`ollama pull llama3.2:3b`), run the copilot on the frozen set and add the numbers to `docs/report/evaluation.md` for that exact model only. Team: fill [weeks remaining] / [review dates] in `docs/report/deck_draft.md` and confirm the old demo budgets.
-3. Finish P10: held-out runs at 10 s (about 36 min; run when no worker is busy), a console warning when no worker runs, a minimum delay before retrying a failed delivery, and the driver PWA on a real phone.
+1. Finish the 10 s held-out run with `--resume` (82 runs, about 14 min; close other programs first so memory is free; command in decision 0024), then `python experiments/selector_heldout_eval.py` and `python experiments/p10_report.py`; the PARTIAL labels go away by themselves. Update the deck's slide 24 if a verdict changes.
+2. Install Docker Desktop (WSL2); run `docker compose up --build` (API + worker + Postgres) and fix what breaks (migrations and the queue lock on Postgres first). Team: choose the OSRM map source (decision 0020) and run one plan with `distance_source=osrm`.
+3. Team: freeze `docs/eval/copilot_instructions_DRAFT.json`; install Ollama and measure the copilot for that exact model; fill [weeks remaining] / [review dates] in the deck. Then: retrain or drop the selector's budget-blind trees (it never changes its choice with the budget), and test the driver PWA on a phone.
 
 ## Restart commands
 See CLAUDE.md "Commands". In a new session: read CLAUDE.md, PLAN.md and PROGRESS.md, run the backend tests and report the real result.
@@ -232,6 +243,15 @@ Commands added in the third unattended session:
 "$TEMP/lmv/Scripts/python" -m pip install -r backend/requirements.txt   # now also langgraph, langchain-core, langchain-ollama
 # frontend tests: copy frontend/src etc. to %TEMP%\lmfe_s3 (npm ci there once), then:  npx vitest run   # 30 passed
 LOGIMIND_LLM_PROVIDER=none uvicorn app.main:app --port 8000             # copilot off on purpose; default "ollama" uses it only if running
+```
+
+Commands added in the seventh unattended session (Git Bash, repo root; exit codes checked, never piped):
+```
+"$TEMP/lmv/Scripts/python" -m ruff check .; echo "ruff exit=$?"
+cd backend && timeout 1500 "$TEMP/lmv/Scripts/python" -m pytest -q > "$TEMP/backend.log" 2>&1; echo "pytest exit=$?"; tail -1 "$TEMP/backend.log"   # 268 passed
+"$TEMP/lmv/Scripts/python" experiments/compare_engines.py --estimate-only --methods ortools ga_ls hybrid_seed_ls --budgets 10 --seeds 3 --instances <24 keys>   # 216 runs, ~36 min
+"$TEMP/lmv/Scripts/python" experiments/selector_heldout_eval.py   # no solver runs
+"$TEMP/lmv/Scripts/python" experiments/p10_report.py              # no solver runs
 ```
 
 Commands added in the sixth unattended session (Git Bash; backend/ unless noted):

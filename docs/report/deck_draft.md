@@ -1,10 +1,14 @@
 # Deck draft: revised slides (Review 3)
 
-DRAFT for the team, 5 Nov 2026. Written from PROMPT B in `docs/context/LogiMind_Kickoff_Prompts_ZeroCost.md`. **The .pptx was not edited.** Placeholders: [weeks remaining], [review dates]. Every number here comes from `docs/report/evaluation.md` or the committed result files; nothing is invented. Status words: **built** (code + passing tests), **verified** (also checked by hand in a browser), **not run / untested** (no evidence yet).
+DRAFT for the team, 5 Nov 2026 (updated later the same day with the 10 s and selector results). Written from PROMPT B in `docs/context/LogiMind_Kickoff_Prompts_ZeroCost.md`. **The .pptx was not edited.** Placeholders: [weeks remaining], [review dates]. Every number here comes from `docs/report/evaluation.md` or the committed result files; nothing is invented. Status words: **built** (code + passing tests), **verified** (also checked by hand in a browser), **not run / untested** (no evidence yet).
 
 Notes for the slides NOT in this list:
 - Keep the literature review slides (4-10) as they are.
-- Old demo Results A and B (slides 22-23) are the SAME instance at two time budgets. New captions: "Same instance, [10 s or 3 s: confirm from the demo recording] budget". Keep both distance and cost on the slide (A: OR-Tools 246.29 km / 496.29 cost units vs GA 246.54 km / 496.54; B: OR-Tools 321.98 km / 571.98 vs GA 263.30 km / 513.30). Add: "single instance, single run: indicative only; see Experimental Evaluation". Move both under the heading "Experimental Evaluation (Review 2 comparison)".
+- Old demo Results A and B (slides 22-23) are the SAME instance at two time budgets (confirmed by the team): **Result A = the 10 s run, Result B = the 3 s run.** New captions, keeping distance and cost:
+  - Result A, "Same instance, 10 s budget": OR-Tools 246.29 km / 496.29 cost units vs GA 246.54 km / 496.54; OR-Tools 0.25 km (about 0.10%) shorter.
+  - Result B, "Same instance, 3 s budget": OR-Tools 321.98 km / 571.98 cost units vs GA 263.30 km / 513.30; GA 58.68 km (about 18.2%) shorter.
+  - Footnote on both: "One instance, one run each, Review 2 code (before the audited OR-Tools defaults): indicative only. With 3 s, OR-Tools' plan was much longer; with 10 s, the two engines were almost equal. See Experimental Evaluation."
+  - Move both under the heading "Experimental Evaluation (Review 2 comparison)". The held-out benchmark results (slide 24 notes, `docs/report/evaluation.md`) are the controlled version of this comparison.
 - Slide 16 ("Proposed Solution") says the GA follows Zhu (2022). Our GA is our own design (giant tour + split, fleet repair, local search), not the Zhu design; correct or drop that sentence.
 
 ---
@@ -81,7 +85,7 @@ Routing with capacities and time windows is hard, and it gets harder as the day 
 **On slide**
 - O1 Common model: CVRP with time windows; independent validator *(built)*
 - O2 Engines: OR-Tools (audited), own GA, hybrid; equal-clock evaluation *(built; evaluated)*
-- O3 Engine picker with explanation *(built; synthetic data; not a proven gain)*
+- O3 Engine picker with explanation *(built; trained on synthetic data; mixed result on public benchmarks)*
 - O4 Platform: API keys, tenants, import, job queue, webhooks, replanning *(built)*
 - O5 Copilot on a local LLM; driver PWA; simulated ETA messages *(built; real-model evaluation not run)*
 - O6 Road distances (self-hosted OSRM) with flagged fallback *(built; OSRM not run yet)*
@@ -102,12 +106,13 @@ We have six objectives. The first two are the foundation: one problem model with
 - Instances: Solomon VRPTW and CVRPLIB CVRP (published best-known values, source and date recorded) + labelled synthetic instances
 - Engines get the same instance, matrix, objective and TOTAL time budget; runs one at a time
 - Every plan -> independent validator -> metrics (gap, runtime, violations)
-- Held-out evaluation: 24 instances never used for tuning, 3 repeats, Wilcoxon signed-rank + Holm
+- Held-out evaluation: 24 instances never used for tuning, 3 s and 10 s, repeats, Wilcoxon signed-rank + Holm
+- Picker tested out of distribution: its choices scored against the stored benchmark runs
 - Selector: features -> dataset -> grouped cross-validation -> regret vs baselines
 - Copilot: intents in a fixed schema; tools return numbers; replies only quote tool numbers
 
 **Speaker notes (~60 s)**
-Our method is built around fairness and evidence. We use the standard Solomon and CVRPLIB benchmark sets, because they have published best-known solutions; we record where and when we took each value. Every engine gets the same instance, the same distance matrix, the same objective and the same total time, including any set-up, and runs are executed one at a time. Every plan goes through an independent validator, so a solver cannot grade itself. For the final evaluation we added twenty-four instances that were never used to tune anything, ran three repeats per engine, and tested differences across instances with the Wilcoxon signed-rank test and a Holm correction. The selector is trained on generated instances and checked with cross-validation that holds out whole families. The copilot is evaluated separately on a fixed instruction set, once a real model is installed.
+Our method is built around fairness and evidence. We use the standard Solomon and CVRPLIB benchmark sets, because they have published best-known solutions; we record where and when we took each value. Every engine gets the same instance, the same distance matrix, the same objective and the same total time, including any set-up, and runs are executed one at a time. Every plan goes through an independent validator, so a solver cannot grade itself. For the final evaluation we added twenty-four instances that were never used to tune anything, ran them at three and ten seconds with repeats, and tested differences across instances with the Wilcoxon signed-rank test and a Holm correction. The selector is trained on generated instances and checked with cross-validation that holds out whole families; we then tested it on the public benchmarks, which it never saw, by scoring its choices against what each engine actually achieved there. The copilot is evaluated separately on a fixed instruction set, once a real model is installed.
 
 **Diagram:** pipeline: instances -> (OR-Tools | GA | hybrid) -> validator -> metrics -> statistics; selector feeding the engine choice.
 
@@ -153,7 +158,7 @@ This slide shows what is done. We split the work into ten phases. Phases one to 
 **On slide**
 - Week 1: Docker Compose + PostgreSQL run; self-hosted OSRM on a Bengaluru extract
 - Week 2: install Ollama; freeze the 50-item copilot set; measure the real model
-- Week 3: phone test of the driver app; 10 s held-out runs; final report and deck
+- Week 3: phone test of the driver app; finish the 10 s held-out run (82 of 216 runs left); final report and deck
 - Reviews: [review dates]
 - **Cut line** if time is short: keep validator, honest labels, stub notifications; drop OSRM run before copilot evaluation
 
@@ -170,11 +175,12 @@ With [weeks remaining] weeks left, the plan is three short blocks. First, run wh
 **On slide**
 - LogiMind turns a solver comparison into a working, API-first planning platform
 - Plans are always validated; failures, timeouts and fallbacks are shown as such
-- 24 held-out benchmarks, 3 s: GA+LS beats OR-Tools on CVRP (10 of 12); OR-Tools beats GA+LS on VRPTW (12 of 12); hybrid not significantly different from OR-Tools
-- Negative results kept: hybrid not a clear win; engine picker not a proven gain
+- 24 held-out benchmarks: with time windows OR-Tools beats GA+LS at 3 s and 10 s (10 s preliminary)
+- Capacity only: GA+LS ahead at 3 s (just significant); same direction at 10 s but not significant (preliminary)
+- Negative results kept: hybrid not significantly different from OR-Tools; the picker loses to always-GA+LS on CVRP and to always-hybrid at 3 s
 - Next: real-model copilot evaluation, OSRM run, Docker deployment, phone test
 
 **Speaker notes (~60 s)**
-To conclude: we took the Review 2 comparison and built it into a platform. Dispatchers can import orders, get a validated plan, replan after a disruption, and send drivers a link to their route. Every plan passes an independent validator, and anything that fails, times out or falls back to straight-line distances says so. On twenty-four benchmark instances that were never used for tuning, with three seconds per run, our GA with local search had a smaller gap than OR-Tools on ten of twelve capacity-only instances, which is just significant after correction, while OR-Tools was better on all twelve time-window instances. The hybrid was not significantly different from OR-Tools. We also report what did not work: the hybrid is not a clear improvement over OR-Tools with its current settings, and our engine picker, trained on synthetic data, is not proven better than always using the hybrid. Next we will measure the copilot with a real local model, run our own OSRM, deploy with Docker, and test the driver app on a phone. Thank you.
+To conclude: we took the Review 2 comparison and built it into a platform. Dispatchers can import orders, get a validated plan, replan after a disruption, and send drivers a link to their route. Every plan passes an independent validator, and anything that fails, times out or falls back to straight-line distances says so. On twenty-four benchmark instances that were never used for tuning, OR-Tools was clearly better than our GA on the time-window instances, at three seconds and again at ten. On the capacity-only instances our GA with local search was better at three seconds, just significantly; at ten seconds it was still ahead on most instances, but no longer significantly. The ten-second results are preliminary: that run was stopped part-way because the laptop ran low on memory, and we will complete it. We also report what did not work: the hybrid is not significantly different from OR-Tools with its current settings, and our engine picker, trained on synthetic data, had the lowest overall regret on the benchmarks but lost to always using the GA on capacity-only instances and to always using the hybrid at three seconds. Next we will measure the copilot with a real local model, run our own OSRM, deploy with Docker, and test the driver app on a phone. Thank you.
 
 **Diagram:** none.
