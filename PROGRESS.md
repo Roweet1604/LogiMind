@@ -1,6 +1,6 @@
 # LogiMind progress
 
-Last updated: 5 Nov 2026, fifth unattended session: flaky guard test fixed, P4 road matrix done offline, Docker Compose written but UNTESTED, console flows checked in a browser. Current phase: **check Compose + OSRM on a machine with Docker, P8 real-model check (Ollama), job queue, then P10**; see Next steps.
+Last updated: 5 Nov 2026, sixth unattended session: durable job queue + worker process, P10 evaluation (first version, held-out benchmarks), docs, deck draft. Current phase: **run what is UNTESTED (Docker Compose, OSRM) and NOT RUN (copilot with a real model), then finish P10**; see Next steps.
 
 ## Done and verified
 ### Phase 0
@@ -144,6 +144,30 @@ Last updated: 5 Nov 2026, fifth unattended session: flaky guard test fixed, P4 r
   - **Not verified:** the copilot answering anything (no model); the breakdown and failed-delivery replan forms in the browser (covered by tests only); `.xlsx` import in the browser; OSRM road distances end to end (no OSRM server; only replayed recordings in tests).
 - **Tests at the end of this session (5 Nov 2026, Python 3.14.7 / OR-Tools 9.15.6755):** backend **257 passed**, 0 failed (16 library deprecation warnings); console **34 passed**; driver PWA **17 passed**; `python -m ruff check .` passes.
 
+### Sixth unattended session, 5 Nov 2026 (commits 5598d08, 5221166, 05cf946, and the deck/PROGRESS commit)
+- **Opening run (before any change):** backend 257 passed; ruff clean; console 34 passed; driver PWA 17 passed. Docker and Ollama still not installed.
+- **P6 job queue, done** (decision 0021, commit 5598d08).
+  - Table `jobs` + `queue_lock` (migration 0006); a plan and its job are committed in one transaction.
+  - Worker process `python -m app.jobs.worker` (`backend/app/jobs/`: `queue.py` claim/heartbeat/finish/recover, `execute.py` plan/replan/benchmark execution moved out of `services/plans.py`, `worker.py` loop + CLI).
+  - The API runs no solver jobs (`LOGIMIND_WORKER=external`, the default); `inline` runs the same loop in an API thread for development and the tests (`tests/conftest.py`).
+  - Benchmark jobs (research runs) start only when nothing else runs and block everything while they run; planning jobs may run side by side; FIFO. Claims are serialized by a lock row.
+  - Heartbeat every 2 s; a job silent for 30 s is requeued; after 2 claims the job and its plan fail with the reason and a `plan.failed` webhook.
+  - Tenant isolation: the worker writes through the job tenant's session (tested with a forged job). `GET /api/plans/{id}` shows the job (attempts, worker, requeues). `/api/health` shows the queue.
+  - Tests: 8 new in `tests/test_jobs.py` (FIFO and benchmark rules, 8 concurrent claimers get 1 benchmark job, stale requeue then fail, hard-timeout guard + webhook through the queue, worker crashing twice fails the plan, forged cross-tenant job, and **two real worker processes: the first killed mid-job, the second finishes it with attempts = 2**; that test passed 4 of 4 runs). All existing API tests pass through the queue unchanged.
+  - Compose has a `worker` service (UNTESTED, no Docker).
+- **P10 evaluation, first version** (decision 0022, commit 5221166; `docs/report/evaluation.md`).
+  - Found: all 10 P3 comparison instances are P2 audit instances, so the P3 tables are biased towards OR-Tools (now labelled so).
+  - New: **24 held-out instances** (12 Solomon VRPTW, 12 CVRPLIB CVRP), OR-Tools / GA + LS / hybrid, 3 s, 3 repeats = 216 runs; estimate 11 min, actual 650 s (the only new solver compute this session).
+  - Results (Wilcoxon signed-rank over instances, Holm-corrected): CVRP: GA + LS better than OR-Tools on 10 of 12 (p = 0.048, borderline); VRPTW: OR-Tools better than GA + LS on 12 of 12 (p = 0.0044); **hybrid not significantly different from OR-Tools** on CVRP, VRPTW or all 24 (negative result). One infeasible run: GA + LS on A-n45-k6 used 7 of 6 vehicles (caught by the validator).
+  - Selector and replanning sections are summaries of stored synthetic runs. **Copilot: NOT RUN** (no model; eval set still DRAFT).
+  - `experiments/p10_report.py` writes the report, CSV tables and SVG figures from stored files only; the figures were checked in a browser.
+  - Process note: the first commit of this item passed ruff through a pipe that hid 8 lint errors; fixed and folded into the same (unpushed) commit with `--amend`.
+- **Docs** (commit 05cf946): `docs/architecture.md`, `docs/api_guide.md`, `docs/demo_script.md`, `docs/limitations.md`; README links them.
+  - Demo re-walked in Chrome with a **separate worker process** (API in external mode): CSV import, plan with the OSRM fallback warning, urgent-order replan, **vehicle-breakdown and failed-delivery replans** (first browser check of these two forms); jobs ran on the worker (`worker_id` on the plan; frozen stops kept; 0 violations).
+  - **New weakness found:** a failed delivery with retry was planned again as the very next stop (immediate retry). Listed in limitations.
+- **Deck draft** (`docs/report/deck_draft.md`): slides 1, 3, 11, 12, 13, 15, 17, 18-19, 24 with short bullets, ~60 s notes and a diagram line; placeholders [weeks remaining], [review dates]; the .pptx was not edited. It asks the team to confirm which old demo result was 10 s and which 3 s (not recorded anywhere I could check).
+- **Tests at the end of this session (5 Nov 2026, Python 3.14.7 / OR-Tools 9.15.6755):** backend **265 passed**, 0 failed (16 library deprecation warnings); console **34 passed**; driver PWA **17 passed**; `python -m ruff check .` passes.
+
 ## First solver observations from P1 (5 s, one seed, Rohit's laptop; indicative only, do not quote; superseded for OR-Tools by the P2 audit)
 | Instance | OR-Tools (default) | GA (with repair) |
 | --- | --- | --- |
@@ -162,23 +186,23 @@ Last updated: 5 Nov 2026, fifth unattended session: flaky guard test fixed, P4 r
   - The server does not strip EXIF from photos; only the PWA's re-encoding does, and that is untested in a browser.
   - Without `LOGIMIND_DRIVER_LINK_SECRET`, links die on restart. Production needs HTTPS and CORS (or the same origin) for the PWA.
   - The driver app has not been tried on a real phone.
-- Ops console in a browser: sign-in, import (good and bad CSV), plan with the fallback flag, urgent-order replan and the copilot's "no model" state were checked on 5 Nov 2026. Not checked in a browser: breakdown and failed-delivery replan forms, `.xlsx` import, the copilot with a model.
+- Ops console in a browser: sign-in, import (good and bad CSV), plan with the fallback flag, all three replan forms and the copilot's "no model" state were checked on 5 Nov 2026. Not checked in a browser: `.xlsx` import, the copilot with a model, the research pages and the Drivers panel since the queue change. The console does not warn when no worker is running (plans just stay queued).
 - Copilot sessions are in memory (lost on restart). Chat requests block until the solver finishes.
-- Rest of P6: no job queue beyond the single solver thread (so no separate worker service). Docker Compose, Postgres and `.env.example` are written but **UNTESTED** (no Docker). Migrations tested on SQLite only.
+- P6: job queue done and tested on SQLite (incl. a killed worker process). Docker Compose (with the worker service), Postgres and `.env.example` are written but **UNTESTED** (no Docker). Migrations tested on SQLite only. CLI experiment scripts run outside the queue.
 - P4 limits: never run against a self-hosted OSRM; no OSRM map extract downloaded (559 MB smallest official file); detour factor 1.3 and 25 km/h are uncalibrated assumptions; OSRM durations are free-flow; the cache keeps whole matrices only.
 - Webhook SSRF guard does not resolve host names (decision 0010). The rate limiter is in-process only.
-- Replanning: the GA cannot keep frozen stops. The failed attempt's own travel is not modelled. The experiment covered 6 synthetic instances with one seed.
+- Replanning: the GA cannot keep frozen stops. The failed attempt's own travel is not modelled, and a retried failed delivery can be planned as the very next stop (seen 5 Nov 2026). The experiment covered 6 synthetic instances with one seed.
 - Selector: synthetic data only; not a proven improvement over always-hybrid (model card).
-- P10 not started. Gehring-Homberger not downloaded; hybrid split untuned.
+- P10 first version only: 3 s on the held-out set (10 s not run: compute cap); copilot numbers NOT RUN; no calibration of the distance estimate. Gehring-Homberger not downloaded; hybrid split untuned. The full list is in `docs/limitations.md`.
 - Team answers still missing (docs/decisions/0002). Docker and Ollama not installed.
 
 ## Known quirks
 - Instance ids hash coordinates as given: `10` and `10.0` give different ids (baseline behaviour, kept so old ids stay valid). The API always sends floats.
 
 ## Next steps
-1. Install Docker Desktop (WSL2), then run `docker compose up --build` and fix what breaks (Postgres migrations first). Team: choose the OSRM map source (decision 0020), record URL/date/SHA-256, run `osrm-prepare`, set `LOGIMIND_OSRM_URL`, create one plan with `distance_source=osrm`, and re-record the test fixture from the self-hosted server.
-2. Team: review and freeze `docs/eval/copilot_instructions_DRAFT.json`; install Ollama (`ollama pull llama3.2:3b`) and run the copilot on the frozen set; record model, version and results honestly. Also still open: the driver PWA on a real phone.
-3. Job queue (last P6 item) so a separate worker container becomes real; then P10 (include a calibration of the 1.3 detour factor and 25 km/h against OSRM, and a note that OSRM times are free-flow).
+1. Install Docker Desktop (WSL2); run `docker compose up --build` (API + worker + Postgres) and fix what breaks (migrations and the queue lock on Postgres first). Team: choose the OSRM map source (decision 0020), run `osrm-prepare`, create one plan with `distance_source=osrm`, and re-record the test fixture from the self-hosted server.
+2. Team: review and freeze `docs/eval/copilot_instructions_DRAFT.json`; install Ollama (`ollama pull llama3.2:3b`), run the copilot on the frozen set and add the numbers to `docs/report/evaluation.md` for that exact model only. Team: fill [weeks remaining] / [review dates] in `docs/report/deck_draft.md` and confirm the old demo budgets.
+3. Finish P10: held-out runs at 10 s (about 36 min; run when no worker is busy), a console warning when no worker runs, a minimum delay before retrying a failed delivery, and the driver PWA on a real phone.
 
 ## Restart commands
 See CLAUDE.md "Commands". In a new session: read CLAUDE.md, PLAN.md and PROGRESS.md, run the backend tests and report the real result.
@@ -208,6 +232,17 @@ Commands added in the third unattended session:
 "$TEMP/lmv/Scripts/python" -m pip install -r backend/requirements.txt   # now also langgraph, langchain-core, langchain-ollama
 # frontend tests: copy frontend/src etc. to %TEMP%\lmfe_s3 (npm ci there once), then:  npx vitest run   # 30 passed
 LOGIMIND_LLM_PROVIDER=none uvicorn app.main:app --port 8000             # copilot off on purpose; default "ollama" uses it only if running
+```
+
+Commands added in the sixth unattended session (Git Bash; backend/ unless noted):
+```
+uvicorn app.main:app --port 8000          # API only queues jobs (LOGIMIND_WORKER=external, default)
+python -m app.jobs.worker                 # second terminal: runs plans, replans and research runs
+LOGIMIND_WORKER=inline uvicorn app.main:app --port 8000   # one-process development (tests do this)
+timeout 1500 "$TEMP/lmv/Scripts/python" -m pytest -q        # 265 passed (tests/test_jobs.py starts real worker processes)
+# repo root:
+"$TEMP/lmv/Scripts/python" experiments/compare_engines.py --estimate-only --methods ortools ga_ls hybrid_seed_ls --budgets 3 --seeds 3 --instances <24 held-out keys, see decision 0022>
+"$TEMP/lmv/Scripts/python" experiments/p10_report.py         # rebuilds docs/report from stored runs (no solver runs)
 ```
 
 Commands added in the fifth unattended session (Git Bash, repo root):
