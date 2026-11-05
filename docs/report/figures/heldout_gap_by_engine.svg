@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 360" width="760" height="360" font-family="Inter, Segoe UI, sans-serif" role="img" aria-label="Gap to best-known by engine, 24 held-out instances, 3 s each">
+<rect width="760" height="360" fill="#FFFFFF"/>
+<text x="64" y="24" font-size="15" fill="#15191C" font-weight="600">Gap to best-known by engine, 24 held-out instances, 3 s each</text>
+<text x="64" y="42" font-size="11" fill="#596067">Each dot = one instance (mean over repeats); bar = median. Lower is better. Table: tables/heldout_per_instance.csv</text>
+<line x1="64" x2="736" y1="290.0" y2="290.0" stroke="#E2DED2"/>
+<text x="56" y="294.0" font-size="11" fill="#596067" text-anchor="end">0%</text>
+<line x1="64" x2="736" y1="273.3" y2="273.3" stroke="#E2DED2"/>
+<text x="56" y="277.3" font-size="11" fill="#596067" text-anchor="end">2%</text>
+<line x1="64" x2="736" y1="256.6" y2="256.6" stroke="#E2DED2"/>
+<text x="56" y="260.6" font-size="11" fill="#596067" text-anchor="end">4%</text>
+<line x1="64" x2="736" y1="239.9" y2="239.9" stroke="#E2DED2"/>
+<text x="56" y="243.9" font-size="11" fill="#596067" text-anchor="end">6%</text>
+<line x1="64" x2="736" y1="223.1" y2="223.1" stroke="#E2DED2"/>
+<text x="56" y="227.1" font-size="11" fill="#596067" text-anchor="end">8%</text>
+<line x1="64" x2="736" y1="206.4" y2="206.4" stroke="#E2DED2"/>
+<text x="56" y="210.4" font-size="11" fill="#596067" text-anchor="end">10%</text>
+<line x1="64" x2="736" y1="189.7" y2="189.7" stroke="#E2DED2"/>
+<text x="56" y="193.7" font-size="11" fill="#596067" text-anchor="end">12%</text>
+<line x1="64" x2="736" y1="173.0" y2="173.0" stroke="#E2DED2"/>
+<text x="56" y="177.0" font-size="11" fill="#596067" text-anchor="end">14%</text>
+<line x1="64" x2="736" y1="156.3" y2="156.3" stroke="#E2DED2"/>
+<text x="56" y="160.3" font-size="11" fill="#596067" text-anchor="end">16%</text>
+<line x1="64" x2="736" y1="139.6" y2="139.6" stroke="#E2DED2"/>
+<text x="56" y="143.6" font-size="11" fill="#596067" text-anchor="end">18%</text>
+<line x1="64" x2="736" y1="122.9" y2="122.9" stroke="#E2DED2"/>
+<text x="56" y="126.9" font-size="11" fill="#596067" text-anchor="end">20%</text>
+<line x1="64" x2="736" y1="106.1" y2="106.1" stroke="#E2DED2"/>
+<text x="56" y="110.1" font-size="11" fill="#596067" text-anchor="end">22%</text>
+<line x1="64" x2="736" y1="89.4" y2="89.4" stroke="#E2DED2"/>
+<text x="56" y="93.4" font-size="11" fill="#596067" text-anchor="end">24%</text>
+<line x1="64" x2="736" y1="72.7" y2="72.7" stroke="#E2DED2"/>
+<text x="56" y="76.7" font-size="11" fill="#596067" text-anchor="end">26%</text>
+<line x1="64" x2="736" y1="56.0" y2="56.0" stroke="#E2DED2"/>
+<text x="56" y="60.0" font-size="11" fill="#596067" text-anchor="end">28%</text>
+<text x="16" y="173" font-size="11" fill="#596067" transform="rotate(-90 16 173)" text-anchor="middle">gap to best-known (%)</text>
+<text x="232" y="346" font-size="12" fill="#15191C" text-anchor="middle" font-weight="600">CVRP (12 instances)</text>
+<circle cx="123.8" cy="290.0" r="4.5" fill="#2A5DA8" stroke="#FFFFFF" stroke-width="2"><title>OR-Tools: 0.00%</title></circle>
+<circle cx="113.6" cy="270.0" r="4.5" fill="#2A5DA8" stroke="#FFFFFF" stroke-width="2"><title>OR-Tools: 2.39%</title></circle>
+<circle cx="107.1" cy="280.9" r="4.5" fill="#2A5DA8" stroke="#FFFFFF" stroke-width="2"><title>OR-Tools: 1.08%</title></circle>
+<circle cx="106.5" cy="223.6" r="4.5" fill="#2A5DA8" stroke="#FFFFFF" stroke-width="2"><title>OR-Tools: 7.94%</title></circle>
+<circle cx="128.8" cy="271.3" r="4.5" fill="#2A5DA8" stroke="#FFFFFF" stroke-width="2"><title>OR-Tools: 2.24%</title></circle>
+<circle cx="131.6" cy="232.9" r="4.5" fill="#2A5DA8" stroke="#FFFFFF" stroke-width="2"><title>OR-Tools: 6.83%</title></circle>
+<circle cx="123.0" cy="266.6" r="4.5" fill="#2A5DA8" stroke="#FFFFFF" stroke-width="2"><title>OR-Tools: 2.80%</title></circle>
+<circle cx="126.4" cy="251.8" r="4.5" fill="#2A5DA8" stroke="#FFFFFF" stroke-width="2"><title>OR-Tools: 4.57%</title></circle>
+<circle cx="121.2" cy="271.3" r="4.5" fill="#2A5DA8" stroke="#FFFFFF" stroke-width="2"><title>OR-Tools: 2.24%</title></circle>
+<circle cx="132.2" cy="245.0" r="4.5" fill="#2A5DA8" stroke="#FFFFFF" stroke-width="2"><title>OR-Tools: 5.39%</title></circle>
+<circle cx="128.8" cy="214.1" r="4.5" fill="#2A5DA8" stroke="#FFFFFF" stroke-width="2"><title>OR-Tools: 9.08%</title></circle>
+<circle cx="106.1" cy="172.6" r="4.5" fill="#2A5DA8" stroke="#FFFFFF" stroke-width="2"><title>OR-Tools: 14.05%</title></circle>
+<rect x="100.0" y="257.7" width="40" height="3" rx="1.5" fill="#15191C"/>
+<text x="144.0" y="263.2" font-size="10" fill="#15191C">3.68</text>
+<text x="120.0" y="308" font-size="11" fill="#596067" text-anchor="middle">OR-Tools</text>
+<circle cx="242.0" cy="290.0" r="4.5" fill="#C2641A" stroke="#FFFFFF" stroke-width="2"><title>GA + local search: 0.00%</title></circle>
+<circle cx="218.9" cy="290.0" r="4.5" fill="#C2641A" stroke="#FFFFFF" stroke-width="2"><title>GA + local search: 0.00%</title></circle>
+<circle cx="238.4" cy="287.0" r="4.5" fill="#C2641A" stroke="#FFFFFF" stroke-width="2"><title>GA + local search: 0.36%</title></circle>
+<circle cx="222.9" cy="240.4" r="4.5" fill="#C2641A" stroke="#FFFFFF" stroke-width="2"><title>GA + local search: 5.93%</title></circle>
+<circle cx="242.2" cy="276.5" r="4.5" fill="#C2641A" stroke="#FFFFFF" stroke-width="2"><title>GA + local search: 1.62%</title></circle>
+<circle cx="233.2" cy="282.6" r="4.5" fill="#C2641A" stroke="#FFFFFF" stroke-width="2"><title>GA + local search: 0.89%</title></circle>
+<circle cx="226.4" cy="278.6" r="4.5" fill="#C2641A" stroke="#FFFFFF" stroke-width="2"><title>GA + local search: 1.37%</title></circle>
+<circle cx="229.8" cy="259.3" r="4.5" fill="#C2641A" stroke="#FFFFFF" stroke-width="2"><title>GA + local search: 3.68%</title></circle>
+<circle cx="218.8" cy="261.4" r="4.5" fill="#C2641A" stroke="#FFFFFF" stroke-width="2"><title>GA + local search: 3.42%</title></circle>
+<circle cx="221.5" cy="261.4" r="4.5" fill="#C2641A" stroke="#FFFFFF" stroke-width="2"><title>GA + local search: 3.42%</title></circle>
+<circle cx="236.8" cy="247.9" r="4.5" fill="#C2641A" stroke="#FFFFFF" stroke-width="2"><title>GA + local search: 5.03%</title></circle>
+<circle cx="236.1" cy="211.5" r="4.5" fill="#C2641A" stroke="#FFFFFF" stroke-width="2"><title>GA + local search: 9.39%</title></circle>
+<rect x="212.0" y="267.5" width="40" height="3" rx="1.5" fill="#15191C"/>
+<text x="256.0" y="273.0" font-size="10" fill="#15191C">2.52</text>
+<text x="232.0" y="308" font-size="11" fill="#596067" text-anchor="middle">GA+LS</text>
+<circle cx="347.2" cy="290.0" r="4.5" fill="#1baf7a" stroke="#FFFFFF" stroke-width="2"><title>Hybrid (OR-Tools seed + GA + LS): 0.00%</title></circle>
+<circle cx="340.7" cy="287.9" r="4.5" fill="#1baf7a" stroke="#FFFFFF" stroke-width="2"><title>Hybrid (OR-Tools seed + GA + LS): 0.25%</title></circle>
+<circle cx="357.9" cy="282.6" r="4.5" fill="#1baf7a" stroke="#FFFFFF" stroke-width="2"><title>Hybrid (OR-Tools seed + GA + LS): 0.88%</title></circle>
+<circle cx="357.5" cy="226.3" r="4.5" fill="#1baf7a" stroke="#FFFFFF" stroke-width="2"><title>Hybrid (OR-Tools seed + GA + LS): 7.63%</title></circle>
+<circle cx="349.2" cy="271.3" r="4.5" fill="#1baf7a" stroke="#FFFFFF" stroke-width="2"><title>Hybrid (OR-Tools seed + GA + LS): 2.24%</title></circle>
+<circle cx="348.2" cy="249.7" r="4.5" fill="#1baf7a" stroke="#FFFFFF" stroke-width="2"><title>Hybrid (OR-Tools seed + GA + LS): 4.82%</title></circle>
+<circle cx="349.3" cy="270.5" r="4.5" fill="#1baf7a" stroke="#FFFFFF" stroke-width="2"><title>Hybrid (OR-Tools seed + GA + LS): 2.33%</title></circle>
+<circle cx="340.9" cy="268.0" r="4.5" fill="#1baf7a" stroke="#FFFFFF" stroke-width="2"><title>Hybrid (OR-Tools seed + GA + LS): 2.64%</title></circle>
+<circle cx="333.8" cy="266.0" r="4.5" fill="#1baf7a" stroke="#FFFFFF" stroke-width="2"><title>Hybrid (OR-Tools seed + GA + LS): 2.88%</title></circle>
+<circle cx="350.2" cy="261.3" r="4.5" fill="#1baf7a" stroke="#FFFFFF" stroke-width="2"><title>Hybrid (OR-Tools seed + GA + LS): 3.44%</title></circle>
+<circle cx="344.7" cy="236.6" r="4.5" fill="#1baf7a" stroke="#FFFFFF" stroke-width="2"><title>Hybrid (OR-Tools seed + GA + LS): 6.39%</title></circle>
+<circle cx="338.7" cy="215.6" r="4.5" fill="#1baf7a" stroke="#FFFFFF" stroke-width="2"><title>Hybrid (OR-Tools seed + GA + LS): 8.90%</title></circle>
+<rect x="324.0" y="265.5" width="40" height="3" rx="1.5" fill="#15191C"/>
+<text x="368.0" y="271.0" font-size="10" fill="#15191C">2.76</text>
+<text x="344.0" y="308" font-size="11" fill="#596067" text-anchor="middle">Hybrid</text>
+<text x="568" y="346" font-size="12" fill="#15191C" text-anchor="middle" font-weight="600">VRPTW (12 instances)</text>
+<circle cx="455.6" cy="290.0" r="4.5" fill="#2A5DA8" stroke="#FFFFFF" stroke-width="2"><title>OR-Tools: 0.00%</title></circle>
+<circle cx="466.9" cy="290.0" r="4.5" fill="#2A5DA8" stroke="#FFFFFF" stroke-width="2"><title>OR-Tools: 0.00%</title></circle>
+<circle cx="468.2" cy="290.0" r="4.5" fill="#2A5DA8" stroke="#FFFFFF" stroke-width="2"><title>OR-Tools: -0.00%</title></circle>
+<circle cx="452.0" cy="290.0" r="4.5" fill="#2A5DA8" stroke="#FFFFFF" stroke-width="2"><title>OR-Tools: 0.00%</title></circle>
+<circle cx="458.0" cy="285.1" r="4.5" fill="#2A5DA8" stroke="#FFFFFF" stroke-width="2"><title>OR-Tools: 0.59%</title></circle>
+<circle cx="451.0" cy="234.1" r="4.5" fill="#2A5DA8" stroke="#FFFFFF" stroke-width="2"><title>OR-Tools: 6.69%</title></circle>
+<circle cx="458.6" cy="202.0" r="4.5" fill="#2A5DA8" stroke="#FFFFFF" stroke-width="2"><title>OR-Tools: 10.52%</title></circle>
+<circle cx="451.5" cy="240.9" r="4.5" fill="#2A5DA8" stroke="#FFFFFF" stroke-width="2"><title>OR-Tools: 5.88%</title></circle>
+<circle cx="453.0" cy="232.3" r="4.5" fill="#2A5DA8" stroke="#FFFFFF" stroke-width="2"><title>OR-Tools: 6.90%</title></circle>
+<circle cx="466.9" cy="227.9" r="4.5" fill="#2A5DA8" stroke="#FFFFFF" stroke-width="2"><title>OR-Tools: 7.43%</title></circle>
+<circle cx="448.4" cy="202.5" r="4.5" fill="#2A5DA8" stroke="#FFFFFF" stroke-width="2"><title>OR-Tools: 10.47%</title></circle>
+<circle cx="459.4" cy="243.1" r="4.5" fill="#2A5DA8" stroke="#FFFFFF" stroke-width="2"><title>OR-Tools: 5.62%</title></circle>
+<rect x="436.0" y="240.5" width="40" height="3" rx="1.5" fill="#15191C"/>
+<text x="480.0" y="246.0" font-size="10" fill="#15191C">5.75</text>
+<text x="456.0" y="308" font-size="11" fill="#596067" text-anchor="middle">OR-Tools</text>
+<circle cx="556.4" cy="258.2" r="4.5" fill="#C2641A" stroke="#FFFFFF" stroke-width="2"><title>GA + local search: 3.80%</title></circle>
+<circle cx="577.3" cy="279.9" r="4.5" fill="#C2641A" stroke="#FFFFFF" stroke-width="2"><title>GA + local search: 1.21%</title></circle>
+<circle cx="576.0" cy="96.4" r="4.5" fill="#C2641A" stroke="#FFFFFF" stroke-width="2"><title>GA + local search: 23.17%</title></circle>
+<circle cx="560.7" cy="104.0" r="4.5" fill="#C2641A" stroke="#FFFFFF" stroke-width="2"><title>GA + local search: 22.25%</title></circle>
+<circle cx="578.5" cy="229.3" r="4.5" fill="#C2641A" stroke="#FFFFFF" stroke-width="2"><title>GA + local search: 7.26%</title></circle>
+<circle cx="555.6" cy="168.6" r="4.5" fill="#C2641A" stroke="#FFFFFF" stroke-width="2"><title>GA + local search: 14.53%</title></circle>
+<circle cx="563.4" cy="189.3" r="4.5" fill="#C2641A" stroke="#FFFFFF" stroke-width="2"><title>GA + local search: 12.05%</title></circle>
+<circle cx="558.2" cy="96.1" r="4.5" fill="#C2641A" stroke="#FFFFFF" stroke-width="2"><title>GA + local search: 23.20%</title></circle>
+<circle cx="566.6" cy="160.7" r="4.5" fill="#C2641A" stroke="#FFFFFF" stroke-width="2"><title>GA + local search: 15.48%</title></circle>
+<circle cx="576.3" cy="170.9" r="4.5" fill="#C2641A" stroke="#FFFFFF" stroke-width="2"><title>GA + local search: 14.25%</title></circle>
+<circle cx="560.5" cy="71.4" r="4.5" fill="#C2641A" stroke="#FFFFFF" stroke-width="2"><title>GA + local search: 26.16%</title></circle>
+<circle cx="555.5" cy="76.7" r="4.5" fill="#C2641A" stroke="#FFFFFF" stroke-width="2"><title>GA + local search: 25.52%</title></circle>
+<rect x="548.0" y="163.1" width="40" height="3" rx="1.5" fill="#15191C"/>
+<text x="592.0" y="168.6" font-size="10" fill="#15191C">15.00</text>
+<text x="568.0" y="308" font-size="11" fill="#596067" text-anchor="middle">GA+LS</text>
+<circle cx="677.3" cy="290.0" r="4.5" fill="#1baf7a" stroke="#FFFFFF" stroke-width="2"><title>Hybrid (OR-Tools seed + GA + LS): 0.00%</title></circle>
+<circle cx="671.6" cy="290.0" r="4.5" fill="#1baf7a" stroke="#FFFFFF" stroke-width="2"><title>Hybrid (OR-Tools seed + GA + LS): 0.00%</title></circle>
+<circle cx="668.5" cy="290.0" r="4.5" fill="#1baf7a" stroke="#FFFFFF" stroke-width="2"><title>Hybrid (OR-Tools seed + GA + LS): -0.00%</title></circle>
+<circle cx="682.2" cy="290.0" r="4.5" fill="#1baf7a" stroke="#FFFFFF" stroke-width="2"><title>Hybrid (OR-Tools seed + GA + LS): 0.00%</title></circle>
+<circle cx="674.4" cy="281.2" r="4.5" fill="#1baf7a" stroke="#FFFFFF" stroke-width="2"><title>Hybrid (OR-Tools seed + GA + LS): 1.05%</title></circle>
+<circle cx="684.8" cy="234.1" r="4.5" fill="#1baf7a" stroke="#FFFFFF" stroke-width="2"><title>Hybrid (OR-Tools seed + GA + LS): 6.69%</title></circle>
+<circle cx="671.6" cy="186.0" r="4.5" fill="#1baf7a" stroke="#FFFFFF" stroke-width="2"><title>Hybrid (OR-Tools seed + GA + LS): 12.45%</title></circle>
+<circle cx="692.4" cy="240.9" r="4.5" fill="#1baf7a" stroke="#FFFFFF" stroke-width="2"><title>Hybrid (OR-Tools seed + GA + LS): 5.88%</title></circle>
+<circle cx="676.2" cy="229.5" r="4.5" fill="#1baf7a" stroke="#FFFFFF" stroke-width="2"><title>Hybrid (OR-Tools seed + GA + LS): 7.24%</title></circle>
+<circle cx="669.0" cy="227.9" r="4.5" fill="#1baf7a" stroke="#FFFFFF" stroke-width="2"><title>Hybrid (OR-Tools seed + GA + LS): 7.43%</title></circle>
+<circle cx="683.6" cy="202.5" r="4.5" fill="#1baf7a" stroke="#FFFFFF" stroke-width="2"><title>Hybrid (OR-Tools seed + GA + LS): 10.47%</title></circle>
+<circle cx="692.0" cy="250.7" r="4.5" fill="#1baf7a" stroke="#FFFFFF" stroke-width="2"><title>Hybrid (OR-Tools seed + GA + LS): 4.71%</title></circle>
+<rect x="660.0" y="244.3" width="40" height="3" rx="1.5" fill="#15191C"/>
+<text x="704.0" y="249.8" font-size="10" fill="#15191C">5.29</text>
+<text x="680.0" y="308" font-size="11" fill="#596067" text-anchor="middle">Hybrid</text>
+</svg>

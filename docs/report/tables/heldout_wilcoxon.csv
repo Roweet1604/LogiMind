@@ -1,0 +1,10 @@
+set,scope,comparison,instances,dropped_no_feasible_run,median_diff_pp,mean_diff_pp,ga_ls_better,ties,ortools_better,wilcoxon_p,hybrid_seed_ls_better,holm_p
+"held-out, 3 s",all,GA + local search minus OR-Tools,24,0,1.1959789914355263,4.635987901262008,10.0,1,13.0,0.06801654474625561,,0.20404963423876682
+"held-out, 3 s",all,Hybrid (OR-Tools seed + GA + LS) minus OR-Tools,24,0,0.0,-0.6002925931399299,,10,4.0,0.04798974969495946,10.0,0.19195899877983785
+"held-out, 3 s",all,Hybrid (OR-Tools seed + GA + LS) minus GA + local search,24,0,-0.7932646322495864,-5.236280494401938,9.0,1,,0.022541258667558565,14.0,0.11270629333779283
+"held-out, 3 s",CVRP,GA + local search minus OR-Tools,12,0,-1.698879054804119,-1.9583533792768961,10.0,1,1.0,0.0068359375,,0.0478515625
+"held-out, 3 s",CVRP,Hybrid (OR-Tools seed + GA + LS) minus OR-Tools,12,0,-1.1969692886084005,-1.351894501824032,,2,1.0,0.013671875,9.0,0.08203125
+"held-out, 3 s",CVRP,Hybrid (OR-Tools seed + GA + LS) minus GA + local search,12,0,0.38529407003286337,0.6064588774528642,8.0,1,,0.1474609375,3.0,0.294921875
+"held-out, 3 s",VRPTW,GA + local search minus OR-Tools,12,0,8.202893726298376,11.230329181800911,0.0,0,12.0,0.00048828125,,0.00439453125
+"held-out, 3 s",VRPTW,Hybrid (OR-Tools seed + GA + LS) minus OR-Tools,12,0,0.0,0.15130931554417237,,8,3.0,0.625,1.0,0.625
+"held-out, 3 s",VRPTW,Hybrid (OR-Tools seed + GA + LS) minus GA + local search,12,0,-8.034786137441513,-11.079019866256738,1.0,0,,0.0009765625,11.0,0.0078125

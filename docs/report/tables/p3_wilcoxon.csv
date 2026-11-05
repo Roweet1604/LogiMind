@@ -1,0 +1,19 @@
+set,scope,comparison,instances,dropped_no_feasible_run,median_diff_pp,mean_diff_pp,ga_ls_better,ties,ortools_better,wilcoxon_p,hybrid_seed_ls_better,holm_p
+"P3 set, 3 s",all,GA + local search minus OR-Tools,8,0,3.04825548437993,6.602794749399495,1.0,2,5.0,0.0625,,0.5
+"P3 set, 3 s",all,Hybrid (OR-Tools seed + GA + LS) minus OR-Tools,8,0,0.0,0.08765279669171899,,5,1.0,1.0,2.0,1.0
+"P3 set, 3 s",all,Hybrid (OR-Tools seed + GA + LS) minus GA + local search,8,0,-3.04825548437993,-6.515141952707775,1.0,1,,0.03125,6.0,0.28125
+"P3 set, 3 s",CVRP,GA + local search minus OR-Tools,3,0,0.0,-0.2996146086284173,1.0,2,0.0,1.0,,1.0
+"P3 set, 3 s",CVRP,Hybrid (OR-Tools seed + GA + LS) minus OR-Tools,3,0,-0.5472799101156172,-0.4187662094032583,,1,0.0,0.5,2.0,1.0
+"P3 set, 3 s",CVRP,Hybrid (OR-Tools seed + GA + LS) minus GA + local search,3,0,0.0,-0.119151600774841,1.0,1,,1.0,1.0,1.0
+"P3 set, 3 s",VRPTW,GA + local search minus OR-Tools,5,0,9.192492900358067,10.744240364216243,0.0,0,5.0,0.0625,,0.5
+"P3 set, 3 s",VRPTW,Hybrid (OR-Tools seed + GA + LS) minus OR-Tools,5,0,0.0,0.39150420034870537,,4,1.0,1.0,0.0,1.0
+"P3 set, 3 s",VRPTW,Hybrid (OR-Tools seed + GA + LS) minus GA + local search,5,0,-9.192492900358067,-10.352736163867537,0.0,0,,0.0625,5.0,0.5
+"P3 set, 10 s",all,GA + local search minus OR-Tools,8,0,1.6410209440068384,5.3596659200556465,2.0,2,4.0,0.15625,,1.0
+"P3 set, 10 s",all,Hybrid (OR-Tools seed + GA + LS) minus OR-Tools,8,0,-0.17016449234259778,-0.06783801010337437,,2,2.0,0.84375,4.0,1.0
+"P3 set, 10 s",all,Hybrid (OR-Tools seed + GA + LS) minus GA + local search,8,0,-1.8287842706234376,-5.427503930159021,2.0,2,,0.15625,4.0,1.0
+"P3 set, 10 s",CVRP,GA + local search minus OR-Tools,3,0,-0.5104934770277936,-0.8056374122560963,2.0,1,0.0,0.5,,1.0
+"P3 set, 10 s",CVRP,Hybrid (OR-Tools seed + GA + LS) minus OR-Tools,3,0,-0.34032898468519557,-0.6299157577525188,,1,0.0,0.5,2.0,1.0
+"P3 set, 10 s",CVRP,Hybrid (OR-Tools seed + GA + LS) minus GA + local search,3,0,0.170164492342598,0.1757216545035775,2.0,1,,0.5,0.0,1.0
+"P3 set, 10 s",VRPTW,GA + local search minus OR-Tools,5,0,6.204469687615748,9.058847919442693,0.0,1,4.0,0.125,,1.0
+"P3 set, 10 s",VRPTW,Hybrid (OR-Tools seed + GA + LS) minus OR-Tools,5,0,0.0,0.2694086384861123,,1,2.0,0.875,2.0,1.0
+"P3 set, 10 s",VRPTW,Hybrid (OR-Tools seed + GA + LS) minus GA + local search,5,0,-5.593283121373011,-8.78943928095658,0.0,1,,0.125,4.0,1.0
