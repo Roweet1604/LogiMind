@@ -37,6 +37,8 @@ Effort is a rough estimate in *team-weeks* (all three members working on the pha
 
 **Status:** P9 done on 4 Nov 2026: signed per-route driver links, driver PWA (installable, offline stop list, queued reports, maps deep link, photos online only), stub ETA notifications with opt-in and a log table (decisions 0015-0017). Checked in desktop Chrome against a live backend; not yet on a real phone.
 
+**Status:** 5 Nov 2026: P4 built and tested offline (providers, cache, batching, size limit, flagged fallback, road travel times; decision 0019); not yet run against a self-hosted OSRM. Docker Compose files written but UNTESTED, because Docker is not installed (decision 0020). Notes carried forward: the OSRM map source needs a team decision (smallest official file with Bengaluru is 559 MB); P10 should calibrate the detour factor and fallback speed, and note that OSRM times are free-flow.
+
 The phases are done in order, but P4, P6 and P9 can run in parallel with the solver phases if the team splits work by person. Even with parallel work, the full must-have list needs roughly **7 to 9 calendar weeks**. That estimate is uncertain.
 
 ## Proposed cut line (depends on weeks remaining)

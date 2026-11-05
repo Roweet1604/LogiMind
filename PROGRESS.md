@@ -1,6 +1,6 @@
 # LogiMind progress
 
-Last updated: 4 Nov 2026, fourth unattended session: P9 (driver links, driver PWA, ETA notifications) done. Current phase: **P8 real-model check (Ollama), rest of P6 (Docker Compose / Postgres), then P10**; see Next steps.
+Last updated: 5 Nov 2026, fifth unattended session: flaky guard test fixed, P4 road matrix done offline, Docker Compose written but UNTESTED, console flows checked in a browser. Current phase: **check Compose + OSRM on a machine with Docker, P8 real-model check (Ollama), job queue, then P10**; see Next steps.
 
 ## Done and verified
 ### Phase 0
@@ -125,6 +125,25 @@ Last updated: 4 Nov 2026, fourth unattended session: P9 (driver links, driver PW
   - Ops console **32 passed**. Driver PWA **17 passed**, and `vite build` makes `sw.js` + `manifest.webmanifest` (16 precached entries).
 - **Flaky test seen once:** the opening full run of this session had **1 failure**, `tests/test_hybrid.py::test_guard_stops_a_frozen_run_and_reports_a_timeout` (223 passed, 1 failed). It then passed 3 times alone, once with its whole file, and in all 3 later full runs. That first run was tailed, so the assertion message was not captured. The test asserts wall-clock bounds (1.4 s <= wait < 10 s), so laptop load is the likely cause, but this is not proven.
 
+### Fifth unattended session, 5 Nov 2026 (commits f3f4155, 6c1dc9d, 9e83546, and the PROGRESS commit)
+- **Opening run (before any change):** backend 241 passed; ruff clean; console 32 passed; driver PWA 17 passed.
+- **Flaky guard test fixed** (decision 0018). Cause, measured: `waited` included spawning the solver worker process, which took 5.8 s, 6.4 s and 5.9 s on the idle laptop, against a 10 s cap. The test now starts the worker before the clock, checks the guard's own hard limit (1.5 s) as the lower bound, uses 30 s as the upper bound (the frozen solver sleeps 60 s), and also checks that the frozen worker process is dead. **Run 10 times in a row: 10 passed.**
+- **P4 road matrix, done offline** (decision 0019). `backend/app/distances/`: `DistanceProvider`, `HaversineProvider` (straight line x 1.3 at 25 km/h, both assumptions, labelled), `OsrmProvider` (table service, batching in chunks of max_table/2, size limit 250 points), `MatrixCache` (SQLite, 30 days), `DistanceService` (flagged fallback).
+  - `POST /api/plans` takes `distance_source` = `straight_line` (default, unchanged) / `osrm` / `estimate`. The matrix is built before the solver, stored with the plan, and used for distances AND travel times by every engine, the validator, the metrics and the ETAs. Instance ids include the matrix digest; ids without a matrix are unchanged (tested).
+  - If OSRM is not configured, not reachable, answers with an error or cannot route a pair, the plan uses the estimate with `distance_source.fallback: true` and the reason. Shown on the plan, the plan list, the ETA response, the audit row, and as a warning on the console's plan page.
+  - Urgent-order replans extend the matrix to the new stop (checked in the browser: 9 to 10 points).
+  - Tests: 16 backend (`tests/test_distances.py`), 2 console (`src/test/distances.test.jsx`). They replay **real OSRM answers for 6 synthetic Bengaluru points**, recorded once on 5 Nov 2026 from the public OSRM demo server (`backend/tests/fixtures/osrm/`, script `experiments/osrm/record_fixture.py`). The product never uses the demo server. The batched matrix (9 requests) equals the single-request matrix exactly.
+  - Two bugs found by these tests and fixed before the commit: an empty `MatrixCache` counted as false (it defines `__len__`), so nothing was ever cached; and one test picked a batched URL instead of the 6-point one.
+  - Measured on the fixture (30 pairs, too few to calibrate): road / straight line 1.16 to 1.66 (median 1.30); OSRM's implied speed 36.6 to 52.9 km/h (median 47.4). OSRM travel times are free-flow (no traffic), so they are likely optimistic for Bengaluru. Not calibrated (P10).
+- **Docker Compose: written, UNTESTED** (decision 0020). Docker is not installed (`docker` not on the PATH; no Docker Desktop executable). Files: `docker-compose.yml` (postgres, api, console, driver; optional profile `osrm` with `osrm-prepare` and `osrm`), `backend/Dockerfile`, `backend/requirements-docker.txt` (adds psycopg), `frontend/` and `driver/` `Dockerfile` + `nginx.conf`, `.env.example` (empty `POSTGRES_PASSWORD` and `LOGIMIND_DRIVER_LINK_SECRET`; Compose refuses to start without them), README section. Only checked: the YAML parses, and every `${VAR}` is in `.env.example`.
+  - **No separate worker service**: jobs run in the API process's guarded worker; a worker container needs the job queue (open P6 item). Said so instead of adding an empty service.
+  - **OSRM extract not downloaded**: the smallest official file containing Bengaluru (Geofabrik `asia/india/southern-zone-latest.osm.pbf`) is 559,229,243 bytes (HTTP HEAD, 5 Nov 2026), above the ~150 MB limit; BBBike had no Bangalore extract at the URL tried (404). So no SHA-256 was recorded. Team decision needed (decision 0020 lists options).
+- **Ops console checked in a real browser** (Chrome via Claude in Chrome; uvicorn on a temp SQLite DB, research endpoints off, OSRM not configured, Ollama not installed; Vite dev server):
+  - Verified: API-key sign-in; import of a CSV with errors (row-level report: row 3 demand "not a number", row 4 duplicate id; nothing imported); import of a valid lon/lat CSV (8 synthetic orders); the new "Distances and travel times" choice (shown only for lon/lat orders); an auto plan with "Road network (OSRM)" that came back feasible with the **fallback warning and its reason**; an urgent-order replan with 2 stops completed on vehicle 0 (feasible, frozen stops `[4, 6]` kept, 0 frozen-stop violations, warm start used, matrix extended to 10 points; checked again through the API); the copilot page showing "No local model available" with the input disabled. No console errors after a reload of the plan page.
+  - Fixed after the check: the fallback notice nested brackets and repeated itself; the map note said "great-circle distance" even when a matrix is used; "after a urgent_order event" wording.
+  - **Not verified:** the copilot answering anything (no model); the breakdown and failed-delivery replan forms in the browser (covered by tests only); `.xlsx` import in the browser; OSRM road distances end to end (no OSRM server; only replayed recordings in tests).
+- **Tests at the end of this session (5 Nov 2026, Python 3.14.7 / OR-Tools 9.15.6755):** backend **257 passed**, 0 failed (16 library deprecation warnings); console **34 passed**; driver PWA **17 passed**; `python -m ruff check .` passes.
+
 ## First solver observations from P1 (5 s, one seed, Rohit's laptop; indicative only, do not quote; superseded for OR-Tools by the P2 audit)
 | Instance | OR-Tools (default) | GA (with repair) |
 | --- | --- | --- |
@@ -143,23 +162,23 @@ Last updated: 4 Nov 2026, fourth unattended session: P9 (driver links, driver PW
   - The server does not strip EXIF from photos; only the PWA's re-encoding does, and that is untested in a browser.
   - Without `LOGIMIND_DRIVER_LINK_SECRET`, links die on restart. Production needs HTTPS and CORS (or the same origin) for the PWA.
   - The driver app has not been tried on a real phone.
-- The ops console has now been opened in a real browser only for the plan page and the Drivers panel (sign-in, plan detail, link creation). Import, replan and copilot flows were not walked through in a browser.
+- Ops console in a browser: sign-in, import (good and bad CSV), plan with the fallback flag, urgent-order replan and the copilot's "no model" state were checked on 5 Nov 2026. Not checked in a browser: breakdown and failed-delivery replan forms, `.xlsx` import, the copilot with a model.
 - Copilot sessions are in memory (lost on restart). Chat requests block until the solver finishes.
-- Rest of P6 not started: job queue beyond the single solver thread, Docker Compose / Postgres, `.env.example`. Migrations tested on SQLite only. Photos are on local disk (Compose needs a volume).
+- Rest of P6: no job queue beyond the single solver thread (so no separate worker service). Docker Compose, Postgres and `.env.example` are written but **UNTESTED** (no Docker). Migrations tested on SQLite only.
+- P4 limits: never run against a self-hosted OSRM; no OSRM map extract downloaded (559 MB smallest official file); detour factor 1.3 and 25 km/h are uncalibrated assumptions; OSRM durations are free-flow; the cache keeps whole matrices only.
 - Webhook SSRF guard does not resolve host names (decision 0010). The rate limiter is in-process only.
 - Replanning: the GA cannot keep frozen stops. The failed attempt's own travel is not modelled. The experiment covered 6 synthetic instances with one seed.
 - Selector: synthetic data only; not a proven improvement over always-hybrid (model card).
-- P4 OSRM and P10 not started. Gehring-Homberger not downloaded; hybrid split untuned.
+- P10 not started. Gehring-Homberger not downloaded; hybrid split untuned.
 - Team answers still missing (docs/decisions/0002). Docker and Ollama not installed.
-- One timing-sensitive test failed once this session (see P9 notes); not reproduced.
 
 ## Known quirks
 - Instance ids hash coordinates as given: `10` and `10.0` give different ids (baseline behaviour, kept so old ids stay valid). The API always sends floats.
 
 ## Next steps
-1. Team: review and freeze `docs/eval/copilot_instructions_DRAFT.json`. Then install Ollama (`ollama pull llama3.2:3b`) and run the copilot on the frozen set; record the model, version and results honestly.
-2. Try the driver PWA on a real Android phone over HTTPS or USB port-forwarding: install it, take a photo (checks the canvas re-encoding), go offline and sync. Walk through the console's import, replan and copilot flows in a browser.
-3. Docker Compose with Postgres (backend, console, driver PWA, a volume for photos, `.env.example` with `LOGIMIND_DRIVER_LINK_SECRET`), then start P10 evaluation material.
+1. Install Docker Desktop (WSL2), then run `docker compose up --build` and fix what breaks (Postgres migrations first). Team: choose the OSRM map source (decision 0020), record URL/date/SHA-256, run `osrm-prepare`, set `LOGIMIND_OSRM_URL`, create one plan with `distance_source=osrm`, and re-record the test fixture from the self-hosted server.
+2. Team: review and freeze `docs/eval/copilot_instructions_DRAFT.json`; install Ollama (`ollama pull llama3.2:3b`) and run the copilot on the frozen set; record model, version and results honestly. Also still open: the driver PWA on a real phone.
+3. Job queue (last P6 item) so a separate worker container becomes real; then P10 (include a calibration of the 1.3 detour factor and 25 km/h against OSRM, and a note that OSRM times are free-flow).
 
 ## Restart commands
 See CLAUDE.md "Commands". In a new session: read CLAUDE.md, PLAN.md and PROGRESS.md, run the backend tests and report the real result.
@@ -189,6 +208,15 @@ Commands added in the third unattended session:
 "$TEMP/lmv/Scripts/python" -m pip install -r backend/requirements.txt   # now also langgraph, langchain-core, langchain-ollama
 # frontend tests: copy frontend/src etc. to %TEMP%\lmfe_s3 (npm ci there once), then:  npx vitest run   # 30 passed
 LOGIMIND_LLM_PROVIDER=none uvicorn app.main:app --port 8000             # copilot off on purpose; default "ollama" uses it only if running
+```
+
+Commands added in the fifth unattended session (Git Bash, repo root):
+```
+cd backend && for i in $(seq 1 10); do timeout 300 "$TEMP/lmv/Scripts/python" -m pytest -q "tests/test_hybrid.py::test_guard_stops_a_frozen_run_and_reports_a_timeout"; done   # 10 passed
+cd backend && "$TEMP/lmv/Scripts/python" -m pytest -q tests/test_distances.py      # 16 passed, offline
+"$TEMP/lmv/Scripts/python" experiments/osrm/record_fixture.py --base-url http://localhost:5000 --out <file>   # re-record from your OSRM
+LOGIMIND_OSRM_URL=http://localhost:5000 uvicorn app.main:app --port 8000          # road distances (unset: flagged fallback)
+docker compose up --build                                                         # UNTESTED; needs .env (copy .env.example)
 ```
 
 Commands added in the fourth unattended session (Git Bash, repo root):

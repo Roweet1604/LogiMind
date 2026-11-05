@@ -69,7 +69,7 @@ export default function RouteMap({ instance, routes, algo, focus = null, height 
       <p className="mt-2 text-xs text-ink2">
         {planar
           ? 'Planar coordinates; segments are straight lines (Euclidean distance).'
-          : 'Segments are straight lines between stops (great-circle distance), not road routes.'}
+          : 'Segments are drawn as straight lines between stops; they are not the road paths.'}
         {a && <> {a.label}: {a.dashLabel}.</>} Filled-white dot = served customer, red = unserved, black = depot.
       </p>
     </div>

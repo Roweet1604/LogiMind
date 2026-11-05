@@ -6,12 +6,12 @@ vi.mock('../components/RouteMap', () => ({ default: () => <div data-testid="map"
 test('a fallback matrix is shown as a warning with the reason, never as road data', () => {
   render(<DistanceSource source={{
     provider: 'haversine_detour', requested: 'osrm', fallback: true,
-    reason: 'OSRM not reachable at http://localhost:5000: ConnectError',
+    reason: 'OSRM not reachable at http://localhost:5000: ConnectError', detour_factor: 1.3, speed_kmh: 25,
     label: 'FALLBACK estimate: straight line x 1.3 at 25 km/h (not road data): OSRM was not available',
   }} />)
   expect(screen.getByText('Fallback distances: not road data')).toBeInTheDocument()
   expect(screen.getByText(/OSRM not reachable at http:\/\/localhost:5000/)).toBeInTheDocument()
-  expect(screen.getByText(/straight line x 1.3 at 25 km\/h/)).toBeInTheDocument()
+  expect(screen.getByText(/straight-line distance × 1.3 at 25 km\/h instead/)).toBeInTheDocument()
 })
 
 test('a road matrix says where it came from and when', () => {

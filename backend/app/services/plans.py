@@ -143,7 +143,7 @@ class PlanService:
                        engine=engine, time_limit_s=time_limit_s, state="queued", parent_id=plan_id,
                        event=_clean(event.model_dump()), replan=_clean(record),
                        selection={"engine": engine, "method": "requested",
-                                  "explanation": f"Replan with {engine} after a {event.type} event."}))
+                                  "explanation": f"Replan with {engine} after the event {event.type}."}))
             audit(s, who.tenant_id, who.key_id, "plan.replan", new_id, parent=plan_id, event=event.type,
                   engine=engine)
             s.commit()

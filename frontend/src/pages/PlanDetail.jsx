@@ -134,7 +134,8 @@ export function DistanceSource({ source }) {
   if (source.fallback) {
     return (
       <Notice kind="warn" title="Fallback distances: not road data">
-        Road distances were requested, but OSRM was not available ({source.reason}). This plan uses {source.label?.replace(/^FALLBACK /, '')}.
+        Road distances were requested, but OSRM was not available: {source.reason}. This plan uses straight-line
+        distance × {source.detour_factor} at {source.speed_kmh} km/h instead.
       </Notice>
     )
   }
