@@ -1,0 +1,1020 @@
+{
+ "recorded_at": "2026-11-05T06:03:11+00:00",
+ "source": "https://router.project-osrm.org",
+ "profile": "driving",
+ "note": "Real OSRM answers for SYNTHETIC points (no customer data). Routing data (c) OpenStreetMap contributors, ODbL. Recorded with experiments/osrm/record_fixture.py.",
+ "points": [
+  [
+   77.5946,
+   12.9716
+  ],
+  [
+   77.6408,
+   12.9784
+  ],
+  [
+   77.6245,
+   12.9352
+  ],
+  [
+   77.5838,
+   12.925
+  ],
+  [
+   77.5544,
+   12.9982
+  ],
+  [
+   77.6974,
+   12.9591
+  ]
+ ],
+ "responses": {
+  "/table/v1/driving/77.5946,12.9716;77.6408,12.9784?annotations=distance,duration": {
+   "status": 200,
+   "body": {
+    "code": "Ok",
+    "distances": [
+     [
+      0,
+      6202.1
+     ],
+     [
+      6428.2,
+      0
+     ]
+    ],
+    "destinations": [
+     {
+      "hint": "aFzrkf___38kAAAAJAAAAAAAAAAPAAAAAG4gQgAAAAAAAAAA-oqFQSQAAAAkAAAAAAAAAA8AAABOKgEASQCgBEjvxQDo_58EUO7FAAAALxIAAAAA",
+      "location": [
+       77.594697,
+       12.971848
+      ],
+      "name": "Vittal Mallya Road",
+      "distance": 29.38549159
+     },
+     {
+      "hint": "35vXkv___38DAAAABQAAAAAAAAAAAAAAYc_iQGHZFEAAAAAAAAAAAAMAAAAFAAAAAAAAAAAAAABOKgEAbrSgBOEIxgBgtKAE4AjGAAAAXxYAAAAA",
+      "location": [
+       77.640814,
+       12.978401
+      ],
+      "name": "100 Feet Road",
+      "distance": 1.522961953
+     }
+    ],
+    "durations": [
+     [
+      0,
+      478.4
+     ],
+     [
+      516.9,
+      0
+     ]
+    ],
+    "sources": [
+     {
+      "hint": "aFzrkf___38kAAAAJAAAAAAAAAAPAAAAAG4gQgAAAAAAAAAA-oqFQSQAAAAkAAAAAAAAAA8AAABOKgEASQCgBEjvxQDo_58EUO7FAAAALxIAAAAA",
+      "location": [
+       77.594697,
+       12.971848
+      ],
+      "name": "Vittal Mallya Road",
+      "distance": 29.38549159
+     },
+     {
+      "hint": "35vXkv___38DAAAABQAAAAAAAAAAAAAAYc_iQGHZFEAAAAAAAAAAAAMAAAAFAAAAAAAAAAAAAABOKgEAbrSgBOEIxgBgtKAE4AjGAAAAXxYAAAAA",
+      "location": [
+       77.640814,
+       12.978401
+      ],
+      "name": "100 Feet Road",
+      "distance": 1.522961953
+     }
+    ]
+   }
+  },
+  "/table/v1/driving/77.5946,12.9716;77.6408,12.9784;77.6245,12.9352;77.5838,12.925?annotations=distance,duration&destinations=2;3&sources=0;1": {
+   "status": 200,
+   "body": {
+    "code": "Ok",
+    "distances": [
+     [
+      7503,
+      6850.2
+     ],
+     [
+      8355.9,
+      13411.1
+     ]
+    ],
+    "destinations": [
+     {
+      "hint": "C6HigP___38IAAAACQAAAF4AAAAAAAAA8Rx1QYHolD9cWQZDAAAAAAgAAAAJAAAAXgAAAAAAAABOKgEAs3SgBCFgxQC0dKAEIGDFAAIAbw4AAAAA",
+      "location": [
+       77.624499,
+       12.935201
+      ],
+      "name": "Mahayogi Vemana Road",
+      "distance": 0.1549675933
+     },
+     {
+      "hint": "W9_fgP___38HAAAAEgAAAAAAAAAMAAAAm4AtQZyvhUEAAAAAHfWSQQcAAAASAAAAAAAAAAwAAABOKgEAudWfBEg4xQC41Z8ESDjFAAAAXwsAAAAA",
+      "location": [
+       77.583801,
+       12.925
+      ],
+      "name": "9th Main Road",
+      "distance": 0.1085172395
+     }
+    ],
+    "durations": [
+     [
+      737.4,
+      569.7
+     ],
+     [
+      615.6,
+      947.4
+     ]
+    ],
+    "sources": [
+     {
+      "hint": "aFzrkf___38kAAAAJAAAAAAAAAAPAAAAAG4gQgAAAAAAAAAA-oqFQSQAAAAkAAAAAAAAAA8AAABOKgEASQCgBEjvxQDo_58EUO7FAAAALxIAAAAA",
+      "location": [
+       77.594697,
+       12.971848
+      ],
+      "name": "Vittal Mallya Road",
+      "distance": 29.38549159
+     },
+     {
+      "hint": "35vXkv___38DAAAABQAAAAAAAAAAAAAAYc_iQGHZFEAAAAAAAAAAAAMAAAAFAAAAAAAAAAAAAABOKgEAbrSgBOEIxgBgtKAE4AjGAAAAXxYAAAAA",
+      "location": [
+       77.640814,
+       12.978401
+      ],
+      "name": "100 Feet Road",
+      "distance": 1.522961953
+     }
+    ]
+   }
+  },
+  "/table/v1/driving/77.5946,12.9716;77.6408,12.9784;77.5544,12.9982;77.6974,12.9591?annotations=distance,duration&destinations=2;3&sources=0;1": {
+   "status": 200,
+   "body": {
+    "code": "Ok",
+    "distances": [
+     [
+      6266.4,
+      14744.6
+     ],
+     [
+      12100.2,
+      8064.8
+     ]
+    ],
+    "destinations": [
+     {
+      "hint": "sRKAhbsSgIWyAAAAUgAAAAAAAAAAAAAAGNt3QjTm4kEAAAAAAAAAAFkAAAApAAAAAAAAAAAAAABOKgEAFmOfBD5WxgDgYp8EOFbGAAAALxYAAAAA",
+      "location": [
+       77.554454,
+       12.998206
+      ],
+      "name": "1st E Main Road",
+      "distance": 5.896245053
+     },
+     {
+      "hint": "DkaJkQ9GiZFfAAAAAAAAAKAAAAAAAAAAW-eDQgAAAACnw95CAAAAAF8AAAAAAAAAoAAAAAAAAABOKgEAi5GhBPO7xQB4kaEEfL3FAAIAvwAAAAAA",
+      "location": [
+       77.697419,
+       12.958707
+      ],
+      "name": "",
+      "distance": 43.52653931
+     }
+    ],
+    "durations": [
+     [
+      535.3,
+      1057.1
+     ],
+     [
+      830.6,
+      609.1
+     ]
+    ],
+    "sources": [
+     {
+      "hint": "aFzrkf___38kAAAAJAAAAAAAAAAPAAAAAG4gQgAAAAAAAAAA-oqFQSQAAAAkAAAAAAAAAA8AAABOKgEASQCgBEjvxQDo_58EUO7FAAAALxIAAAAA",
+      "location": [
+       77.594697,
+       12.971848
+      ],
+      "name": "Vittal Mallya Road",
+      "distance": 29.38549159
+     },
+     {
+      "hint": "35vXkv___38DAAAABQAAAAAAAAAAAAAAYc_iQGHZFEAAAAAAAAAAAAMAAAAFAAAAAAAAAAAAAABOKgEAbrSgBOEIxgBgtKAE4AjGAAAAXxYAAAAA",
+      "location": [
+       77.640814,
+       12.978401
+      ],
+      "name": "100 Feet Road",
+      "distance": 1.522961953
+     }
+    ]
+   }
+  },
+  "/table/v1/driving/77.6245,12.9352;77.5838,12.925;77.5946,12.9716;77.6408,12.9784?annotations=distance,duration&destinations=2;3&sources=0;1": {
+   "status": 200,
+   "body": {
+    "code": "Ok",
+    "distances": [
+     [
+      7282.2,
+      5997.2
+     ],
+     [
+      7362.2,
+      13122.2
+     ]
+    ],
+    "destinations": [
+     {
+      "hint": "aFzrkf___38kAAAAJAAAAAAAAAAPAAAAAG4gQgAAAAAAAAAA-oqFQSQAAAAkAAAAAAAAAA8AAABOKgEASQCgBEjvxQDo_58EUO7FAAAALxIAAAAA",
+      "location": [
+       77.594697,
+       12.971848
+      ],
+      "name": "Vittal Mallya Road",
+      "distance": 29.38549159
+     },
+     {
+      "hint": "35vXkv___38DAAAABQAAAAAAAAAAAAAAYc_iQGHZFEAAAAAAAAAAAAMAAAAFAAAAAAAAAAAAAABOKgEAbrSgBOEIxgBgtKAE4AjGAAAAXxYAAAAA",
+      "location": [
+       77.640814,
+       12.978401
+      ],
+      "name": "100 Feet Road",
+      "distance": 1.522961953
+     }
+    ],
+    "durations": [
+     [
+      681.1,
+      409.5
+     ],
+     [
+      709.7,
+      893.6
+     ]
+    ],
+    "sources": [
+     {
+      "hint": "C6HigP___38IAAAACQAAAF4AAAAAAAAA8Rx1QYHolD9cWQZDAAAAAAgAAAAJAAAAXgAAAAAAAABOKgEAs3SgBCFgxQC0dKAEIGDFAAIAbw4AAAAA",
+      "location": [
+       77.624499,
+       12.935201
+      ],
+      "name": "Mahayogi Vemana Road",
+      "distance": 0.1549675933
+     },
+     {
+      "hint": "W9_fgP___38HAAAAEgAAAAAAAAAMAAAAm4AtQZyvhUEAAAAAHfWSQQcAAAASAAAAAAAAAAwAAABOKgEAudWfBEg4xQC41Z8ESDjFAAAAXwsAAAAA",
+      "location": [
+       77.583801,
+       12.925
+      ],
+      "name": "9th Main Road",
+      "distance": 0.1085172395
+     }
+    ]
+   }
+  },
+  "/table/v1/driving/77.6245,12.9352;77.5838,12.925?annotations=distance,duration": {
+   "status": 200,
+   "body": {
+    "code": "Ok",
+    "distances": [
+     [
+      0,
+      5851.1
+     ],
+     [
+      7580.3,
+      0
+     ]
+    ],
+    "destinations": [
+     {
+      "hint": "C6HigP___38IAAAACQAAAF4AAAAAAAAA8Rx1QYHolD9cWQZDAAAAAAgAAAAJAAAAXgAAAAAAAABOKgEAs3SgBCFgxQC0dKAEIGDFAAIAbw4AAAAA",
+      "location": [
+       77.624499,
+       12.935201
+      ],
+      "name": "Mahayogi Vemana Road",
+      "distance": 0.1549675933
+     },
+     {
+      "hint": "W9_fgP___38HAAAAEgAAAAAAAAAMAAAAm4AtQZyvhUEAAAAAHfWSQQcAAAASAAAAAAAAAAwAAABOKgEAudWfBEg4xQC41Z8ESDjFAAAAXwsAAAAA",
+      "location": [
+       77.583801,
+       12.925
+      ],
+      "name": "9th Main Road",
+      "distance": 0.1085172395
+     }
+    ],
+    "durations": [
+     [
+      0,
+      478.5
+     ],
+     [
+      554,
+      0
+     ]
+    ],
+    "sources": [
+     {
+      "hint": "C6HigP___38IAAAACQAAAF4AAAAAAAAA8Rx1QYHolD9cWQZDAAAAAAgAAAAJAAAAXgAAAAAAAABOKgEAs3SgBCFgxQC0dKAEIGDFAAIAbw4AAAAA",
+      "location": [
+       77.624499,
+       12.935201
+      ],
+      "name": "Mahayogi Vemana Road",
+      "distance": 0.1549675933
+     },
+     {
+      "hint": "W9_fgP___38HAAAAEgAAAAAAAAAMAAAAm4AtQZyvhUEAAAAAHfWSQQcAAAASAAAAAAAAAAwAAABOKgEAudWfBEg4xQC41Z8ESDjFAAAAXwsAAAAA",
+      "location": [
+       77.583801,
+       12.925
+      ],
+      "name": "9th Main Road",
+      "distance": 0.1085172395
+     }
+    ]
+   }
+  },
+  "/table/v1/driving/77.6245,12.9352;77.5838,12.925;77.5544,12.9982;77.6974,12.9591?annotations=distance,duration&destinations=2;3&sources=0;1": {
+   "status": 200,
+   "body": {
+    "code": "Ok",
+    "distances": [
+     [
+      14587.5,
+      10735.7
+     ],
+     [
+      11514.6,
+      17860.7
+     ]
+    ],
+    "destinations": [
+     {
+      "hint": "sRKAhbsSgIWyAAAAUgAAAAAAAAAAAAAAGNt3QjTm4kEAAAAAAAAAAFkAAAApAAAAAAAAAAAAAABOKgEAFmOfBD5WxgDgYp8EOFbGAAAALxYAAAAA",
+      "location": [
+       77.554454,
+       12.998206
+      ],
+      "name": "1st E Main Road",
+      "distance": 5.896245053
+     },
+     {
+      "hint": "DkaJkQ9GiZFfAAAAAAAAAKAAAAAAAAAAW-eDQgAAAACnw95CAAAAAF8AAAAAAAAAoAAAAAAAAABOKgEAi5GhBPO7xQB4kaEEfL3FAAIAvwAAAAAA",
+      "location": [
+       77.697419,
+       12.958707
+      ],
+      "name": "",
+      "distance": 43.52653931
+     }
+    ],
+    "durations": [
+     [
+      1030.5,
+      762.4
+     ],
+     [
+      812.3,
+      1246.5
+     ]
+    ],
+    "sources": [
+     {
+      "hint": "C6HigP___38IAAAACQAAAF4AAAAAAAAA8Rx1QYHolD9cWQZDAAAAAAgAAAAJAAAAXgAAAAAAAABOKgEAs3SgBCFgxQC0dKAEIGDFAAIAbw4AAAAA",
+      "location": [
+       77.624499,
+       12.935201
+      ],
+      "name": "Mahayogi Vemana Road",
+      "distance": 0.1549675933
+     },
+     {
+      "hint": "W9_fgP___38HAAAAEgAAAAAAAAAMAAAAm4AtQZyvhUEAAAAAHfWSQQcAAAASAAAAAAAAAAwAAABOKgEAudWfBEg4xQC41Z8ESDjFAAAAXwsAAAAA",
+      "location": [
+       77.583801,
+       12.925
+      ],
+      "name": "9th Main Road",
+      "distance": 0.1085172395
+     }
+    ]
+   }
+  },
+  "/table/v1/driving/77.5544,12.9982;77.6974,12.9591;77.5946,12.9716;77.6408,12.9784?annotations=distance,duration&destinations=2;3&sources=0;1": {
+   "status": 200,
+   "body": {
+    "code": "Ok",
+    "distances": [
+     [
+      6765.4,
+      12454.1
+     ],
+     [
+      13018.1,
+      8531.3
+     ]
+    ],
+    "destinations": [
+     {
+      "hint": "aFzrkf___38kAAAAJAAAAAAAAAAPAAAAAG4gQgAAAAAAAAAA-oqFQSQAAAAkAAAAAAAAAA8AAABOKgEASQCgBEjvxQDo_58EUO7FAAAALxIAAAAA",
+      "location": [
+       77.594697,
+       12.971848
+      ],
+      "name": "Vittal Mallya Road",
+      "distance": 29.38549159
+     },
+     {
+      "hint": "35vXkv___38DAAAABQAAAAAAAAAAAAAAYc_iQGHZFEAAAAAAAAAAAAMAAAAFAAAAAAAAAAAAAABOKgEAbrSgBOEIxgBgtKAE4AjGAAAAXxYAAAAA",
+      "location": [
+       77.640814,
+       12.978401
+      ],
+      "name": "100 Feet Road",
+      "distance": 1.522961953
+     }
+    ],
+    "durations": [
+     [
+      611.4,
+      883.7
+     ],
+     [
+      1132.1,
+      684.6
+     ]
+    ],
+    "sources": [
+     {
+      "hint": "sRKAhbsSgIWyAAAAUgAAAAAAAAAAAAAAGNt3QjTm4kEAAAAAAAAAAFkAAAApAAAAAAAAAAAAAABOKgEAFmOfBD5WxgDgYp8EOFbGAAAALxYAAAAA",
+      "location": [
+       77.554454,
+       12.998206
+      ],
+      "name": "1st E Main Road",
+      "distance": 5.896245053
+     },
+     {
+      "hint": "DkaJkQ9GiZFfAAAAAAAAAKAAAAAAAAAAW-eDQgAAAACnw95CAAAAAF8AAAAAAAAAoAAAAAAAAABOKgEAi5GhBPO7xQB4kaEEfL3FAAIAvwAAAAAA",
+      "location": [
+       77.697419,
+       12.958707
+      ],
+      "name": "",
+      "distance": 43.52653931
+     }
+    ]
+   }
+  },
+  "/table/v1/driving/77.5544,12.9982;77.6974,12.9591;77.6245,12.9352;77.5838,12.925?annotations=distance,duration&destinations=2;3&sources=0;1": {
+   "status": 200,
+   "body": {
+    "code": "Ok",
+    "distances": [
+     [
+      13747.4,
+      11125.9
+     ],
+     [
+      10859.3,
+      17643.7
+     ]
+    ],
+    "destinations": [
+     {
+      "hint": "C6HigP___38IAAAACQAAAF4AAAAAAAAA8Rx1QYHolD9cWQZDAAAAAAgAAAAJAAAAXgAAAAAAAABOKgEAs3SgBCFgxQC0dKAEIGDFAAIAbw4AAAAA",
+      "location": [
+       77.624499,
+       12.935201
+      ],
+      "name": "Mahayogi Vemana Road",
+      "distance": 0.1549675933
+     },
+     {
+      "hint": "W9_fgP___38HAAAAEgAAAAAAAAAMAAAAm4AtQZyvhUEAAAAAHfWSQQcAAAASAAAAAAAAAAwAAABOKgEAudWfBEg4xQC41Z8ESDjFAAAAXwsAAAAA",
+      "location": [
+       77.583801,
+       12.925
+      ],
+      "name": "9th Main Road",
+      "distance": 0.1085172395
+     }
+    ],
+    "durations": [
+     [
+      1068.8,
+      829.2
+     ],
+     [
+      1064,
+      1357.2
+     ]
+    ],
+    "sources": [
+     {
+      "hint": "sRKAhbsSgIWyAAAAUgAAAAAAAAAAAAAAGNt3QjTm4kEAAAAAAAAAAFkAAAApAAAAAAAAAAAAAABOKgEAFmOfBD5WxgDgYp8EOFbGAAAALxYAAAAA",
+      "location": [
+       77.554454,
+       12.998206
+      ],
+      "name": "1st E Main Road",
+      "distance": 5.896245053
+     },
+     {
+      "hint": "DkaJkQ9GiZFfAAAAAAAAAKAAAAAAAAAAW-eDQgAAAACnw95CAAAAAF8AAAAAAAAAoAAAAAAAAABOKgEAi5GhBPO7xQB4kaEEfL3FAAIAvwAAAAAA",
+      "location": [
+       77.697419,
+       12.958707
+      ],
+      "name": "",
+      "distance": 43.52653931
+     }
+    ]
+   }
+  },
+  "/table/v1/driving/77.5544,12.9982;77.6974,12.9591?annotations=distance,duration": {
+   "status": 200,
+   "body": {
+    "code": "Ok",
+    "distances": [
+     [
+      0,
+      20996.6
+     ],
+     [
+      19420.7,
+      0
+     ]
+    ],
+    "destinations": [
+     {
+      "hint": "sRKAhbsSgIWyAAAAUgAAAAAAAAAAAAAAGNt3QjTm4kEAAAAAAAAAAFkAAAApAAAAAAAAAAAAAABOKgEAFmOfBD5WxgDgYp8EOFbGAAAALxYAAAAA",
+      "location": [
+       77.554454,
+       12.998206
+      ],
+      "name": "1st E Main Road",
+      "distance": 5.896245053
+     },
+     {
+      "hint": "DkaJkQ9GiZFfAAAAAAAAAKAAAAAAAAAAW-eDQgAAAACnw95CAAAAAF8AAAAAAAAAoAAAAAAAAABOKgEAi5GhBPO7xQB4kaEEfL3FAAIAvwAAAAAA",
+      "location": [
+       77.697419,
+       12.958707
+      ],
+      "name": "",
+      "distance": 43.52653931
+     }
+    ],
+    "durations": [
+     [
+      0,
+      1462.4
+     ],
+     [
+      1483.1,
+      0
+     ]
+    ],
+    "sources": [
+     {
+      "hint": "sRKAhbsSgIWyAAAAUgAAAAAAAAAAAAAAGNt3QjTm4kEAAAAAAAAAAFkAAAApAAAAAAAAAAAAAABOKgEAFmOfBD5WxgDgYp8EOFbGAAAALxYAAAAA",
+      "location": [
+       77.554454,
+       12.998206
+      ],
+      "name": "1st E Main Road",
+      "distance": 5.896245053
+     },
+     {
+      "hint": "DkaJkQ9GiZFfAAAAAAAAAKAAAAAAAAAAW-eDQgAAAACnw95CAAAAAF8AAAAAAAAAoAAAAAAAAABOKgEAi5GhBPO7xQB4kaEEfL3FAAIAvwAAAAAA",
+      "location": [
+       77.697419,
+       12.958707
+      ],
+      "name": "",
+      "distance": 43.52653931
+     }
+    ]
+   }
+  },
+  "/table/v1/driving/77.5946,12.9716;77.6408,12.9784;77.6245,12.9352;77.5838,12.925;77.5544,12.9982;77.6974,12.9591?annotations=distance,duration": {
+   "status": 200,
+   "body": {
+    "code": "Ok",
+    "distances": [
+     [
+      0,
+      6202.1,
+      7503,
+      6850.2,
+      6266.4,
+      14744.6
+     ],
+     [
+      6428.2,
+      0,
+      8355.9,
+      13411.1,
+      12100.2,
+      8064.8
+     ],
+     [
+      7282.2,
+      5997.2,
+      0,
+      5851.1,
+      14587.5,
+      10735.7
+     ],
+     [
+      7362.2,
+      13122.2,
+      7580.3,
+      0,
+      11514.6,
+      17860.7
+     ],
+     [
+      6765.4,
+      12454.1,
+      13747.4,
+      11125.9,
+      0,
+      20996.6
+     ],
+     [
+      13018.1,
+      8531.3,
+      10859.3,
+      17643.7,
+      19420.7,
+      0
+     ]
+    ],
+    "destinations": [
+     {
+      "hint": "aFzrkf___38kAAAAJAAAAAAAAAAPAAAAAG4gQgAAAAAAAAAA-oqFQSQAAAAkAAAAAAAAAA8AAABOKgEASQCgBEjvxQDo_58EUO7FAAAALxIAAAAA",
+      "location": [
+       77.594697,
+       12.971848
+      ],
+      "name": "Vittal Mallya Road",
+      "distance": 29.38549159
+     },
+     {
+      "hint": "35vXkv___38DAAAABQAAAAAAAAAAAAAAYc_iQGHZFEAAAAAAAAAAAAMAAAAFAAAAAAAAAAAAAABOKgEAbrSgBOEIxgBgtKAE4AjGAAAAXxYAAAAA",
+      "location": [
+       77.640814,
+       12.978401
+      ],
+      "name": "100 Feet Road",
+      "distance": 1.522961953
+     },
+     {
+      "hint": "C6HigP___38IAAAACQAAAF4AAAAAAAAA8Rx1QYHolD9cWQZDAAAAAAgAAAAJAAAAXgAAAAAAAABOKgEAs3SgBCFgxQC0dKAEIGDFAAIAbw4AAAAA",
+      "location": [
+       77.624499,
+       12.935201
+      ],
+      "name": "Mahayogi Vemana Road",
+      "distance": 0.1549675933
+     },
+     {
+      "hint": "W9_fgP___38HAAAAEgAAAAAAAAAMAAAAm4AtQZyvhUEAAAAAHfWSQQcAAAASAAAAAAAAAAwAAABOKgEAudWfBEg4xQC41Z8ESDjFAAAAXwsAAAAA",
+      "location": [
+       77.583801,
+       12.925
+      ],
+      "name": "9th Main Road",
+      "distance": 0.1085172395
+     },
+     {
+      "hint": "sRKAhbsSgIWyAAAAUgAAAAAAAAAAAAAAGNt3QjTm4kEAAAAAAAAAAFkAAAApAAAAAAAAAAAAAABOKgEAFmOfBD5WxgDgYp8EOFbGAAAALxYAAAAA",
+      "location": [
+       77.554454,
+       12.998206
+      ],
+      "name": "1st E Main Road",
+      "distance": 5.896245053
+     },
+     {
+      "hint": "DkaJkQ9GiZFfAAAAAAAAAKAAAAAAAAAAW-eDQgAAAACnw95CAAAAAF8AAAAAAAAAoAAAAAAAAABOKgEAi5GhBPO7xQB4kaEEfL3FAAIAvwAAAAAA",
+      "location": [
+       77.697419,
+       12.958707
+      ],
+      "name": "",
+      "distance": 43.52653931
+     }
+    ],
+    "durations": [
+     [
+      0,
+      478.4,
+      737.4,
+      569.7,
+      535.3,
+      1057.1
+     ],
+     [
+      516.9,
+      0,
+      615.6,
+      947.4,
+      830.6,
+      609.1
+     ],
+     [
+      681.1,
+      409.5,
+      0,
+      478.5,
+      1030.5,
+      762.4
+     ],
+     [
+      709.7,
+      893.6,
+      554,
+      0,
+      812.3,
+      1246.5
+     ],
+     [
+      611.4,
+      883.7,
+      1068.8,
+      829.2,
+      0,
+      1462.4
+     ],
+     [
+      1132.1,
+      684.6,
+      1064,
+      1357.2,
+      1483.1,
+      0
+     ]
+    ],
+    "sources": [
+     {
+      "hint": "aFzrkf___38kAAAAJAAAAAAAAAAPAAAAAG4gQgAAAAAAAAAA-oqFQSQAAAAkAAAAAAAAAA8AAABOKgEASQCgBEjvxQDo_58EUO7FAAAALxIAAAAA",
+      "location": [
+       77.594697,
+       12.971848
+      ],
+      "name": "Vittal Mallya Road",
+      "distance": 29.38549159
+     },
+     {
+      "hint": "35vXkv___38DAAAABQAAAAAAAAAAAAAAYc_iQGHZFEAAAAAAAAAAAAMAAAAFAAAAAAAAAAAAAABOKgEAbrSgBOEIxgBgtKAE4AjGAAAAXxYAAAAA",
+      "location": [
+       77.640814,
+       12.978401
+      ],
+      "name": "100 Feet Road",
+      "distance": 1.522961953
+     },
+     {
+      "hint": "C6HigP___38IAAAACQAAAF4AAAAAAAAA8Rx1QYHolD9cWQZDAAAAAAgAAAAJAAAAXgAAAAAAAABOKgEAs3SgBCFgxQC0dKAEIGDFAAIAbw4AAAAA",
+      "location": [
+       77.624499,
+       12.935201
+      ],
+      "name": "Mahayogi Vemana Road",
+      "distance": 0.1549675933
+     },
+     {
+      "hint": "W9_fgP___38HAAAAEgAAAAAAAAAMAAAAm4AtQZyvhUEAAAAAHfWSQQcAAAASAAAAAAAAAAwAAABOKgEAudWfBEg4xQC41Z8ESDjFAAAAXwsAAAAA",
+      "location": [
+       77.583801,
+       12.925
+      ],
+      "name": "9th Main Road",
+      "distance": 0.1085172395
+     },
+     {
+      "hint": "sRKAhbsSgIWyAAAAUgAAAAAAAAAAAAAAGNt3QjTm4kEAAAAAAAAAAFkAAAApAAAAAAAAAAAAAABOKgEAFmOfBD5WxgDgYp8EOFbGAAAALxYAAAAA",
+      "location": [
+       77.554454,
+       12.998206
+      ],
+      "name": "1st E Main Road",
+      "distance": 5.896245053
+     },
+     {
+      "hint": "DkaJkQ9GiZFfAAAAAAAAAKAAAAAAAAAAW-eDQgAAAACnw95CAAAAAF8AAAAAAAAAoAAAAAAAAABOKgEAi5GhBPO7xQB4kaEEfL3FAAIAvwAAAAAA",
+      "location": [
+       77.697419,
+       12.958707
+      ],
+      "name": "",
+      "distance": 43.52653931
+     }
+    ]
+   }
+  },
+  "/table/v1/driving/77.5946,12.9716;77.6408,12.9784;77.6245,12.9352;77.5838,12.925;77.5544,12.9982?annotations=distance,duration": {
+   "status": 200,
+   "body": {
+    "code": "Ok",
+    "distances": [
+     [
+      0,
+      6202.1,
+      7503,
+      6850.2,
+      6266.4
+     ],
+     [
+      6428.2,
+      0,
+      8355.9,
+      13411.1,
+      12100.2
+     ],
+     [
+      7282.2,
+      5997.2,
+      0,
+      5851.1,
+      14587.5
+     ],
+     [
+      7362.2,
+      13122.2,
+      7580.3,
+      0,
+      11514.6
+     ],
+     [
+      6765.4,
+      12454.1,
+      13747.4,
+      11125.9,
+      0
+     ]
+    ],
+    "destinations": [
+     {
+      "hint": "aFzrkf___38kAAAAJAAAAAAAAAAPAAAAAG4gQgAAAAAAAAAA-oqFQSQAAAAkAAAAAAAAAA8AAABOKgEASQCgBEjvxQDo_58EUO7FAAAALxIAAAAA",
+      "location": [
+       77.594697,
+       12.971848
+      ],
+      "name": "Vittal Mallya Road",
+      "distance": 29.38549159
+     },
+     {
+      "hint": "35vXkv___38DAAAABQAAAAAAAAAAAAAAYc_iQGHZFEAAAAAAAAAAAAMAAAAFAAAAAAAAAAAAAABOKgEAbrSgBOEIxgBgtKAE4AjGAAAAXxYAAAAA",
+      "location": [
+       77.640814,
+       12.978401
+      ],
+      "name": "100 Feet Road",
+      "distance": 1.522961953
+     },
+     {
+      "hint": "C6HigP___38IAAAACQAAAF4AAAAAAAAA8Rx1QYHolD9cWQZDAAAAAAgAAAAJAAAAXgAAAAAAAABOKgEAs3SgBCFgxQC0dKAEIGDFAAIAbw4AAAAA",
+      "location": [
+       77.624499,
+       12.935201
+      ],
+      "name": "Mahayogi Vemana Road",
+      "distance": 0.1549675933
+     },
+     {
+      "hint": "W9_fgP___38HAAAAEgAAAAAAAAAMAAAAm4AtQZyvhUEAAAAAHfWSQQcAAAASAAAAAAAAAAwAAABOKgEAudWfBEg4xQC41Z8ESDjFAAAAXwsAAAAA",
+      "location": [
+       77.583801,
+       12.925
+      ],
+      "name": "9th Main Road",
+      "distance": 0.1085172395
+     },
+     {
+      "hint": "sRKAhbsSgIWyAAAAUgAAAAAAAAAAAAAAGNt3QjTm4kEAAAAAAAAAAFkAAAApAAAAAAAAAAAAAABOKgEAFmOfBD5WxgDgYp8EOFbGAAAALxYAAAAA",
+      "location": [
+       77.554454,
+       12.998206
+      ],
+      "name": "1st E Main Road",
+      "distance": 5.896245053
+     }
+    ],
+    "durations": [
+     [
+      0,
+      478.4,
+      737.4,
+      569.7,
+      535.3
+     ],
+     [
+      516.9,
+      0,
+      615.6,
+      947.4,
+      830.6
+     ],
+     [
+      681.1,
+      409.5,
+      0,
+      478.5,
+      1030.5
+     ],
+     [
+      709.7,
+      893.6,
+      554,
+      0,
+      812.3
+     ],
+     [
+      611.4,
+      883.7,
+      1068.8,
+      829.2,
+      0
+     ]
+    ],
+    "sources": [
+     {
+      "hint": "aFzrkf___38kAAAAJAAAAAAAAAAPAAAAAG4gQgAAAAAAAAAA-oqFQSQAAAAkAAAAAAAAAA8AAABOKgEASQCgBEjvxQDo_58EUO7FAAAALxIAAAAA",
+      "location": [
+       77.594697,
+       12.971848
+      ],
+      "name": "Vittal Mallya Road",
+      "distance": 29.38549159
+     },
+     {
+      "hint": "35vXkv___38DAAAABQAAAAAAAAAAAAAAYc_iQGHZFEAAAAAAAAAAAAMAAAAFAAAAAAAAAAAAAABOKgEAbrSgBOEIxgBgtKAE4AjGAAAAXxYAAAAA",
+      "location": [
+       77.640814,
+       12.978401
+      ],
+      "name": "100 Feet Road",
+      "distance": 1.522961953
+     },
+     {
+      "hint": "C6HigP___38IAAAACQAAAF4AAAAAAAAA8Rx1QYHolD9cWQZDAAAAAAgAAAAJAAAAXgAAAAAAAABOKgEAs3SgBCFgxQC0dKAEIGDFAAIAbw4AAAAA",
+      "location": [
+       77.624499,
+       12.935201
+      ],
+      "name": "Mahayogi Vemana Road",
+      "distance": 0.1549675933
+     },
+     {
+      "hint": "W9_fgP___38HAAAAEgAAAAAAAAAMAAAAm4AtQZyvhUEAAAAAHfWSQQcAAAASAAAAAAAAAAwAAABOKgEAudWfBEg4xQC41Z8ESDjFAAAAXwsAAAAA",
+      "location": [
+       77.583801,
+       12.925
+      ],
+      "name": "9th Main Road",
+      "distance": 0.1085172395
+     },
+     {
+      "hint": "sRKAhbsSgIWyAAAAUgAAAAAAAAAAAAAAGNt3QjTm4kEAAAAAAAAAAFkAAAApAAAAAAAAAAAAAABOKgEAFmOfBD5WxgDgYp8EOFbGAAAALxYAAAAA",
+      "location": [
+       77.554454,
+       12.998206
+      ],
+      "name": "1st E Main Road",
+      "distance": 5.896245053
+     }
+    ]
+   }
+  }
+ }
+}

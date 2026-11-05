@@ -54,6 +54,11 @@ class UrgentOrder(_EventBase):
     customer: CustomerIn
 
 
+def extra_points(event) -> list[tuple[float, float]]:
+    """Coordinates an event adds to the plan (an urgent order's stop), for the road matrix."""
+    return [(event.customer.x, event.customer.y)] if isinstance(event, UrgentOrder) else []
+
+
 Event = Annotated[VehicleBreakdown | FailedDelivery | UrgentOrder, Field(discriminator="type")]
 
 

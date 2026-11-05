@@ -59,9 +59,15 @@ function OrdersInput({ orders, setOrders }) {
   )
 }
 
+const DISTANCE_SOURCES = [
+  ['straight_line', 'Straight line (no road data)'],
+  ['osrm', 'Road network (OSRM)'],
+  ['estimate', 'Estimate: straight line × detour factor'],
+]
+
 function NewPlan({ onCreated }) {
   const [orders, setOrders] = useState(null)
-  const [f, setF] = useState({ depot_x: 50, depot_y: 50, vehicle_count: 3, vehicle_capacity: 20, engine: 'auto', time_limit_s: 3 })
+  const [f, setF] = useState({ depot_x: 50, depot_y: 50, vehicle_count: 3, vehicle_capacity: 20, engine: 'auto', time_limit_s: 3, distance_source: 'straight_line' })
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
   const set = (k) => (v) => setF((p) => ({ ...p, [k]: v }))
@@ -75,7 +81,9 @@ function NewPlan({ onCreated }) {
       vehicle_count: f.vehicle_count, vehicle_capacity: f.vehicle_capacity, fixed_vehicle_cost: 0, customers: orders.customers,
     }
     try {
-      const r = await api.createPlan({ instance, engine: f.engine, time_limit_s: f.time_limit_s })
+      const body = { instance, engine: f.engine, time_limit_s: f.time_limit_s }
+      if (metric === 'haversine') body.distance_source = f.distance_source
+      const r = await api.createPlan(body)
       onCreated(r.plan_id)
     } catch (err) { setError(err) } finally { setBusy(false) }
   }
@@ -95,6 +103,16 @@ function NewPlan({ onCreated }) {
             </select>
           </Field>
           <Field label="Time budget (s)" htmlFor="budget"><NumberInput id="budget" value={f.time_limit_s} onChange={set('time_limit_s')} min={0.5} step={0.5} /></Field>
+          {orders?.coordinates === 'lonlat' && (
+            <div className="col-span-2">
+              <Field label="Distances and travel times" htmlFor="distances"
+                hint="Road network uses the self-hosted OSRM. If it is not available, the plan uses straight line × detour factor and says so.">
+                <select id="distances" className="input" value={f.distance_source} onChange={(e) => set('distance_source')(e.target.value)}>
+                  {DISTANCE_SOURCES.map(([k, t]) => <option key={k} value={k}>{t}</option>)}
+                </select>
+              </Field>
+            </div>
+          )}
           <div className="col-span-2">
             {error && <div className="mb-3"><Notice kind="error" title="Plan not created" errors={error.errors}>{error.message}</Notice></div>}
             <button type="submit" className="btn btn-primary" disabled={!orders || busy}>{busy ? <Spinner label="Submitting" /> : 'Create plan'}</button>

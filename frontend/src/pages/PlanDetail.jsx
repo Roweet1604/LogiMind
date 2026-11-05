@@ -129,6 +129,23 @@ export function ReplanPanel({ plan, onReplanned }) {
   )
 }
 
+export function DistanceSource({ source }) {
+  if (!source) return null
+  if (source.fallback) {
+    return (
+      <Notice kind="warn" title="Fallback distances: not road data">
+        Road distances were requested, but OSRM was not available ({source.reason}). This plan uses {source.label?.replace(/^FALLBACK /, '')}.
+      </Notice>
+    )
+  }
+  return (
+    <Notice title="Distances and travel times">
+      {source.label}{source.provider === 'osrm' && source.fetched_at ? `, fetched ${source.fetched_at}${source.cache === 'hit' ? ' (from the cache)' : ''}` : ''}.
+      {source.warning && ` ${source.warning}.`}
+    </Notice>
+  )
+}
+
 export default function PlanDetail() {
   const { id } = useParams()
   const { state } = useAuth()
@@ -179,6 +196,7 @@ export default function PlanDetail() {
               {routes ? 'The validator rejected these routes; they are shown for diagnosis only.' : 'The solver returned no routes.'}
             </Notice>
           )}
+          <DistanceSource source={plan.distance_source} />
           {plan.selection?.explanation && <Notice title={plan.selection.method === 'model' ? 'Why this engine' : 'Engine'}>{plan.selection.explanation}</Notice>}
           {plan.replan && (
             <Notice title={`Replan of ${plan.parent_plan_id} after ${plan.event?.type?.replace('_', ' ')}`}

@@ -108,3 +108,6 @@ class PlanIn(BaseModel):
     engine: Literal["auto", "ortools", "hybrid", "ga"] = "auto"
     time_limit_s: float = Field(10.0, gt=0)  # total wall-clock budget for the chosen engine
     seed: int = 0
+    # P4: where distances and travel times come from (lon/lat instances only). "osrm" falls back to the
+    # straight-line x detour estimate when OSRM is unavailable, and the plan says so (distance_source.fallback).
+    distance_source: Literal["straight_line", "osrm", "estimate"] = "straight_line"

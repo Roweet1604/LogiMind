@@ -17,10 +17,11 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.db.keys import Principal
 from app.db.models import AuditLog, Plan, utcnow
 from app.db.session import tenant_session
+from app.distances.service import DistanceService, describe
 from app.evaluation.metrics import compute_metrics
 from app.evaluation.validator import validate_routes
 from app.models.problem import Instance
-from app.replan.events import apply_event, check_replan
+from app.replan.events import apply_event, check_replan, extra_points
 from app.replan.jobs import build_job, routes_by_vehicle
 from app.selector.dataset import ENGINE_CONFIGS
 from app.selector.model import ENGINE_LABELS, get_selector
@@ -43,10 +44,12 @@ def audit(s: Session, tenant_id: str, actor: str, action: str, target: str = "",
 
 
 class PlanService:
-    def __init__(self, factory: sessionmaker[Session], store: Store, notifier: WebhookNotifier | None = None):
+    def __init__(self, factory: sessionmaker[Session], store: Store, notifier: WebhookNotifier | None = None,
+                 distances: DistanceService | None = None):
         self.factory = factory
         self.store = store
         self.notifier = notifier
+        self.distances = distances
 
     def submit(self, who: Principal, instance: Instance, engine: str, time_limit_s: float, seed: int = 0) -> dict:
         if engine == "auto":
@@ -61,13 +64,17 @@ class PlanService:
         if algorithm != "ortools":
             cfg["seed"] = seed
         plan_id = f"plan-{uuid.uuid4().hex[:12]}"
+        stored = instance.to_dict()
+        source = describe(stored)
         with tenant_session(self.factory, who.tenant_id) as s:
-            s.add(Plan(id=plan_id, tenant_id=who.tenant_id, instance=instance.to_dict(), requested_engine=engine,
+            s.add(Plan(id=plan_id, tenant_id=who.tenant_id, instance=stored, requested_engine=engine,
                        engine=chosen, time_limit_s=time_limit_s, selection=_clean(selection), state="queued"))
-            audit(s, who.tenant_id, who.key_id, "plan.create", plan_id, engine=chosen, requested=engine)
+            audit(s, who.tenant_id, who.key_id, "plan.create", plan_id, engine=chosen, requested=engine,
+                  distances=source["provider"], distance_fallback=source["fallback"])
             s.commit()
         self.store.executor.submit(self._execute, who.tenant_id, plan_id, instance, algorithm, cfg)
-        return {"plan_id": plan_id, "state": "queued", "engine": chosen, "selection": selection}
+        return {"plan_id": plan_id, "state": "queued", "engine": chosen, "selection": selection,
+                "distance_source": source}
 
     def _execute(self, tenant_id: str, plan_id: str, instance: Instance, algorithm: str, cfg: dict) -> None:
         with tenant_session(self.factory, tenant_id) as s:
@@ -116,14 +123,23 @@ class PlanService:
                                      "only a completed, feasible plan can be replanned")
             routes = result.get("routes") or result["solve"]["routes"]
             parent_instance = Instance.from_dict(parent.instance)
+        parent_road_ok = parent_instance.road is not None and not parent_instance.road.fallback
+        if parent_instance.road is not None and self.distances is not None:
+            # an urgent order's stop needs matrix rows: rebuild from the same requested source (fallback flagged)
+            parent_instance = self.distances.cover(parent_instance, extra=extra_points(event))
         setup = apply_event(parent_instance, routes, event)  # ReplanError -> 422
         job = build_job(setup, engine, time_limit_s, warm_start, seed)
         new_id = f"plan-{uuid.uuid4().hex[:12]}"
+        stored = setup.instance.to_dict()
+        source = describe(stored)
+        if source.get("fallback") and parent_road_ok:
+            setup.notes.append("distances changed: OSRM was not available for the new stop, so this replan uses "
+                               "the straight-line fallback for the whole matrix")
         record = {"parent_plan_id": plan_id, "frozen": setup.frozen, "blocked": setup.blocked,
                   "dropped_customers": setup.dropped, "notes": setup.notes, "warm_start": job.warm_start,
                   "received_at": received_at.isoformat()}
         with tenant_session(self.factory, who.tenant_id) as s:
-            s.add(Plan(id=new_id, tenant_id=who.tenant_id, instance=setup.instance.to_dict(), requested_engine=engine,
+            s.add(Plan(id=new_id, tenant_id=who.tenant_id, instance=stored, requested_engine=engine,
                        engine=engine, time_limit_s=time_limit_s, state="queued", parent_id=plan_id,
                        event=_clean(event.model_dump()), replan=_clean(record),
                        selection={"engine": engine, "method": "requested",
@@ -132,7 +148,8 @@ class PlanService:
                   engine=engine)
             s.commit()
         self.store.executor.submit(self._execute_replan, who.tenant_id, new_id, setup, job, received)
-        return {"plan_id": new_id, "parent_plan_id": plan_id, "state": "queued", "engine": engine, "replan": record}
+        return {"plan_id": new_id, "parent_plan_id": plan_id, "state": "queued", "engine": engine, "replan": record,
+                "distance_source": source}
 
     def _execute_replan(self, tenant_id: str, plan_id: str, setup, job, received: float) -> None:
         with tenant_session(self.factory, tenant_id) as s:
@@ -188,12 +205,14 @@ class PlanService:
             for p in rows:
                 result = p.result or {}
                 validation = result.get("validation") or {}
+                source = describe(p.instance)
                 out.append({
                     "plan_id": p.id, "name": p.instance.get("name", ""), "state": p.state, "engine": p.engine,
                     "requested_engine": p.requested_engine, "n_customers": len(p.instance.get("customers", [])),
                     "status": (result.get("solve") or {}).get("status"),
                     "feasible": result.get("feasible", validation.get("feasible")) if p.result else None,
                     "total_distance": (result.get("metrics") or {}).get("total_distance"),
+                    "distance_provider": source["provider"], "distance_fallback": source["fallback"],
                     "parent_plan_id": p.parent_id, "event_type": (p.event or {}).get("type"),
                     "created_at": p.created_at.isoformat() if p.created_at else None})
             return out
@@ -209,7 +228,7 @@ class PlanService:
                     "status": ((p.result or {}).get("solve") or {}).get("status"),
                     "feasible": p.result.get("feasible", validation.get("feasible")) if p.result else None,
                     "result": p.result, "error": p.error, "instance_id": p.instance.get("instance_id"),
-                    "instance": p.instance,
+                    "instance": p.instance, "distance_source": describe(p.instance),
                     "parent_plan_id": p.parent_id, "event": p.event, "replan": p.replan,
                     "created_at": p.created_at.isoformat() if p.created_at else None,
                     "finished_at": p.finished_at.isoformat() if p.finished_at else None}

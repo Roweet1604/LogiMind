@@ -13,6 +13,7 @@ from app.benchmarks import catalog
 from app.db.keys import Principal
 from app.db.models import Tenant
 from app.db.session import tenant_session
+from app.distances.service import DistanceSourceError
 from app.models.problem import Customer, Instance, InstanceValidationError
 from app.replan.events import ReplanError, ReplanIn
 from app.services.export import summarize
@@ -83,7 +84,8 @@ def csv_response(rows: list[dict], filename: str, df: pd.DataFrame | None = None
 def health(request: Request) -> dict:
     """research_endpoints tells the ops console whether the dev-only research pages can be used."""
     return {"status": "ok", "environment": environment_info(),
-            "research_endpoints": bool(request.app.state.legacy_open)}
+            "research_endpoints": bool(request.app.state.legacy_open),
+            "distances": request.app.state.distances.status()}
 
 
 @router.get("/whoami", tags=["plans"])
@@ -197,13 +199,22 @@ def create_plan(body: S.PlanIn, request: Request, who: Principal = Depends(requi
     The instance is sent inline and stored with the plan (tenant-owned). The solver's routes go through
     the independent validator; GET the plan for `feasible`, the solver status and the metrics. Timeouts
     and failures are reported as what they are.
+
+    distance_source (lon/lat only): "straight_line" (default), "osrm" (road network; if OSRM is unavailable the
+    plan uses straight line x detour factor and `distance_source.fallback` is true, with the reason) or
+    "estimate" (straight line x detour factor on purpose). The matrix is built before the solver starts and
+    is not charged to the engine's time budget.
     """
     check_time(body.time_limit_s, "time_limit_s")
     inst = instance_from(body.instance)
     try:
         inst.validate()
+        request.app.state.distances.attach(inst, body.distance_source)
+        inst.validate()  # again: travel times changed
     except InstanceValidationError as exc:
         raise HTTPException(422, detail={"message": "invalid instance", "errors": exc.errors})
+    except DistanceSourceError as exc:
+        raise HTTPException(422, detail={"message": str(exc), "errors": []})
     return request.app.state.plans.submit(who, inst, body.engine, body.time_limit_s, body.seed)
 
 
@@ -239,7 +250,7 @@ def replan_plan(plan_id: str, body: ReplanIn, request: Request, who: Principal =
                                              body.warm_start, body.seed)
     except PlanStateError as exc:
         raise HTTPException(409, detail=str(exc))
-    except (ReplanError, InstanceValidationError) as exc:
+    except (ReplanError, InstanceValidationError, DistanceSourceError) as exc:
         raise HTTPException(422, detail=str(exc))
     if out is None:
         raise HTTPException(404, detail=f"plan {plan_id} not found")

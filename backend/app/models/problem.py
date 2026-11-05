@@ -11,6 +11,10 @@ Conventions
   to one decimal (CVRPLIB convention for Solomon / Gehring-Homberger).
 * metric="haversine": x = longitude, y = latitude (degrees); distances are
   great-circle kilometres. This is straight-line distance, NOT road distance.
+* road_matrix (P4, optional, lon/lat instances only): distances (km) and travel
+  times from a distance provider (OSRM, or the flagged straight-line x detour
+  estimate). When present it replaces the metric for distances AND travel times
+  (time_per_distance is then not used), and its provenance is part of the plan.
 * Estimated cost = fixed_vehicle_cost * vehicles_used
                    + cost_per_distance * total_distance.
   These are synthetic cost units, not calibrated currency.
@@ -18,7 +22,8 @@ Conventions
 Time windows (CVRPTW)
 ---------------------
 * Travel time between nodes = distance * time_per_distance (time units are
-  whatever the instance uses, e.g. minutes; Solomon uses time = distance).
+  whatever the instance uses, e.g. minutes; Solomon uses time = distance), or
+  the road matrix's travel time converted to time_unit when there is one.
 * A customer's service must START within [ready_time, due_time]. Arriving
   early means waiting; due_time=None means no upper limit.
 * service_time is spent at the customer after service starts.
@@ -37,11 +42,15 @@ from typing import Any
 
 import numpy as np
 
+from app.distances.base import RoadMatrix
+
 EARTH_RADIUS_KM = 6371.0088
 DEPOT_NODE = 0
 METRICS = ("euclidean", "haversine", "euclidean_nint", "euclidean_trunc1")
 # Tolerance for time-window feasibility checks (floating-point noise only).
 TIME_EPS = 1e-6
+TIME_UNIT_SECONDS = {"s": 1, "sec": 1, "second": 1, "seconds": 1, "min": 60, "minute": 60, "minutes": 60,
+                     "h": 3600, "hr": 3600, "hour": 3600, "hours": 3600}
 
 
 class InstanceValidationError(ValueError):
@@ -81,7 +90,9 @@ class Instance:
     depot_due_time: float | None = None
     time_per_distance: float = 1.0
     time_unit: str = "min"
+    road: RoadMatrix | None = field(default=None, repr=False, compare=False)
     _matrix: np.ndarray | None = field(default=None, init=False, repr=False, compare=False)
+    _tmatrix: np.ndarray | None = field(default=None, init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         if not self.instance_id:
@@ -106,6 +117,8 @@ class Instance:
                               for c in self.customers],
                 "time_per_distance": num(self.time_per_distance),
             }
+        if self.road is not None:  # only then, so ids without a road matrix stay unchanged
+            payload["road"] = self.road.digest()
         digest = hashlib.sha1(json.dumps(payload, sort_keys=True).encode()).hexdigest()
         return f"inst-{digest[:10]}"
 
@@ -189,7 +202,8 @@ class Instance:
                 errors.append(f"total demand {valid_demand} exceeds total fleet capacity {fleet_cap}")
 
         time_ok = self._validate_time_fields(errors)
-        if time_ok and coords_ok and self.metric in METRICS and self.has_time_windows:
+        road_ok = self._validate_road(errors) if self.road is not None else True
+        if time_ok and coords_ok and road_ok and self.metric in METRICS and self.has_time_windows:
             self._validate_reachability(errors)
         if errors:
             raise InstanceValidationError(errors)
@@ -216,6 +230,20 @@ class Instance:
                 errors.append(f"customer {c.id}: service_time must be a finite number >= 0")
         return len(errors) == before
 
+    def _validate_road(self, errors: list[str]) -> bool:
+        before = len(errors)
+        if self.metric != "haversine":
+            errors.append("a road matrix needs lon/lat coordinates (metric haversine)")
+        if self.distance_unit != "km":
+            errors.append(f"a road matrix gives km; distance_unit must be 'km', not {self.distance_unit!r}")
+        if self.time_unit_seconds() is None:
+            errors.append(f"unknown time_unit {self.time_unit!r} for road travel times "
+                          f"(one of {sorted(TIME_UNIT_SECONDS)})")
+        missing = [cid for cid, (x, y) in zip(self.node_ids, self._coords()) if self.road.index_of(x, y) is None]
+        if missing:
+            errors.append(f"road matrix has no entry for node(s) {missing[:10]}")
+        return len(errors) == before
+
     def _validate_reachability(self, errors: list[str]) -> None:
         """Each customer must be servable on its own direct depot round trip."""
         t = self.travel_time_matrix()
@@ -232,8 +260,29 @@ class Instance:
                               f"{depot_due} (earliest return {back:.2f})")
 
     # ---- distances and travel times ---------------------------------------
+    def _coords(self) -> list[tuple[float, float]]:
+        return [(self.depot_x, self.depot_y)] + [(c.x, c.y) for c in self.customers]
+
+    def time_unit_seconds(self) -> int | None:
+        return TIME_UNIT_SECONDS.get((self.time_unit or "").strip().lower())
+
+    def set_road_matrix(self, road: RoadMatrix | None) -> None:
+        """Attach (or remove) a road matrix; the instance id changes with it."""
+        self.road = road
+        self._matrix = self._tmatrix = None
+        self.instance_id = self.compute_id()
+
+    def _road_rows(self) -> list[int]:
+        idx = [self.road.index_of(x, y) for x, y in self._coords()]
+        if any(i is None for i in idx):
+            raise InstanceValidationError(["road matrix does not cover every node of the instance"])
+        return idx
+
     def distance_matrix(self) -> np.ndarray:
         """(n+1)x(n+1) float matrix in `distance_unit`; computed once, shared by all solvers."""
+        if self._matrix is None and self.road is not None:
+            idx = self._road_rows()
+            self._matrix = self.road.distances_km[np.ix_(idx, idx)]
         if self._matrix is None:
             pts = np.array([[self.depot_x, self.depot_y]] + [[c.x, c.y] for c in self.customers], dtype=float)
             if self.metric == "haversine":
@@ -254,8 +303,17 @@ class Instance:
         return self._matrix
 
     def travel_time_matrix(self) -> np.ndarray:
-        """Travel time between nodes = distance * time_per_distance."""
-        return self.distance_matrix() * self.time_per_distance
+        """Travel time between nodes = distance * time_per_distance, or the road matrix's travel time
+        in `time_unit` when the instance has one."""
+        if self.road is None:
+            return self.distance_matrix() * self.time_per_distance
+        if self._tmatrix is None:
+            secs = self.time_unit_seconds()
+            if secs is None:
+                raise InstanceValidationError([f"unknown time_unit {self.time_unit!r} for road travel times"])
+            idx = self._road_rows()
+            self._tmatrix = self.road.durations_s[np.ix_(idx, idx)] / secs
+        return self._tmatrix
 
     # ---- (de)serialisation ---------------------------------------------
     def to_dict(self) -> dict[str, Any]:
@@ -284,6 +342,8 @@ class Instance:
         if tw:
             out["depot"].update(ready_time=self.depot_ready_time, due_time=self.depot_due_time)
             out.update(time_per_distance=self.time_per_distance, time_unit=self.time_unit)
+        if self.road is not None:
+            out.update(time_unit=self.time_unit, road_matrix=self.road.to_dict())
         return out
 
     @classmethod
@@ -314,6 +374,7 @@ class Instance:
                 depot_due_time=opt(depot.get("due_time")),
                 time_per_distance=float(d.get("time_per_distance", 1.0)),
                 time_unit=d.get("time_unit", "min"),
+                road=RoadMatrix.from_dict(d["road_matrix"]) if d.get("road_matrix") else None,
             )
         except (KeyError, TypeError, ValueError) as exc:
             raise InstanceValidationError([f"malformed instance data: {exc!r}"]) from exc

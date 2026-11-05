@@ -1,9 +1,10 @@
 """ETAs computed from a stored plan.
 
 The ETA of a stop is the planned service start from the same schedule the validator checks
-(`route_schedule`): leave the depot at its opening time, travel = distance x time_per_distance,
-wait when early, then the service time. It is an estimate from the plan's travel-time model
-(straight-line or benchmark distances), NOT live traffic, and the messages say so.
+(`route_schedule`): leave the depot at its opening time, travel = the plan's travel time (the road
+matrix's travel time when the plan has one, else distance x time_per_distance), wait when early,
+then the service time. It is an estimate from the plan's travel-time model, NOT live traffic, and
+the messages say so (including when the road matrix is the straight-line fallback).
 
 Clock times need a shift start (when the depot opening time, time 0 + depot_ready_time, happens
 in real time) and a known time unit. Without them only plan-time values are returned.
@@ -15,19 +16,20 @@ from datetime import datetime, timedelta
 from app.evaluation.validator import route_schedule
 from app.models.problem import Instance
 
-UNIT_SECONDS = {"s": 1, "sec": 1, "second": 1, "seconds": 1, "min": 60, "minute": 60, "minutes": 60,
-                "h": 3600, "hr": 3600, "hour": 3600, "hours": 3600}
-METHOD = ("planned service start from the route plan's travel-time model (distance x time_per_distance, "
-          "waiting and service times included); not live traffic")
+METHOD = ("planned service start from the route plan's travel-time model (road matrix travel times, or "
+          "distance x time_per_distance; waiting and service times included); not live traffic")
 
 
 def unit_seconds(instance: Instance) -> int | None:
-    return UNIT_SECONDS.get((instance.time_unit or "").strip().lower())
+    return instance.time_unit_seconds()
 
 
 def time_model_note(instance: Instance) -> str:
     """Says plainly where travel times come from. A plan without time data uses the model's default
     (1 time unit per distance unit, i.e. 1 min per km = 60 km/h when units are km and min)."""
+    if instance.road is not None:
+        p = instance.road.provenance
+        return f"travel times from the plan's matrix: {p.get('label', p.get('provider'))}"
     if instance.has_time_windows:
         return f"from the plan: {instance.time_per_distance} {instance.time_unit} per {instance.distance_unit}"
     return (f"default assumption: {instance.time_per_distance} {instance.time_unit} per {instance.distance_unit} "

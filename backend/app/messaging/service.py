@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.db.keys import Principal
 from app.db.models import CustomerContact, NotificationLog, Plan, StopEvent, Tenant
 from app.db.session import tenant_session
+from app.distances.service import describe
 from app.driver.service import plan_routes
 from app.messaging.etas import METHOD, route_etas, time_model_note, unit_seconds
 from app.messaging.senders import MessageSender, mask
@@ -121,8 +122,10 @@ class NotificationService:
         for r, route in enumerate(routes):
             for stop in route_etas(inst, route, shift_start):
                 out.append({**stop, "route_index": r, "reported": reported.get(stop["customer_id"])})
-        return {"plan_id": plan_id, "time_unit": inst.time_unit, "time_per_distance": inst.time_per_distance,
-                "time_model": time_model_note(inst), "shift_start": _iso(shift_start),
+        return {"plan_id": plan_id, "time_unit": inst.time_unit,
+                "time_per_distance": None if inst.road is not None else inst.time_per_distance,
+                "distance_source": describe(inst.to_dict()), "time_model": time_model_note(inst),
+                "shift_start": _iso(shift_start),
                 "clock_times": shift_start is not None and unit_seconds(inst) is not None, "method": METHOD,
                 "stops": out}
 

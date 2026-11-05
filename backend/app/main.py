@@ -17,6 +17,11 @@ Environment variables
                                stop working on restart (development only)
   LOGIMIND_DRIVER_APP_URL      base URL of the driver PWA used in driver links (default http://localhost:5174)
   LOGIMIND_NOTIFY_PROVIDER     customer messages: "stub" only (logs, never sends; no paid provider exists)
+  LOGIMIND_OSRM_URL            self-hosted OSRM, e.g. http://localhost:5000 (unset: distance_source="osrm" uses
+                               the flagged fallback). LOGIMIND_OSRM_PROFILE (driving), LOGIMIND_OSRM_MAX_TABLE (100),
+                               LOGIMIND_OSRM_TIMEOUT_S (10), LOGIMIND_MATRIX_MAX_NODES (250),
+                               LOGIMIND_MATRIX_CACHE_DAYS (30; cache file matrix_cache.sqlite in the data dir)
+  LOGIMIND_DETOUR_FACTOR / LOGIMIND_FALLBACK_SPEED_KMH   straight-line estimate (1.3 / 25 km/h; assumptions)
 """
 from __future__ import annotations
 
@@ -35,6 +40,7 @@ from app.copilot.agent import Copilot
 from app.copilot.llm import llm_from_env
 from app.db.migrate import upgrade_to_head
 from app.db.session import make_engine, make_session_factory
+from app.distances.service import DistanceService, distance_service_from_env
 from app.driver.links import LinkSigner, secret_from_env
 from app.driver.service import DriverService
 from app.messaging.senders import sender_from_env
@@ -46,7 +52,8 @@ from app.services.store import Store
 from app.services.webhooks import HttpxSender
 
 
-def create_app(data_dir: Path | None = None, legacy_open: bool | None = None, clock=None) -> FastAPI:
+def create_app(data_dir: Path | None = None, legacy_open: bool | None = None, clock=None,
+               distances: DistanceService | None = None) -> FastAPI:
     default_dir = Path(__file__).resolve().parents[2] / "experiments" / "results" / "api_data"
     app = FastAPI(title="LogiMind API", version="0.2.0",
                   description="Route planning with OR-Tools, GA and hybrid engines. Tenant endpoints "
@@ -64,7 +71,8 @@ def create_app(data_dir: Path | None = None, legacy_open: bool | None = None, cl
     app.state.legacy_open = legacy_open_from_env() if legacy_open is None else legacy_open
     app.state.ratelimiter = RateLimiter()
     app.state.notifier = WebhookNotifier(app.state.db, HttpxSender())
-    app.state.plans = PlanService(app.state.db, app.state.store, app.state.notifier)
+    app.state.distances = distances or distance_service_from_env(data_dir)
+    app.state.plans = PlanService(app.state.db, app.state.store, app.state.notifier, app.state.distances)
     clock_opts = {"clock": clock} if clock is not None else {}
     app.state.notifications = NotificationService(app.state.db, sender_from_env(), **clock_opts)
     app.state.driver = DriverService(app.state.db, data_dir, LinkSigner(secret_from_env()),
