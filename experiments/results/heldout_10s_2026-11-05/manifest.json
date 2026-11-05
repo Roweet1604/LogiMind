@@ -1,0 +1,104 @@
+{
+ "created_at": "2026-11-05T07:22:25+00:00",
+ "args": {
+  "instances": [
+   "solomon:C102",
+   "solomon:C105",
+   "solomon:C202",
+   "solomon:C205",
+   "solomon:R102",
+   "solomon:R105",
+   "solomon:R110",
+   "solomon:R202",
+   "solomon:RC102",
+   "solomon:RC105",
+   "solomon:RC202",
+   "solomon:RC205",
+   "A:A-n33-k5",
+   "A:A-n37-k5",
+   "A:A-n39-k6",
+   "A:A-n45-k6",
+   "A:A-n48-k7",
+   "A:A-n53-k7",
+   "A:A-n55-k9",
+   "A:A-n63-k10",
+   "A:A-n69-k9",
+   "X:X-n106-k14",
+   "X:X-n110-k13",
+   "X:X-n120-k6"
+  ],
+  "methods": [
+   "ortools",
+   "ga_ls",
+   "hybrid_seed_ls"
+  ],
+  "budgets": [
+   10.0
+  ],
+  "seeds": 3,
+  "out": "experiments\\results\\heldout_10s_2026-11-05",
+  "resume": false,
+  "estimate_only": false,
+  "analyze_only": false
+ },
+ "environment": {
+  "python": "3.14.7",
+  "platform": "Windows-11-10.0.26300-SP0",
+  "processor": "AMD64 Family 23 Model 96 Stepping 1, AuthenticAMD",
+  "cpu_count": 16,
+  "ortools": "9.15.6755",
+  "numpy": "2.5.4",
+  "pandas": "3.1.0"
+ },
+ "git_commit": "f8d2912",
+ "planned_runs": 216,
+ "estimated_seconds": 2160.0,
+ "methods": {
+  "ortools": {
+   "algorithm": "ortools",
+   "config": {},
+   "label": "OR-Tools (audited defaults)"
+  },
+  "ga_nofix": {
+   "algorithm": "ga",
+   "config": {
+    "max_generations": 1000000000,
+    "stagnation_generations": null,
+    "fleet_repair": false
+   },
+   "label": "GA, P1 version (no fleet repair)"
+  },
+  "ga": {
+   "algorithm": "ga",
+   "config": {
+    "max_generations": 1000000000,
+    "stagnation_generations": null
+   },
+   "label": "GA + fleet repair"
+  },
+  "ga_ls": {
+   "algorithm": "ga",
+   "config": {
+    "max_generations": 1000000000,
+    "stagnation_generations": null,
+    "local_search": true
+   },
+   "label": "GA + fleet repair + local search"
+  },
+  "hybrid_seed": {
+   "algorithm": "hybrid",
+   "config": {
+    "local_search": false
+   },
+   "label": "Hybrid: OR-Tools seed, no local search"
+  },
+  "hybrid_seed_ls": {
+   "algorithm": "hybrid",
+   "config": {
+    "local_search": true
+   },
+   "label": "Hybrid: OR-Tools seed + local search"
+  }
+ },
+ "policy": "equal total wall clock per run; one run at a time; wall-clock guard (1.5 x budget + 5 s) stops hung runs as hard_timeout"
+}

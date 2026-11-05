@@ -8,3 +8,12 @@ set,scope,comparison,instances,dropped_no_feasible_run,median_diff_pp,mean_diff_
 "held-out, 3 s",VRPTW,GA + local search minus OR-Tools,12,0,8.202893726298376,11.230329181800911,0.0,0,12.0,0.00048828125,,0.00439453125
 "held-out, 3 s",VRPTW,Hybrid (OR-Tools seed + GA + LS) minus OR-Tools,12,0,0.0,0.15130931554417237,,8,3.0,0.625,1.0,0.625
 "held-out, 3 s",VRPTW,Hybrid (OR-Tools seed + GA + LS) minus GA + local search,12,0,-8.034786137441513,-11.079019866256738,1.0,0,,0.0009765625,11.0,0.0078125
+"held-out, 10 s",all,GA + local search minus OR-Tools,24,0,0.23299161230195714,3.820998747951378,9.0,3,12.0,0.05372470829093752,,0.32234824974562515
+"held-out, 10 s",all,Hybrid (OR-Tools seed + GA + LS) minus OR-Tools,24,0,0.0,-0.22439926192857487,,5,9.0,0.3759797524564171,10.0,1.0
+"held-out, 10 s",all,Hybrid (OR-Tools seed + GA + LS) minus GA + local search,24,0,-0.5354931527383773,-4.045398009879953,7.0,4,,0.009996388475979442,13.0,0.06997471933185609
+"held-out, 10 s",CVRP,GA + local search minus OR-Tools,12,0,-0.6056976066785793,-0.9176550817633263,8.0,2,2.0,0.10546875,,0.52734375
+"held-out, 10 s",CVRP,Hybrid (OR-Tools seed + GA + LS) minus OR-Tools,12,0,-0.18050541516245486,-0.8098393716513694,,2,4.0,0.16015625,6.0,0.640625
+"held-out, 10 s",CVRP,Hybrid (OR-Tools seed + GA + LS) minus GA + local search,12,0,0.024752475247524774,0.10781571011195683,6.0,3,,0.734375,3.0,1.0
+"held-out, 10 s",VRPTW,GA + local search minus OR-Tools,12,0,5.925290599619122,8.55965257766608,1.0,1,10.0,0.001953125,,0.017578125
+"held-out, 10 s",VRPTW,Hybrid (OR-Tools seed + GA + LS) minus OR-Tools,12,0,0.0,0.3610408477942196,,3,5.0,0.91015625,4.0,1.0
+"held-out, 10 s",VRPTW,Hybrid (OR-Tools seed + GA + LS) minus GA + local search,12,0,-5.983995426941355,-8.198611729871862,1.0,1,,0.001953125,10.0,0.017578125
