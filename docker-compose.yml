@@ -1,0 +1,91 @@
+# LogiMind with Docker Compose. UNTESTED: written on 5 Nov 2026 on a laptop without Docker
+# (decision 0020). Check every step on a machine with Docker Desktop before relying on it.
+#
+#   copy .env.example .env      (then fill in the two secrets)
+#   docker compose up --build   -> console http://localhost:8080, driver app http://localhost:8081,
+#                                  API http://localhost:8000/docs
+#   docker compose --profile osrm up --build   (also road distances; prepare the map data first, see README)
+#
+# There is no separate "worker" service: plan jobs run in the API container's guarded solver worker
+# process, one at a time (decision 0020). Keep ONE API container with ONE uvicorn worker.
+name: logimind
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: logimind
+      POSTGRES_USER: logimind
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U logimind -d logimind"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build: ./backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      LOGIMIND_DATABASE_URL: postgresql+psycopg://logimind:${POSTGRES_PASSWORD}@postgres:5432/logimind
+      ROUTEOPT_DATA_DIR: /data
+      ROUTEOPT_CORS_ORIGINS: http://localhost:8080,http://localhost:8081
+      LOGIMIND_DRIVER_LINK_SECRET: ${LOGIMIND_DRIVER_LINK_SECRET:?set LOGIMIND_DRIVER_LINK_SECRET in .env}
+      LOGIMIND_DRIVER_APP_URL: ${LOGIMIND_DRIVER_APP_URL:-http://localhost:8081}
+      LOGIMIND_OSRM_URL: ${LOGIMIND_OSRM_URL:-}
+      LOGIMIND_LLM_PROVIDER: ${LOGIMIND_LLM_PROVIDER:-ollama}
+      LOGIMIND_OLLAMA_URL: ${LOGIMIND_OLLAMA_URL:-http://host.docker.internal:11434}
+      LOGIMIND_OLLAMA_MODEL: ${LOGIMIND_OLLAMA_MODEL:-llama3.2:3b}
+      LOGIMIND_NOTIFY_PROVIDER: stub
+      LOGIMIND_DEV_RESEARCH_ENDPOINTS: "0"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # Ollama runs on the host, outside Compose
+    volumes:
+      - appdata:/data                        # matrix cache, proof-of-delivery photos
+    ports:
+      - "8000:8000"
+
+  console:
+    build: ./frontend
+    depends_on: [api]
+    ports:
+      - "8080:80"
+
+  driver:
+    build: ./driver
+    depends_on: [api]
+    ports:
+      - "8081:80"
+
+  # ---- optional road distances (profile "osrm") ----------------------------------------------
+  # Put a map extract at ./osrm-data/region.osm.pbf first, then run once:
+  #   docker compose --profile osrm run --rm osrm-prepare
+  osrm-prepare:
+    image: ghcr.io/project-osrm/osrm-backend:v5.27.1
+    profiles: ["osrm"]
+    volumes:
+      - ./osrm-data:/data
+    entrypoint: ["sh", "-c"]
+    command:
+      - >-
+        test -f /data/region.osm.pbf || { echo "missing osrm-data/region.osm.pbf (see README)"; exit 1; } &&
+        osrm-extract -p /opt/car.lua /data/region.osm.pbf &&
+        osrm-partition /data/region.osrm &&
+        osrm-customize /data/region.osrm
+
+  osrm:
+    image: ghcr.io/project-osrm/osrm-backend:v5.27.1
+    profiles: ["osrm"]
+    volumes:
+      - ./osrm-data:/data
+    command: ["osrm-routed", "--algorithm", "mld", "--max-table-size", "100", "/data/region.osrm"]
+    ports:
+      - "5000:5000"
+
+volumes:
+  pgdata:
+  appdata:

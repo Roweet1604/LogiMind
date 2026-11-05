@@ -9,3 +9,4 @@ experiments/results/api_data/
 experiments/benchmarks/data/
 frontend/dist/
 driver/dist/
+osrm-data/

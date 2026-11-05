@@ -1,0 +1,3 @@
+# Docker image only: the app's requirements plus the PostgreSQL driver (free, open source).
+-r requirements.txt
+psycopg[binary]>=3.2
