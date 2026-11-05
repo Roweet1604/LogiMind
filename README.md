@@ -4,6 +4,14 @@ An API-first hybrid optimization platform with an AI dispatch copilot for small-
 
 **Status:** P1-P3, P5, P7 and P9 done; P4 road matrix done offline (not yet run against a self-hosted OSRM); P6 done except that Docker Compose is written but UNTESTED (durable job queue and worker process added 5 Nov 2026); P8 copilot built but tested only with a fake LLM (no real model run yet). Route solvers (OR-Tools, our own GA, a hybrid), an engine picker, a tenant API with plans, imports, webhooks and replanning, a dispatch copilot, a driver PWA and stub ETA notifications. See `PROGRESS.md` for what works and what does not yet; `PLAN.md` has the roadmap.
 
+## Documents
+- [docs/architecture.md](docs/architecture.md): components, rules, a plan's life
+- [docs/api_guide.md](docs/api_guide.md): the API step by step
+- [docs/demo_script.md](docs/demo_script.md): a 10-minute demo using verified features only
+- [docs/limitations.md](docs/limitations.md): everything UNTESTED, NOT VERIFIED or NOT RUN
+- [docs/report/evaluation.md](docs/report/evaluation.md): P10 evaluation (tables, figures, significance tests)
+- [docs/report/deck_draft.md](docs/report/deck_draft.md): revised slide content (draft)
+
 ## Quick start (Windows)
 Keep the virtual environment and `node_modules` **outside OneDrive** (OneDrive sync and long paths break installs).
 
