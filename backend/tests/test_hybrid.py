@@ -159,13 +159,21 @@ def test_guard_stops_a_frozen_run_and_reports_a_timeout():
     worker = GuardedWorker(target=frozen_solver, factor=1.0, grace_s=1.0)
     try:
         inst = windows_instance()
+        # Start the worker before the clock: spawning it (imports OR-Tools, FastAPI, ...) can take
+        # many seconds on a loaded laptop and is not part of what the guard measures.
+        worker._ensure_worker()
+        proc = worker._proc
         t0 = time.perf_counter()
         rec = worker.run(inst, "ortools", {"time_limit_s": 0.5})
         waited = time.perf_counter() - t0
         assert rec.result.status == R.HARD_TIMEOUT and rec.result.routes is None
         assert rec.validation is None and rec.metrics is None  # never shown as a plan
         assert "wall-clock guard" in rec.result.message
-        assert 1.4 <= waited < 10  # hard limit 1.0 x 0.5 + 1.0 = 1.5 s (plus kill time)
+        assert rec.result.diagnostics["hard_limit_s"] == 1.5  # 1.0 x 0.5 + 1.0
+        # Not stopped before the hard limit (small allowance for the OS timer), and stopped long
+        # before the frozen solver's 60 s sleep would end (generous margin for a busy machine).
+        assert 1.5 - 0.05 <= waited < 30
+        assert not proc.is_alive()  # the frozen worker was really killed
         assert worker.restarts == 1
     finally:
         worker.close()
