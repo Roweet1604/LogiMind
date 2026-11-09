@@ -17,6 +17,11 @@ Decision 0025 still holds for layout, status rules and behaviour; this record re
 - Focus ring: 2px (console) / 3px (driver) ink on light surfaces, yellow on dark ones (ink on the sidebar would be invisible).
 - PWA icons regenerated (yellow square, ink "L") by `driver/scripts/make-icons.mjs`; manifest colours read the tokens.
 
+## Found in the browser check and changed
+- Uppercase headings also uppercased ids (`PLAN-96542613A68C`); ids are case-sensitive, so `font-mono`/`code` inside a heading keeps its case.
+- With the copilot docked at 1440 px the map shrank to about 300 px, because the map/route-list split used the window width. It now uses the main area's width (CSS container query, 960 px). The arrangement is the same.
+- The grey dash-dot hybrid line blended into greyscale streets; the tiles are washed out further (lower contrast, 70% opacity).
+
 ## Contrast pairs checked (WCAG 2.1; 4.5:1 needed for normal text). Enforced by `frontend/src/test/design.test.jsx`.
 | Pair | Ratio |
 | --- | --- |

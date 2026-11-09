@@ -1,6 +1,6 @@
 # LogiMind progress
 
-Last updated: 10 Nov 2026, eighth unattended session (branch `ui-redesign`): redesign of the ops console and the driver app; no backend change. Before that, 5 Nov 2026: retry rule for failed deliveries, 10 s held-out run (PARTIAL: stopped for low memory), selector tested on the benchmarks, deck updated. Current phase: **finish the 10 s run, then run what is UNTESTED (Docker Compose, OSRM) and NOT RUN (copilot with a real model)**; see Next steps.
+Last updated: 10 Nov 2026, ninth unattended session (branch `ui-redesign`): "Freight Yard" re-theme of the console and the driver app (decision 0027); no backend change. Eighth session: redesign of the ops console and the driver app. Before that, 5 Nov 2026: retry rule for failed deliveries, 10 s held-out run (PARTIAL: stopped for low memory), selector tested on the benchmarks, deck updated. Current phase: **finish the 10 s run, then run what is UNTESTED (Docker Compose, OSRM) and NOT RUN (copilot with a real model)**; see Next steps.
 
 ## Done and verified
 ### Phase 0
@@ -200,6 +200,23 @@ Last updated: 10 Nov 2026, eighth unattended session (branch `ui-redesign`): red
 
 - **`npm run dev` for both sides** (decision 0026, same session, at the team's request): `cd backend && npm run dev` starts uvicorn on :8000 with auto-reload and the inline worker (Python found in `LOGIMIND_PYTHON`, `%TEMP%\lmv`, `.venv` or the PATH); `cd frontend && npm run dev` was already Vite on :5173. Both were started and answered (health 200, console page 200, `/api` proxy 200). `npm run worker` and `npm test` also exist in `backend/`. Not checked: macOS/Linux, and Ctrl+C in an interactive terminal.
 - **Local sign-in setup** (decision 0026 addendum): `backend/.env` (git-ignored; template `backend/.env.example`) is read by `npm run dev` / `worker` / `tenant`; `npm run tenant -- "<name>"` prints a test key once (only its hash is stored). New `backend/tests/test_manage_cli.py` (3 tests). Walk-through checked end to end on a throwaway database. Found: on Windows two servers can listen on port 8000 at once; a second `npm run dev` does not fail.
+
+### Ninth unattended session, 10 Nov 2026: "Freight Yard" theme (branch `ui-redesign`; commits dadad17, 6a29935 and the PROGRESS commit; decision 0027)
+- **Opening run (exit codes checked):** console 39 passed, driver PWA 20 passed, both builds exit 0. Backend not touched.
+- **Theme** (look only; layout and behaviour kept): `design/tokens.js` now holds the Freight Yard values. Concrete grey page, ink text, safety yellow #FFC400 only as a background with ink text on light surfaces (text only on dark ones), dark sidebar and driver header, yellow active nav item and brand. Primary buttons are yellow with bold ink text, secondary ones have an ink outline. 4px corners, no shadows.
+  - Fonts bundled from npm (OFL-1.1): Barlow Condensed 700 headings (uppercase) and IBM Plex Sans body; Inter removed.
+  - Engine lines: #1D4ED8 solid, #C2410C dashed, #57606A dash-dot. Status labels have an icon and a word: feasible = green on white with an ink border; warning/draft = yellow on black; infeasible/failed/timeout = white on red.
+  - Driver: 64px Navigate/Delivered/Failed on every stop; the next stop's Navigate is the yellow main action. New yellow PWA icons (`driver/scripts/make-icons.mjs`). The manifest colours read the tokens.
+- **Contrast:** 25 text/background pairs checked (lowest 6.39:1; list in decision 0027). A new test computes them from the tokens and fails below 4.5:1; another checks that yellow is never a data line.
+- **Tests at the end (exit codes checked):** console **41 passed** (+2), driver PWA **20 passed** (the size test now checks 64px on every stop and the yellow main action), both builds exit 0. No existing assertion was weakened.
+- **Checked in real Chrome** against uvicorn on a temp SQLite DB (ports 8011/5193/5194, so the developer's own server on :8000 was left alone; research endpoints off, OSRM unreachable, Ollama not installed; synthetic data). Sign-in was typed in through the Claude in Chrome extension. That extension's screenshot call kept timing out, so the 17 screenshots in `docs/report/ui/` come from a headless Chrome script (puppeteer-core in %TEMP%, not a project dependency).
+  - Measured: the sidebar focus ring is solid 2px yellow and the light-surface ring 2px ink; the driver's ring is 3px ink. Neither app scrolls sideways at 390px. Navigate/Delivered/Failed are 64px.
+  - Driver offline check used Chrome's real offline mode for the first time: "Offline", a saved copy and a queued report; back online, it synced by itself. An invalid (tampered) link shows "Link no longer valid".
+  - Found and fixed: ids in headings were uppercased; the map was squeezed when the copilot was docked; the hybrid line blended into greyscale tiles.
+  - Noted, not changed: every console page asks for `/api/instances` and gets 403 when the research endpoints are off (30 times in this run; existing behaviour). A plan with no solution has `feasible = null`, so it shows the red "no plan" verdict but no "Not a feasible plan" notice (existing logic).
+  - **Not checked:** a real phone or real sunlight (390px is Chrome emulation); a screen reader; Windows high-contrast mode; the copilot's Confirm/Cancel with a real model (unit tests only; no Ollama); the research pages' own workflows; Docker builds. Map roads are greyscale OSM tiles, not exactly #C9C9C3 (raster tiles cannot be recoloured exactly).
+- **Mistake during the session, undone:** installing puppeteer-core in a folder without a `package.json` made npm use `C:\Users\rohit\package.json`. It added the dependency there and installed 82 packages into `C:\Users\rohit\node_modules`. `npm uninstall puppeteer-core` removed it again (81 packages); `package.json` is back to its three original dependencies. `C:\Users\rohit\package-lock.json` was rewritten by npm; its earlier content could not be checked.
+- `frontend/node_modules` (in place) was updated with `npm install` so `npm run dev` finds the new fonts; `driver/` still needs `npm install` once.
 
 ## First solver observations from P1 (5 s, one seed, Rohit's laptop; indicative only, do not quote; superseded for OR-Tools by the P2 audit)
 | Instance | OR-Tools (default) | GA (with repair) |
