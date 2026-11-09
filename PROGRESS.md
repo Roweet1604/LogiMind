@@ -218,6 +218,8 @@ Last updated: 10 Nov 2026, ninth unattended session (branch `ui-redesign`): "Fre
 - **Mistake during the session, undone:** installing puppeteer-core in a folder without a `package.json` made npm use `C:\Users\rohit\package.json`. It added the dependency there and installed 82 packages into `C:\Users\rohit\node_modules`. `npm uninstall puppeteer-core` removed it again (81 packages); `package.json` is back to its three original dependencies. `C:\Users\rohit\package-lock.json` was rewritten by npm; its earlier content could not be checked.
 - `frontend/node_modules` (in place) was updated with `npm install` so `npm run dev` finds the new fonts; `driver/` still needs `npm install` once.
 
+- **`start-dev.bat`** (decision 0028, same day): one command opens the API, worker, console and driver windows; `start-dev.bat tenant "<name>"` makes a test tenant and key. The backend runs with Python only; npm only in `frontend\`/`driver\`. Tested on a throwaway database on ports 8031/5183/5184: all four answered, and the separate worker solved a synthetic plan. The first version never started npm (an `if … &` inside `cmd /k`); fixed. README quick start rewritten (one-time setup, tenant, one command, the same by hand). `driver\node_modules` now exists in place (installed by the script's first run).
+
 ## First solver observations from P1 (5 s, one seed, Rohit's laptop; indicative only, do not quote; superseded for OR-Tools by the P2 audit)
 | Instance | OR-Tools (default) | GA (with repair) |
 | --- | --- | --- |

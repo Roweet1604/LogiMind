@@ -40,6 +40,8 @@ Start every session by reading this file, `PLAN.md` and `PROGRESS.md`, then run 
 python -m venv %TEMP%\lmv
 %TEMP%\lmv\Scripts\python -m pip install -r backend\requirements.txt
 cd backend && %TEMP%\lmv\Scripts\python -m pytest -q          # backend tests
+start-dev.bat                                                  # API, worker, console, driver in 4 windows (decision 0028)
+start-dev.bat tenant "Demo Fleet (synthetic)"                  # test tenant + API key (printed once)
 cd backend && npm run dev                                      # API on :8000 (inline worker, reload; decision 0026)
 cd frontend && npm run dev                                     # ops console on :5173
 python experiments\benchmarks\fetch_benchmarks.py              # download benchmark files (once)

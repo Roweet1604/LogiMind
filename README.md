@@ -13,20 +13,65 @@ An API-first hybrid optimization platform with an AI dispatch copilot for small-
 - [docs/report/deck_draft.md](docs/report/deck_draft.md): revised slide content (draft)
 
 ## Quick start (Windows)
-Keep the virtual environment and `node_modules` **outside OneDrive** (OneDrive sync and long paths break installs).
+Keep the Python virtual environment **outside OneDrive** (OneDrive sync and long paths break installs).
 
-Two terminals, after the one-time setup below (decision 0026):
+**One-time setup** (from the repository folder, in Command Prompt):
 ```
-cd backend  && npm run dev      # API on http://localhost:8000 (auto-reload; runs the solver jobs in-process)
-cd frontend && npm run dev      # ops console on http://localhost:5173 (proxies /api to :8000)
+python -m venv %TEMP%\lmv
+%TEMP%\lmv\Scripts\python -m pip install -r backend\requirements.txt
+copy backend\.env.example backend\.env
+%TEMP%\lmv\Scripts\python -c "import secrets; print(secrets.token_urlsafe(48))"
+notepad backend\.env
 ```
-`backend/package.json` has no Node dependencies (no `npm install` needed there). Its `dev` script finds Python in
-`LOGIMIND_PYTHON`, else `%TEMP%\lmv`, else `backend\.venv` or `.venv`, else `python` on the PATH, and starts uvicorn
-with `LOGIMIND_WORKER=inline` unless you set it. Also: `npm run worker` (separate worker; set
-`LOGIMIND_WORKER=external` for the API first), `npm test` (pytest) and `npm run tenant -- "<name>"` (creates a
-tenant and prints its API key once; only the key's SHA-256 is stored). These scripts also read `backend\.env`
-(copy `backend\.env.example`; git-ignored, never commit it). Shell variables win over the file.
-Sign in to the console at http://localhost:5173/login with that key.
+In Notepad, paste the printed text after `LOGIMIND_DRIVER_LINK_SECRET=` (keeps driver links valid across restarts)
+and save. `backend\.env` is git-ignored: never commit it and never put API keys in it.
+
+**Test tenant and API key** (the key is printed once; only its SHA-256 is stored):
+```
+start-dev.bat tenant "Demo Fleet (synthetic)"
+```
+Copy the `lm_...` key it prints. Lost it? `cd backend` then
+`%TEMP%\lmv\Scripts\python manage.py issue-key <tenant_id>`.
+
+**Start everything with one command** (decision 0028):
+```
+start-dev.bat
+```
+It opens four windows: **API** (http://localhost:8000), **worker** (runs the solver jobs), **console**
+(http://localhost:5173) and **driver app** (http://localhost:5174). It reads `backend\.env`, runs `npm install` first
+in `frontend\` or `driver\` if their `node_modules` is missing, and refuses to start if a port is already in use
+(on Windows a second server on the same port does not fail, and requests can reach the old one).
+`start-dev.bat --dry-run` prints the four commands without starting anything. Other ports: set `API_PORT`,
+`CONSOLE_PORT`, `DRIVER_PORT` first. Stop: close the four "LogiMind" windows.
+
+Then open http://localhost:5173/login, paste the key into **API key** and press **Sign in**. For demo data, on
+**Plans** click **Use a synthetic sample (12 orders)**, then **Create plan**.
+
+**The same by hand, one Command Prompt each** (run `set` lines for every variable in `backend\.env` first, or put
+them in each window; the API needs `LOGIMIND_WORKER=external` when a separate worker runs):
+```
+:: 1. API         (folder: backend)
+cd backend
+set LOGIMIND_WORKER=external
+%TEMP%\lmv\Scripts\python -m uvicorn app.main:app --reload --port 8000
+
+:: 2. Worker      (folder: backend)
+cd backend
+%TEMP%\lmv\Scripts\python -m app.jobs.worker
+
+:: 3. Console     (folder: frontend; npm install once)
+cd frontend
+npm install
+npm run dev
+
+:: 4. Driver app  (folder: driver; npm install once)
+cd driver
+npm install
+npm run dev
+```
+Without a worker, set `LOGIMIND_WORKER=inline` for the API instead and skip window 2 (plans would otherwise stay
+`queued`). `backend\package.json` (`npm run dev` in backend, decision 0026) still works but is optional; the backend
+itself needs only Python.
 
 Backend setup and manual commands:
 ```
