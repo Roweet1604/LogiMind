@@ -6,13 +6,16 @@ import { api } from '../lib/api'
 import { sampleOrders } from '../lib/sample'
 import { useAuth } from '../state/AuthContext'
 
-export function PlanBadge({ plan }) {
-  if (plan.state === 'queued' || plan.state === 'running') return <Badge kind="warn">{plan.state}</Badge>
-  if (plan.state === 'failed') return <Badge kind="bad">failed</Badge>
-  if (plan.feasible === true) return <Badge kind="ok">feasible</Badge>
-  if (plan.feasible === false) return <Badge kind="bad">infeasible</Badge>
-  return <Badge kind="bad">no plan</Badge>
+// The validator's verdict (never the solver's own status), as icon + word.
+export function PlanBadge({ plan, size }) {
+  if (plan.state === 'queued' || plan.state === 'running') return <Badge kind="busy" size={size}>{plan.state}</Badge>
+  if (plan.state === 'failed') return <Badge kind="bad" size={size}>failed</Badge>
+  if (plan.feasible === true) return <Badge kind="ok" size={size}>feasible</Badge>
+  if (plan.feasible === false) return <Badge kind="bad" size={size}>infeasible</Badge>
+  return <Badge kind="bad" size={size}>no plan</Badge>
 }
+
+const isSynthetic = (name) => /^synthetic/i.test(name || '')
 
 const ENGINES = [
   ['auto', 'Auto (selector explains its choice)'], ['ortools', 'OR-Tools'], ['hybrid', 'Hybrid (OR-Tools seed + GA)'],
@@ -54,7 +57,11 @@ function OrdersInput({ orders, setOrders }) {
           </TableWrap>
         </Notice>
       )}
-      {orders && <Notice kind="ok" title={`${orders.customers.length} orders ready`}>{orders.name}</Notice>}
+      {orders && (
+        <Notice kind="ok" title={`${orders.customers.length} orders ready`}>
+          {orders.name}{isSynthetic(orders.name) && <> <Badge kind="draft">synthetic data</Badge></>}
+        </Notice>
+      )}
     </div>
   )
 }
@@ -89,10 +96,14 @@ function NewPlan({ onCreated }) {
   }
 
   return (
-    <Panel title="New plan">
-      <div className="grid gap-6 lg:grid-cols-2">
-        <OrdersInput orders={orders} setOrders={setOrders} />
-        <form onSubmit={submit} className="grid grid-cols-2 gap-3">
+    <Panel title="New plan" note="Orders, then fleet and engine">
+      <div className="grid gap-6 lg:grid-cols-2 lg:divide-x lg:divide-rule2">
+        <div>
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-ink2">1 · Orders</h3>
+          <OrdersInput orders={orders} setOrders={setOrders} />
+        </div>
+        <form onSubmit={submit} className="grid grid-cols-2 content-start gap-3 lg:pl-6">
+          <h3 className="col-span-2 text-xs font-semibold uppercase tracking-wider text-ink2">2 · Fleet and engine</h3>
           <Field label="Depot x (or lon)" htmlFor="depot-x"><NumberInput id="depot-x" value={f.depot_x} onChange={set('depot_x')} step="any" /></Field>
           <Field label="Depot y (or lat)" htmlFor="depot-y"><NumberInput id="depot-y" value={f.depot_y} onChange={set('depot_y')} step="any" /></Field>
           <Field label="Vehicles" htmlFor="vehicles"><NumberInput id="vehicles" value={f.vehicle_count} onChange={set('vehicle_count')} min={1} /></Field>
@@ -150,17 +161,20 @@ export default function Plans() {
         {plans && plans.length === 0 && <EmptyState title="No plans yet">Import orders above to create the first one.</EmptyState>}
         {plans && plans.length > 0 && (
           <TableWrap>
-            <thead><tr className="text-left"><th>Plan</th><th>Orders</th><th>Engine</th><th>Result</th><th>Distance</th><th>Replan of</th><th>Created</th></tr></thead>
+            <thead><tr><th>Plan</th><th>Validator</th><th>Engine</th><th className="num">Orders</th><th className="num">Distance</th><th>Replan of</th><th>Created</th></tr></thead>
             <tbody>
               {plans.map((p) => (
-                <tr key={p.plan_id} className="border-t border-rule">
-                  <td className="py-2"><Link className="font-mono underline" to={`/plans/${p.plan_id}`}>{p.plan_id}</Link><span className="block text-xs text-ink2">{p.name}</span></td>
-                  <td className="num">{p.n_customers}</td>
-                  <td><AlgoTag algo={p.engine} /></td>
+                <tr key={p.plan_id} className="hover:bg-sunken">
+                  <td><Link className="link font-mono" to={`/plans/${p.plan_id}`}>{p.plan_id}</Link>
+                    <span className="block text-xs text-ink2">{p.name}{isSynthetic(p.name) && <> <Badge kind="draft">synthetic</Badge></>}</span></td>
                   <td><PlanBadge plan={p} /></td>
+                  <td><AlgoTag algo={p.engine} /></td>
+                  <td className="num">{p.n_customers}</td>
                   <td className="num">{fmt(p.total_distance)}</td>
-                  <td>{p.parent_plan_id ? <span className="font-mono text-xs">{p.parent_plan_id} ({p.event_type})</span> : '—'}</td>
-                  <td className="text-xs">{fmtTime(p.created_at)}</td>
+                  <td>{p.parent_plan_id
+                    ? <span className="inline-flex flex-wrap items-center gap-1.5"><Badge kind="replanned">{p.event_type?.replace('_', ' ')}</Badge><span className="font-mono text-xs">{p.parent_plan_id}</span></span>
+                    : '—'}</td>
+                  <td className="whitespace-nowrap text-xs">{fmtTime(p.created_at)}</td>
                 </tr>
               ))}
             </tbody>

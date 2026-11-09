@@ -1,3 +1,4 @@
+import { CheckCircle2, XCircle } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import { Notice, Panel, TableWrap } from './ui'
@@ -47,19 +48,19 @@ export default function DriverLinks({ plan, routes }) {
         </div>
       )}
       <TableWrap>
-        <thead><tr className="text-left"><th>Route</th><th>Stops done</th><th>Links</th><th /></tr></thead>
+        <thead><tr><th className="num">Route</th><th className="num">Stops done</th><th>Active links</th><th><span className="sr-only">Actions</span></th></tr></thead>
         <tbody>{routes.map((r, i) => {
           if (!r.length) return null
           const doneCount = r.filter((cid) => latest[cid]).length
           const active = links.filter((l) => l.route_index === i && !l.revoked_at)
           return (
-            <tr key={i} className="border-t border-rule">
-              <td className="num py-1">{i}</td>
+            <tr key={i}>
+              <td className="num">{i}</td>
               <td className="num">{doneCount} of {r.length}</td>
               <td className="text-xs">{active.length ? active.map((l) => (
-                <span key={l.link_id} className="mr-2">until {when(l.expires_at)} <button type="button" className="underline" disabled={busy}
+                <span key={l.link_id} className="mr-2">until {when(l.expires_at)} <button type="button" className="link text-err" disabled={busy}
                   onClick={() => revoke(l.link_id)} aria-label={`Revoke link for route ${i}`}>revoke</button></span>)) : 'none'}</td>
-              <td className="text-right"><button type="button" className="btn" disabled={busy} onClick={() => create(i)}>Driver link for route {i}</button></td>
+              <td className="text-right"><button type="button" className="btn whitespace-nowrap" disabled={busy} onClick={() => create(i)}>Driver link for route {i}</button></td>
             </tr>
           )
         })}</tbody>
@@ -68,11 +69,13 @@ export default function DriverLinks({ plan, routes }) {
         <div className="mt-4">
           <h3 className="mb-2">Stop reports</h3>
           <TableWrap>
-            <thead><tr className="text-left"><th>Customer</th><th>Route</th><th>Status</th><th>Reported</th><th>Photos</th></tr></thead>
+            <thead><tr><th className="num">Customer</th><th className="num">Route</th><th>Status</th><th>Reported</th><th className="num">Photos</th></tr></thead>
             <tbody>{Object.values(latest).map((e) => (
-              <tr key={e.customer_id} className="border-t border-rule">
-                <td className="num py-1">{e.customer_id}</td><td className="num">{e.route_index}</td>
-                <td>{e.status === 'failed' ? `failed (${REASON[e.reason] || e.reason}${e.note ? `: ${e.note}` : ''})` : e.status}</td>
+              <tr key={e.customer_id}>
+                <td className="num">{e.customer_id}</td><td className="num">{e.route_index}</td>
+                <td>{e.status === 'failed'
+                  ? <span className="inline-flex items-center gap-1 text-err"><XCircle size={14} aria-hidden="true" />{`failed (${REASON[e.reason] || e.reason}${e.note ? `: ${e.note}` : ''})`}</span>
+                  : <span className="inline-flex items-center gap-1 text-ok"><CheckCircle2 size={14} aria-hidden="true" />{e.status}</span>}</td>
                 <td className="text-xs">{when(e.received_at)}</td><td className="num">{photos[e.customer_id] || 0}</td>
               </tr>))}</tbody>
           </TableWrap>

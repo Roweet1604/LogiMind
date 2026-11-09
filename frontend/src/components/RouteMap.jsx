@@ -3,6 +3,9 @@ import L from 'leaflet'
 import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import { useEffect } from 'react'
 import { ALGOS } from '../lib/algos'
+import { colors } from '../../../design/tokens.js'
+
+const { stop: STOP, unserved: UNSERVED } = colors.map
 
 // Haversine instances use lon/lat on OSM tiles; Euclidean ones use a plain planar canvas (no tiles).
 const toLatLng = (inst, p) => [p.y, p.x]
@@ -32,7 +35,7 @@ export default function RouteMap({ instance, routes, algo, focus = null, height 
 
   return (
     <div>
-      <div style={{ height }} className="overflow-hidden rounded border border-rule" role="img"
+      <div style={{ height }} className="isolate overflow-hidden rounded-md border border-rule" role="img"
         aria-label={`Map of ${nonEmpty.length} routes${a ? ` from ${a.label}` : ''}. A route table is available below.`}>
         <MapContainer crs={planar ? L.CRS.Simple : L.CRS.EPSG3857} minZoom={planar ? -6 : 2} zoomSnap={0.25}
           center={points[0]} zoom={planar ? 0 : 11} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
@@ -53,7 +56,7 @@ export default function RouteMap({ instance, routes, algo, focus = null, height 
             const dim = focus != null && info && info.route - 1 !== focus
             return (
               <CircleMarker key={c.id} center={toLatLng(instance, c)} radius={6}
-                pathOptions={{ color: '#1E2326', weight: 1, fillColor: info ? '#FFFFFF' : '#A33A2B', fillOpacity: dim ? 0.3 : 1, opacity: dim ? 0.3 : 1 }}>
+                pathOptions={{ color: STOP, weight: 1, fillColor: info ? '#FFFFFF' : UNSERVED, fillOpacity: dim ? 0.3 : 1, opacity: dim ? 0.3 : 1 }}>
                 <Tooltip permanent={labels} direction="top" offset={[0, -4]} opacity={0.9}>
                   {labels ? c.id : `Customer ${c.id} · demand ${c.demand}${info ? ` · route ${info.route}, stop ${info.seq}` : ' · not served'}`}
                 </Tooltip>
@@ -61,7 +64,7 @@ export default function RouteMap({ instance, routes, algo, focus = null, height 
             )
           })}
           <CircleMarker center={toLatLng(instance, depot)} radius={9}
-            pathOptions={{ color: '#1E2326', weight: 2, fillColor: '#1E2326', fillOpacity: 1 }}>
+            pathOptions={{ color: STOP, weight: 2, fillColor: STOP, fillOpacity: 1 }}>
             <Tooltip permanent direction="right">Depot</Tooltip>
           </CircleMarker>
         </MapContainer>

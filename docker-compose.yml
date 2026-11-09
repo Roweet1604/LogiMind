@@ -62,13 +62,13 @@ services:
     restart: unless-stopped
 
   console:
-    build: ./frontend
+    build: { context: ., dockerfile: frontend/Dockerfile }   # root context: needs design/ (decision 0025)
     depends_on: [api]
     ports:
       - "8080:80"
 
   driver:
-    build: ./driver
+    build: { context: ., dockerfile: driver/Dockerfile }   # root context: needs design/ (decision 0025)
     depends_on: [api]
     ports:
       - "8081:80"

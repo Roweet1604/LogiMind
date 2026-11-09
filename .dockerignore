@@ -1,0 +1,9 @@
+# Only the console and driver images use the repository root as build context (decision 0025).
+**/node_modules
+**/dist
+.git
+backend
+experiments
+docs
+osrm-data
+.env

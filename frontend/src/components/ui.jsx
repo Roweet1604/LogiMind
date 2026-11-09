@@ -1,12 +1,12 @@
-import { AlertTriangle, CheckCircle2, Info, Loader2, XCircle } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Clock, GitBranch, Info, Loader2, PencilLine, XCircle } from 'lucide-react'
 import { ALGOS } from '../lib/algos'
 
 export function PageHeader({ title, children, actions }) {
   return (
-    <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
-      <div className="max-w-3xl">
+    <header className="mb-5 flex flex-wrap items-end justify-between gap-4">
+      <div className="min-w-0 max-w-3xl">
         <h1>{title}</h1>
-        {children && <p className="mt-1.5 text-base text-ink2">{children}</p>}
+        {children && <p className="mt-1 text-sm text-ink2">{children}</p>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </header>
@@ -18,7 +18,7 @@ export function Panel({ title, note, actions, children, className = '' }) {
   return (
     <section className={`panel ${className}`}>
       {(title || actions) && (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <div className="flex flex-wrap items-baseline gap-x-3">
             {title && <h2>{title}</h2>}
             {note && <span className="text-xs text-ink2">{note}</span>}
@@ -50,9 +50,9 @@ export function Stats({ items, cols = 4 }) {
   return (
     <dl className={`grid grid-cols-2 gap-px overflow-hidden rounded-md border border-rule bg-rule ${cols === 4 ? 'lg:grid-cols-4' : ''}`}>
       {items.map((s) => (
-        <div key={s.label} className="bg-white px-4 py-3">
+        <div key={s.label} className="bg-panel px-4 py-3">
           <dt className="text-xs text-ink2">{s.label}</dt>
-          <dd className="num mt-0.5 text-xl font-semibold leading-tight">{s.value}</dd>
+          <dd className="num mt-0.5 text-lg font-semibold leading-tight">{s.value}</dd>
           {s.sub && <dd className="text-xs text-ink2">{s.sub}</dd>}
         </div>
       ))}
@@ -71,18 +71,20 @@ export function Segmented({ value, onChange, options, label }) {
   )
 }
 
+// Notices carry an icon and a title, so the meaning never depends on the colour alone.
 const NOTICE = {
-  info: { icon: Info, cls: 'border-rule bg-rule2/70' },
-  warn: { icon: AlertTriangle, cls: 'border-warn/40 bg-warn-soft' },
-  error: { icon: XCircle, cls: 'border-err/40 bg-err-soft' },
-  ok: { icon: CheckCircle2, cls: 'border-ok/40 bg-ok-soft' },
+  info: { icon: Info, cls: 'border-rule bg-sunken', iconCls: 'text-ink2' },
+  warn: { icon: AlertTriangle, cls: 'border-warn/40 bg-warn-soft', iconCls: 'text-warn' },
+  error: { icon: XCircle, cls: 'border-err/40 bg-err-soft', iconCls: 'text-err' },
+  ok: { icon: CheckCircle2, cls: 'border-ok/40 bg-ok-soft', iconCls: 'text-ok' },
 }
 
-export function Notice({ kind = 'info', title, children, errors }) {
-  const { icon: Icon, cls } = NOTICE[kind]
+export function Notice({ kind = 'info', title, children, errors, icon }) {
+  const { icon: DefaultIcon, cls, iconCls } = NOTICE[kind]
+  const Icon = icon || DefaultIcon
   return (
     <div role={kind === 'error' ? 'alert' : 'status'} className={`flex gap-3 rounded-md border px-4 py-3 ${cls}`}>
-      <Icon size={18} className="mt-0.5 shrink-0" aria-hidden="true" />
+      <Icon size={18} className={`mt-0.5 shrink-0 ${iconCls}`} aria-hidden="true" />
       <div className="min-w-0">
         {title && <p className="font-medium">{title}</p>}
         {children && <div className="text-sm">{children}</div>}
@@ -130,20 +132,34 @@ export function AlgoTag({ algo }) {
   )
 }
 
+// Status badges: colour + icon + word. Kinds: ok (validated/feasible), bad (infeasible/failed), warn (warning,
+// e.g. fallback distances), timeout, busy (queued/running), replanned, draft (draft/synthetic/preliminary), neutral.
 const BADGE = {
-  ok: 'border-ok/30 bg-ok-soft text-ok',
-  bad: 'border-err/30 bg-err-soft text-err',
-  warn: 'border-warn/30 bg-warn-soft text-warn',
-  neutral: 'border-rule bg-rule2 text-ink2',
+  ok: ['border-ok/30 bg-ok-soft text-ok', CheckCircle2],
+  bad: ['border-err/30 bg-err-soft text-err', XCircle],
+  warn: ['border-warn/30 bg-warn-soft text-warn', AlertTriangle],
+  timeout: ['border-warn/30 bg-warn-soft text-warn', Clock],
+  busy: ['border-rule bg-rule2 text-ink', Loader2],
+  replanned: ['border-hybrid/30 bg-hybrid-soft text-hybrid', GitBranch],
+  draft: ['border-dashed border-draft/60 bg-draft-soft text-draft', PencilLine],
+  neutral: ['border-rule bg-rule2 text-ink2', null],
 }
-export function Badge({ kind = 'neutral', children }) {
-  return <span className={`inline-block whitespace-nowrap rounded border px-2 py-0.5 text-xs font-medium ${BADGE[kind]}`}>{children}</span>
+export function Badge({ kind = 'neutral', children, icon, size = 'sm' }) {
+  const [cls, DefaultIcon] = BADGE[kind] || BADGE.neutral
+  const Icon = icon === undefined ? DefaultIcon : icon
+  const big = size === 'lg'
+  return (
+    <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded border font-medium ${big ? 'px-2.5 py-1 text-sm' : 'px-1.5 py-0.5 text-xs'} ${cls}`}>
+      {Icon && <Icon size={big ? 16 : 13} aria-hidden="true" className={kind === 'busy' && Icon === Loader2 ? 'motion-safe:animate-spin' : ''} />}
+      {children}
+    </span>
+  )
 }
 
 // Feasibility is decided only by the independent validator, never by the solver status.
 export function FeasibilityBadge({ run }) {
   if (!run) return <Badge>no run</Badge>
-  if (run.state === 'queued' || run.state === 'running') return <Badge kind="warn">{run.state}</Badge>
+  if (run.state === 'queued' || run.state === 'running') return <Badge kind="busy">{run.state}</Badge>
   if (run.state === 'failed') return <Badge kind="bad">run failed</Badge>
   const v = run.validation
   if (!v) return <Badge kind="bad">no solution</Badge>
@@ -152,7 +168,7 @@ export function FeasibilityBadge({ run }) {
 
 export function EmptyState({ title, children }) {
   return (
-    <div className="rounded-md border border-dashed border-rule px-6 py-10 text-center">
+    <div className="rounded-md border border-dashed border-rule bg-sunken px-6 py-10 text-center">
       <p className="text-base font-medium">{title}</p>
       {children && <div className="mx-auto mt-1 max-w-md text-ink2">{children}</div>}
     </div>
@@ -160,5 +176,5 @@ export function EmptyState({ title, children }) {
 }
 
 export function TableWrap({ children }) {
-  return <div className="overflow-x-auto"><table className="w-full border-collapse text-sm">{children}</table></div>
+  return <div className="overflow-x-auto"><table className="tbl w-full border-collapse text-sm">{children}</table></div>
 }

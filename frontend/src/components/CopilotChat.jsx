@@ -1,0 +1,163 @@
+import { Ban, Bot, HelpCircle, MessageSquare, ShieldCheck, Wrench } from 'lucide-react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { api } from '../lib/api'
+import { useAuth } from '../state/AuthContext'
+import { Badge, Notice, Spinner } from './ui'
+
+// Reply kinds from the backend, shown as icon + word.
+const KIND = {
+  answer: ['neutral', 'answer', MessageSquare], clarify: ['warn', 'question', HelpCircle],
+  confirm: ['draft', 'needs confirmation', undefined], refuse: ['neutral', 'not supported', Ban],
+  error: ['bad', 'error', undefined], unavailable: ['bad', 'no model', undefined],
+}
+
+// One conversation per signed-in key, shared by the docked panel and the /copilot page.
+// The conversation is cleared when the signed-in key changes, so a session never crosses tenants.
+const Ctx = createContext(null)
+export const useCopilot = () => useContext(Ctx)
+
+export function CopilotProvider({ children }) {
+  const { state, me } = useAuth()
+  const owner = me?.key_id
+  const [status, setStatus] = useState(null)
+  const [messages, setMessages] = useState([])
+  const [session, setSession] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+
+  useEffect(() => { setMessages([]); setSession(null); setStatus(null); setError(null) }, [owner])
+
+  const loadStatus = useCallback(() => {
+    if (state !== 'in') return
+    api.copilotStatus().then(setStatus).catch((e) => setStatus({ available: false, reason: e.message }))
+  }, [state])
+
+  const closeConfirms = (list) => list.map((m) => (m.kind === 'confirm' ? { ...m, open: false } : m))
+
+  const send = useCallback(async (msg) => {
+    setBusy(true); setError(null)
+    setMessages((l) => [...closeConfirms(l), { role: 'user', text: msg }])  // a new message drops a pending change
+    try {
+      const r = await api.copilotChat(msg, session)
+      setSession(r.session_id)
+      setMessages((l) => [...l, { role: 'copilot', ...r, open: r.kind === 'confirm' }])
+    } catch (err) { setError(err) } finally { setBusy(false) }
+  }, [session])
+
+  const confirm = useCallback(async (m, approve) => {
+    setBusy(true); setError(null)
+    setMessages((l) => closeConfirms(l))
+    try {
+      const r = await api.copilotConfirm(session, m.pending_id, approve)
+      setMessages((l) => [...l, { role: 'user', text: approve ? 'Confirmed.' : 'Cancelled.' }, { role: 'copilot', ...r }])
+    } catch (err) { setError(err) } finally { setBusy(false) }
+  }, [session])
+
+  const value = useMemo(() => ({ status, messages, busy, error, loadStatus, send, confirm }),
+    [status, messages, busy, error, loadStatus, send, confirm])
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>
+}
+
+// Plan ids in tool outputs become links; nothing else in a reply is interpreted.
+function PlanLinks({ calls }) {
+  const ids = new Set()
+  const walk = (v) => {
+    if (typeof v === 'string' && /^plan-[0-9a-f]{12}$/.test(v)) ids.add(v)
+    else if (v && typeof v === 'object') Object.values(v).forEach(walk)
+  }
+  calls.forEach((c) => walk(c.output))
+  if (!ids.size) return null
+  return <p className="mt-2 text-xs">Plans: {[...ids].map((id) => <Link key={id} className="link mr-2 font-mono" to={`/plans/${id}`}>{id}</Link>)}</p>
+}
+
+function Reply({ m, onConfirm, busy }) {
+  const [kind, label, icon] = KIND[m.kind] || ['neutral', m.kind, undefined]
+  const pending = m.kind === 'confirm' && m.open
+  return (
+    <div className={`rounded-md border bg-panel px-3.5 py-3 ${pending ? 'border-warn/60' : 'border-rule'}`}>
+      <div className="mb-1.5 flex items-center gap-2">
+        <Bot size={15} className="text-ink2" aria-hidden="true" />
+        <span className="text-xs font-medium text-ink2">Copilot</span><Badge kind={kind} icon={icon}>{label}</Badge>
+      </div>
+      <p className="whitespace-pre-wrap">{m.text}</p>
+      {m.tool_calls?.length > 0 && (
+        <div className="mt-2.5 rounded border border-rule bg-sunken px-3 py-2 text-xs">
+          <p className="flex items-center gap-1.5 font-medium">
+            <Wrench size={13} aria-hidden="true" />Tool results used: {m.tool_calls.map((t) => t.tool).join(', ')}
+          </p>
+          <details className="mt-1">
+            <summary className="cursor-pointer text-ink2">Show the raw tool output</summary>
+            <pre className="mt-1 max-h-64 overflow-auto rounded bg-panel p-2 font-mono text-2xs">{JSON.stringify(m.tool_calls, null, 2)}</pre>
+          </details>
+        </div>
+      )}
+      {m.tool_calls && <PlanLinks calls={m.tool_calls} />}
+      {pending && (
+        <div className="mt-3 rounded-md border border-warn/40 bg-warn-soft p-3">
+          <p className="mb-2 text-xs font-medium text-warn">Nothing changes until you confirm. The new plan is solved and checked by the validator.</p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn btn-primary" disabled={busy} onClick={() => onConfirm(m, true)}>Confirm replan</button>
+            <button type="button" className="btn" disabled={busy} onClick={() => onConfirm(m, false)}>Cancel</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function ModelStatus({ status }) {
+  if (!status) return <Spinner label="Checking for a local model" />
+  if (!status.available) return <Badge kind="bad">no local model</Badge>
+  return <Badge kind="ok" icon={ShieldCheck}>{status.provider} · {status.model}</Badge>
+}
+
+// The conversation and the input. `compact` is the docked side panel; the /copilot page uses the full width.
+export default function CopilotChat({ compact = false }) {
+  const { state } = useAuth()
+  const { status, messages, busy, error, loadStatus, send, confirm } = useCopilot()
+  const [text, setText] = useState('')
+  const end = useRef(null)
+
+  useEffect(() => { loadStatus() }, [loadStatus])
+  useEffect(() => { end.current?.scrollIntoView?.({ block: 'nearest' }) }, [messages])
+
+  function submit(e) {
+    e.preventDefault()
+    const msg = text.trim()
+    if (!msg) return
+    setText('')
+    send(msg)
+  }
+
+  if (state !== 'in') {
+    return <p className="p-4 text-ink2"><Link className="link" to="/login">Sign in with an API key</Link> to use the copilot.</p>
+  }
+  const off = status && !status.available
+  return (
+    <div className={`flex min-h-0 flex-col ${compact ? 'h-full' : ''}`}>
+      {off && (
+        <div className={compact ? 'px-4 pt-3' : 'mb-3'}>
+          <Notice kind="error" title="No local model is available">{status.reason}. Plans, imports and replans still work from the Plans page.</Notice>
+        </div>
+      )}
+      <div className={`space-y-3 ${compact ? 'min-h-0 flex-1 overflow-y-auto px-4 py-3' : 'mb-4 min-h-[16rem]'}`} aria-live="polite">
+        {messages.length === 0 && <p className="text-ink2">Example: “Truck 1 broke down after two stops on the latest plan.”</p>}
+        {messages.map((m, i) => (m.role === 'user'
+          ? <div key={i} className="ml-auto max-w-[85%] rounded-md bg-accent-soft px-3.5 py-2 text-right"><span className="sr-only">You: </span>{m.text}</div>
+          : <Reply key={i} m={m} onConfirm={confirm} busy={busy} />))}
+        {busy && <Spinner label="Working (solver runs can take a few seconds)" />}
+        <div ref={end} />
+      </div>
+      <div className={compact ? 'border-t border-rule bg-sunken px-4 py-3' : ''}>
+        {error && <div className="mb-3"><Notice kind="error" title="Request failed" errors={error.errors}>{error.message}</Notice></div>}
+        <form onSubmit={submit} className="flex gap-2">
+          <label htmlFor={compact ? 'copilot-dock-input' : 'copilot-input'} className="sr-only">Message to the copilot</label>
+          <input id={compact ? 'copilot-dock-input' : 'copilot-input'} className="input" value={text} onChange={(e) => setText(e.target.value)}
+            disabled={busy || off || !status} placeholder={off ? 'No local model available' : 'Type a request'} maxLength={2000} />
+          <button type="submit" className="btn btn-primary" disabled={busy || off || !status || !text.trim()}>Send</button>
+        </form>
+      </div>
+    </div>
+  )
+}

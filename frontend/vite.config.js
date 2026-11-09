@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    fs: { allow: ['.', '../design'] }, // shared design tokens (decision 0025)
     proxy: { '/api': process.env.VITE_BACKEND_URL || 'http://localhost:8000' },
   },
   test: {

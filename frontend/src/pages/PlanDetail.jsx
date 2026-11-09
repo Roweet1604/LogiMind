@@ -1,8 +1,10 @@
+import { Clock, GitBranch } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import DriverLinks from '../components/DriverLinks'
 import RouteMap from '../components/RouteMap'
-import { AlgoTag, Field, Notice, NumberInput, PageHeader, Panel, Segmented, Spinner, Stats, TableWrap } from '../components/ui'
+import { AlgoTag, Badge, Field, Notice, NumberInput, PageHeader, Panel, Segmented, Spinner, Stats } from '../components/ui'
+import { ALGOS } from '../lib/algos'
 import { api } from '../lib/api'
 import { fmt, fmtInt, fmtSeconds, SOLVER_STATUS_TEXT } from '../lib/format'
 import { useAuth } from '../state/AuthContext'
@@ -147,11 +149,72 @@ export function DistanceSource({ source }) {
   )
 }
 
+const TIMEOUTS = new Set(['hard_timeout', 'timeout_no_solution'])
+
+// Always at the top of a plan: the validator's verdict, then every flag that changes how far the plan can be trusted.
+export function StatusStrip({ plan }) {
+  const src = plan.distance_source
+  return (
+    <section aria-label="Plan status" className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-lg border border-rule bg-panel px-4 py-3 shadow-panel">
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-medium text-ink2">Validator</span>
+        <PlanBadge plan={plan} size="lg" />
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-medium text-ink2">Engine</span><AlgoTag algo={plan.engine} />
+      </div>
+      {plan.state === 'completed' && TIMEOUTS.has(plan.status) && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-ink2">Solver</span><Badge kind="timeout">timeout</Badge>
+        </div>
+      )}
+      {src && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-ink2">Distances</span>
+          {src.fallback ? <Badge kind="warn">fallback estimate</Badge> : <span className="text-sm">{src.provider === 'osrm' ? 'road network (OSRM)' : src.provider === 'haversine_detour' ? 'estimate' : 'straight line'}</span>}
+        </div>
+      )}
+      {plan.parent_plan_id && (
+        <div className="flex items-center gap-2">
+          <Badge kind="replanned">replanned</Badge>
+          <Link className="link font-mono text-xs" to={`/plans/${plan.parent_plan_id}`}>from {plan.parent_plan_id}</Link>
+        </div>
+      )}
+    </section>
+  )
+}
+
+// Route list beside the map. Selecting a route highlights it on the map; the sequence is the solver's, unchanged.
+function RouteList({ routes, engine, focus, setFocus }) {
+  const a = ALGOS[engine]
+  return (
+    <Panel title="Routes" note={`${routes.filter((r) => r.length).length} in use`}
+      actions={focus != null && <button type="button" className="btn btn-ghost min-h-0 px-2 py-1 text-xs" onClick={() => setFocus(null)}>Show all</button>}>
+      <ul className="-mx-1 space-y-1 overflow-y-auto xl:max-h-[31rem]">
+        {routes.map((r, i) => (
+          <li key={i}>
+            <button type="button" disabled={!r.length} aria-pressed={focus === i} onClick={() => setFocus(focus === i ? null : i)}
+              className={`w-full rounded-md border px-3 py-2 text-left disabled:cursor-default ${focus === i ? 'border-accent bg-accent-soft' : 'border-transparent hover:border-rule hover:bg-sunken'}`}>
+              <span className="flex items-center gap-2">
+                {a && <svg width="20" height="8" aria-hidden="true"><line x1="1" y1="4" x2="19" y2="4" stroke={a.color} strokeWidth="3" strokeDasharray={a.dash} /></svg>}
+                <span className="font-medium">Vehicle {i}</span>
+                <span className="num ml-auto text-xs text-ink2">{r.length} {r.length === 1 ? 'stop' : 'stops'}</span>
+              </span>
+              <span className="mt-0.5 block break-words font-mono text-xs text-ink2">{r.length ? r.join(' → ') : '(unused)'}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </Panel>
+  )
+}
+
 export default function PlanDetail() {
   const { id } = useParams()
   const { state } = useAuth()
   const [plan, setPlan] = useState(null)
   const [error, setError] = useState(null)
+  const [focus, setFocus] = useState(null)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -163,11 +226,11 @@ export default function PlanDetail() {
       setPlan(p)
       if (busy(p)) timer = setTimeout(load, 1000)
     }).catch((e) => alive && setError(e))
-    setPlan(null); setError(null); load()
+    setPlan(null); setError(null); setFocus(null); load()
     return () => { alive = false; clearTimeout(timer) }
   }, [id, state])
 
-  if (state !== 'in') return <Notice title="Sign in first"><Link className="underline" to="/login">Sign in with an API key</Link> to see plans.</Notice>
+  if (state !== 'in') return <Notice title="Sign in first"><Link className="link" to="/login">Sign in with an API key</Link> to see plans.</Notice>
   if (error) return <Notice kind="error" title="Could not load the plan">{error.message}</Notice>
   if (!plan) return <Spinner label="Loading plan" />
 
@@ -175,49 +238,56 @@ export default function PlanDetail() {
   const m = plan.result?.metrics
   const v = plan.result?.validation
   const timing = plan.replan?.timing
+  const timeout = TIMEOUTS.has(plan.status)
   return (
     <>
       <PageHeader title={<span className="font-mono">{plan.plan_id}</span>}
         actions={<Link className="btn" to="/plans">All plans</Link>}>
-        {plan.instance?.name} · <AlgoTag algo={plan.engine} /> · <PlanBadge plan={plan} />
+        {plan.instance?.name}{plan.instance && <> · <span className="num">{plan.instance.customers.length}</span> orders · <span className="num">{plan.instance.vehicle_count}</span> vehicles</>}
       </PageHeader>
+      <StatusStrip plan={plan} />
       {busy(plan) && <Notice title="Solving">The plan is {plan.state}; this page updates by itself.</Notice>}
       {plan.state === 'failed' && <Notice kind="error" title="The run failed">{plan.error}</Notice>}
       {plan.state === 'completed' && (
-        <div className="space-y-6">
+        <div className="space-y-5">
+          {(plan.feasible === false || timeout || plan.distance_source?.fallback) && (
+            <div className="space-y-3">
+              {timeout && <Notice kind="warn" icon={Clock} title="Timeout">{SOLVER_STATUS_TEXT[plan.status]}.</Notice>}
+              {plan.feasible === false && (
+                <Notice kind="error" title="Not a feasible plan"
+                  errors={[...(v?.violations || []).map((x) => x.detail), ...(plan.result?.replan_violations || [])]}>
+                  {routes ? 'The validator rejected these routes; they are shown for diagnosis only.' : 'The solver returned no routes.'}
+                </Notice>
+              )}
+              {plan.distance_source?.fallback && <DistanceSource source={plan.distance_source} />}
+            </div>
+          )}
           <Stats items={[
-            { label: 'Solver status', value: SOLVER_STATUS_TEXT[plan.status] || plan.status || '—' },
             { label: 'Total distance', value: fmt(m?.total_distance) },
             { label: 'Vehicles used', value: fmtInt(m?.vehicles_used), sub: `of ${plan.instance.vehicle_count}` },
             { label: 'Time to feasible plan', value: timing ? fmtSeconds(timing.disruption_to_feasible_s) : '—', sub: timing ? 'from the replan request' : 'replans only' },
+            { label: 'Solver status', value: SOLVER_STATUS_TEXT[plan.status] || plan.status || '—' },
           ]} />
-          {plan.feasible === false && (
-            <Notice kind="error" title="Not a feasible plan"
-              errors={[...(v?.violations || []).map((x) => x.detail), ...(plan.result?.replan_violations || [])]}>
-              {routes ? 'The validator rejected these routes; they are shown for diagnosis only.' : 'The solver returned no routes.'}
-            </Notice>
-          )}
-          <DistanceSource source={plan.distance_source} />
-          {plan.selection?.explanation && <Notice title={plan.selection.method === 'model' ? 'Why this engine' : 'Engine'}>{plan.selection.explanation}</Notice>}
-          {plan.replan && (
-            <Notice title={`Replan of ${plan.parent_plan_id} after ${plan.event?.type?.replace('_', ' ')}`}
-              errors={plan.replan.notes}>
-              <Link className="underline" to={`/plans/${plan.parent_plan_id}`}>Open the previous plan</Link>.
-              Warm start: {plan.replan.warm_start}{timing?.warm_start_result ? ` (${timing.warm_start_result})` : ''}.
-              {plan.replan.dropped_customers?.length > 0 && ` Dropped: ${plan.replan.dropped_customers.join(', ')}.`}
-            </Notice>
-          )}
           {routes && (
-            <Panel title="Routes">
-              <RouteMap instance={plan.instance} routes={routes} algo={plan.engine} />
-              <TableWrap>
-                <thead><tr className="text-left"><th>Vehicle</th><th>Stops</th><th>Sequence</th></tr></thead>
-                <tbody>{routes.map((r, i) => (
-                  <tr key={i} className="border-t border-rule"><td className="num py-1">{i}</td><td className="num">{r.length}</td>
-                    <td className="font-mono text-xs">{r.length ? r.join(' → ') : '(unused)'}</td></tr>))}</tbody>
-              </TableWrap>
-            </Panel>
+            <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_theme(spacing.routes)]">
+              <Panel title="Map" note={focus != null ? `Vehicle ${focus} highlighted` : undefined}>
+                <RouteMap instance={plan.instance} routes={routes} algo={plan.engine} focus={focus} height={520} />
+              </Panel>
+              <RouteList routes={routes} engine={plan.engine} focus={focus} setFocus={setFocus} />
+            </div>
           )}
+          <div className="grid gap-3 lg:grid-cols-2">
+            {plan.distance_source && !plan.distance_source.fallback && <DistanceSource source={plan.distance_source} />}
+            {plan.selection?.explanation && <Notice title={plan.selection.method === 'model' ? 'Why this engine' : 'Engine'}>{plan.selection.explanation}</Notice>}
+            {plan.replan && (
+              <Notice icon={GitBranch} title={`Replan of ${plan.parent_plan_id} after ${plan.event?.type?.replace('_', ' ')}`}
+                errors={plan.replan.notes}>
+                <Link className="link" to={`/plans/${plan.parent_plan_id}`}>Open the previous plan</Link>.
+                Warm start: {plan.replan.warm_start}{timing?.warm_start_result ? ` (${timing.warm_start_result})` : ''}.
+                {plan.replan.dropped_customers?.length > 0 && ` Dropped: ${plan.replan.dropped_customers.join(', ')}.`}
+              </Notice>
+            )}
+          </div>
           {routes && plan.feasible === true && <DriverLinks key={`d-${plan.plan_id}`} plan={plan} routes={routes} />}
           <ReplanPanel key={plan.plan_id} plan={plan} onReplanned={(nid) => navigate(`/plans/${nid}`)} />
         </div>
