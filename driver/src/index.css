@@ -3,13 +3,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Colours come from design/tokens.js (decision 0025). High contrast for sunlight: charcoal on white/paper. */
 @layer base {
   html { @apply bg-paper text-ink font-sans antialiased; -webkit-tap-highlight-color: transparent; }
-  body { @apply text-base; }
-  :focus-visible { outline: 3px solid #1E6B70; outline-offset: 2px; }
+  body { @apply text-lg; font-variant-numeric: tabular-nums; }
+  :focus-visible { @apply outline outline-[3px] outline-offset-2 outline-accent; }
 }
 
 @layer components {
-  /* Large touch targets: at least 52 px high, big text. */
-  .tap { @apply inline-flex min-h-[52px] items-center justify-center rounded-md px-3 text-center text-lg font-medium disabled:cursor-not-allowed disabled:opacity-50; }
+  /* Large touch targets: at least 56 px high, big bold text. */
+  .tap { @apply inline-flex min-h-tap items-center justify-center gap-2 rounded-md px-3 text-center text-lg font-semibold disabled:cursor-not-allowed disabled:opacity-50; }
+  .tap-lg { @apply min-h-tap-lg text-xl; }
+  .tap-secondary { @apply border-2 border-ink/25 bg-panel text-ink active:bg-rule2; }
 }
