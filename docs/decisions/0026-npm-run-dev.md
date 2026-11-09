@@ -11,6 +11,13 @@ Date: 10 Nov 2026. Status: accepted (asked for by the team: "backend will start 
   - sets `LOGIMIND_WORKER=inline` unless it is already set. Otherwise, with the API's default (`external`), plans stay `queued` until a second process runs the worker, and "one command" would not give a working app. `inline` is the documented one-process development mode (decision 0021); production and Docker Compose still use `external` plus the worker service.
 - Nothing else changes: the database, research endpoints (still OFF), OSRM and copilot settings remain environment variables with the same defaults. The Python stack is unchanged; Node is only the launcher.
 
+## Addendum (same day): local `.env` and `npm run tenant`
+- The backend does not read `.env` files itself; the root `.env` is Docker Compose's (its values, e.g. port 8081 and `host.docker.internal`, are wrong for local runs). So `dev.mjs` reads `backend/.env` (git-ignored by the existing `.env` rule; template `backend/.env.example`) for `dev`, `worker` and `tenant`. Shell variables win. Only variable names are printed, never values.
+- `npm run tenant -- "<name>"` runs `manage.py create-tenant` with the same environment as the API, so both use the same database. Before, a `LOGIMIND_DATABASE_URL` set only for the API could put the tenant in a different database, and the key would be refused.
+- `manage.py` was already the tenant/key tool (key printed once, only SHA-256 stored); it now has tests (`backend/tests/test_manage_cli.py`): printed once, accepted for sign-in, not in the database file in plain text, revoke works.
+- Found: on Windows, two uvicorn servers can listen on the same port at the same time. A second `npm run dev` then does not fail, and requests may go to the older server. Stop the old one first.
+- Walk-through checked on a throwaway database: `backend/.env` read → `npm run tenant` → key accepted by `/api/whoami` → a synthetic plan solved (feasible, inline worker) → driver link created.
+
 ## Checked
 - 10 Nov 2026, Windows: `cd backend && npm run dev` answered `GET /api/health` with 200 (it used `%TEMP%\lmv`, worker inline, auto-reload on). `cd frontend && npm run dev` served the console on 5173, its `/api/health` proxy returned 200, and `design/tokens.js` was served.
 - Not checked: macOS/Linux, and Ctrl+C in an interactive terminal (the tool used here stops processes differently).

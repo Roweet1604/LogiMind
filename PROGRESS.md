@@ -199,6 +199,7 @@ Last updated: 10 Nov 2026, eighth unattended session (branch `ui-redesign`): red
 - **Tests at the end of this session (exit codes checked):** console **39 passed**, driver PWA **20 passed**, both builds exit 0; `python -m ruff check .` exit 0; backend **268 passed** (exit 0, 16 library deprecation warnings; backend unchanged).
 
 - **`npm run dev` for both sides** (decision 0026, same session, at the team's request): `cd backend && npm run dev` starts uvicorn on :8000 with auto-reload and the inline worker (Python found in `LOGIMIND_PYTHON`, `%TEMP%\lmv`, `.venv` or the PATH); `cd frontend && npm run dev` was already Vite on :5173. Both were started and answered (health 200, console page 200, `/api` proxy 200). `npm run worker` and `npm test` also exist in `backend/`. Not checked: macOS/Linux, and Ctrl+C in an interactive terminal.
+- **Local sign-in setup** (decision 0026 addendum): `backend/.env` (git-ignored; template `backend/.env.example`) is read by `npm run dev` / `worker` / `tenant`; `npm run tenant -- "<name>"` prints a test key once (only its hash is stored). New `backend/tests/test_manage_cli.py` (3 tests). Walk-through checked end to end on a throwaway database. Found: on Windows two servers can listen on port 8000 at once; a second `npm run dev` does not fail.
 
 ## First solver observations from P1 (5 s, one seed, Rohit's laptop; indicative only, do not quote; superseded for OR-Tools by the P2 audit)
 | Instance | OR-Tools (default) | GA (with repair) |

@@ -23,8 +23,10 @@ cd frontend && npm run dev      # ops console on http://localhost:5173 (proxies 
 `backend/package.json` has no Node dependencies (no `npm install` needed there). Its `dev` script finds Python in
 `LOGIMIND_PYTHON`, else `%TEMP%\lmv`, else `backend\.venv` or `.venv`, else `python` on the PATH, and starts uvicorn
 with `LOGIMIND_WORKER=inline` unless you set it. Also: `npm run worker` (separate worker; set
-`LOGIMIND_WORKER=external` for the API first) and `npm test` (pytest). Other settings stay environment variables.
-Sign in to the console with a key from `python manage.py create-tenant "<name>"` (run in `backend\`).
+`LOGIMIND_WORKER=external` for the API first), `npm test` (pytest) and `npm run tenant -- "<name>"` (creates a
+tenant and prints its API key once; only the key's SHA-256 is stored). These scripts also read `backend\.env`
+(copy `backend\.env.example`; git-ignored, never commit it). Shell variables win over the file.
+Sign in to the console at http://localhost:5173/login with that key.
 
 Backend setup and manual commands:
 ```
