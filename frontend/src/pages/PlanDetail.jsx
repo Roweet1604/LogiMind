@@ -269,7 +269,7 @@ export default function PlanDetail() {
             { label: 'Solver status', value: SOLVER_STATUS_TEXT[plan.status] || plan.status || '—' },
           ]} />
           {routes && (
-            <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_theme(spacing.routes)]">
+            <div className="plan-grid">
               <Panel title="Map" note={focus != null ? `Vehicle ${focus} highlighted` : undefined}>
                 <RouteMap instance={plan.instance} routes={routes} algo={plan.engine} focus={focus} height={520} />
               </Panel>

@@ -163,7 +163,7 @@ export default function Layout() {
           </header>
           <div className="flex min-h-0 flex-1">
             <main id="main" className="min-w-0 flex-1 px-5 py-6 md:px-8">
-              <div className="mx-auto max-w-[1600px]">
+              <div className="mx-auto max-w-[1600px] [container-type:inline-size]">
                 {health.state === 'down' && (
                   <div className="mb-5 rounded border border-l-4 border-err bg-err-soft px-4 py-3" role="alert">
                     Backend unreachable. Start it with <code>uvicorn app.main:app --port 8000</code> in <code>backend/</code>.
