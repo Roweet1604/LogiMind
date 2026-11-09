@@ -74,11 +74,11 @@ export function ReplanPanel({ plan, onReplanned }) {
           </div>
         </fieldset>
         {type === 'vehicle_breakdown' && (
-          <Field label="Broken-down vehicle" htmlFor="broken">
+          <div className="max-w-sm"><Field label="Broken-down vehicle" htmlFor="broken">
             <select id="broken" className="input" value={vehicle} onChange={(e) => setVehicle(e.target.value)}>
               {used.map(({ v }) => <option key={v} value={v}>Vehicle {v}</option>)}
             </select>
-          </Field>
+          </Field></div>
         )}
         {type === 'failed_delivery' && (
           <div className="grid gap-3 md:grid-cols-2">

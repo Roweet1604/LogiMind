@@ -67,7 +67,11 @@ test('Layout: the copilot opens as a docked panel with the model status, and clo
   expect(await within(dock).findByText('ollama · llama3.2:3b')).toBeInTheDocument()
   expect(within(dock).getByLabelText(/message to the copilot/i)).toBeInTheDocument()
   expect(screen.getByText('plans page')).toBeInTheDocument() // the page stays beside the panel
+  expect(within(dock).getByRole('button', { name: /close the copilot panel/i })).toHaveFocus() // keyboard lands in the panel
   await userEvent.click(within(dock).getByRole('button', { name: /close the copilot panel/i }))
+  expect(screen.queryByRole('complementary', { name: 'Copilot panel' })).not.toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: 'Copilot' }))
+  await userEvent.keyboard('{Escape}')
   expect(screen.queryByRole('complementary', { name: 'Copilot panel' })).not.toBeInTheDocument()
   setApiKey('')
 })

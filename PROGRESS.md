@@ -1,6 +1,6 @@
 # LogiMind progress
 
-Last updated: 5 Nov 2026, seventh unattended session: retry rule for failed deliveries, 10 s held-out run (PARTIAL: stopped for low memory), selector tested on the benchmarks, deck updated. Current phase: **finish the 10 s run, then run what is UNTESTED (Docker Compose, OSRM) and NOT RUN (copilot with a real model)**; see Next steps.
+Last updated: 10 Nov 2026, eighth unattended session (branch `ui-redesign`): redesign of the ops console and the driver app; no backend change. Before that, 5 Nov 2026: retry rule for failed deliveries, 10 s held-out run (PARTIAL: stopped for low memory), selector tested on the benchmarks, deck updated. Current phase: **finish the 10 s run, then run what is UNTESTED (Docker Compose, OSRM) and NOT RUN (copilot with a real model)**; see Next steps.
 
 ## Done and verified
 ### Phase 0
@@ -179,6 +179,25 @@ Last updated: 5 Nov 2026, seventh unattended session: retry rule for failed deli
 - **Deck draft updated** (`docs/report/deck_draft.md`): Result A = 10 s run, Result B = 3 s run of the same instance (captions with distance and cost); new held-out and selector findings on slides 13, 15, 19, 24, marked preliminary where they use the 10 s run. Placeholders kept; the .pptx was not edited.
 - **Tests at the end of this session (5 Nov 2026, Python 3.14.7 / OR-Tools 9.15.6755; exit codes checked):** backend **268 passed** (exit 0, 16 library deprecation warnings); console **34 passed** (exit 0); driver PWA **17 passed** (exit 0); `python -m ruff check .` exit 0.
 
+### Eighth unattended session, 10 Nov 2026: UI redesign (branch `ui-redesign`; commits 7f65dc7, 4dc53a2 and the screenshots/PROGRESS commit; decision 0025)
+- **Opening run (exit codes checked):** console 34 passed, driver PWA 17 passed, both `vite build` exit 0. The backend was not changed this session.
+- **Design tokens in one place:** `design/tokens.js` (colours, type scale, spacing, radii). Both `tailwind.config.js` files and the engine line styles (`frontend/src/lib/algos.js`) read it. Contrast measured with a script: every text pair is at least 4.5:1.
+  - Because the tokens sit outside the app folders, the console/driver Docker builds now use the repo root as build context (`docker-compose.yml`, both Dockerfiles, new `.dockerignore`). Still **UNTESTED** (no Docker).
+- **Console:** left rail with the existing sections; top bar with tenant, backend status and a Copilot toggle.
+  - Plan view: a status strip at the top (validator verdict, engine, timeout, fallback distances, replanned + parent link), then the timeout / infeasible / fallback notices, then the map beside the route list. Clicking a route highlights it on the map.
+  - Status badges always have an icon and a word. The hybrid has its own line style (dash-dot slate). Compact tables with right-aligned numbers. Synthetic order sets are labelled "synthetic".
+  - The copilot is also a docked side panel. It shares one conversation with the `/copilot` page and is cleared when the signed-in key changes. Opening it moves focus into it, and Esc closes it. API calls and the Confirm/Cancel flow are unchanged.
+- **Driver app:** dark sticky header with an Online / Offline / "Server unreachable" badge (icon + word), a progress bar and the sync row. The next stop has 64 px Navigate / Delivered / Failed; all other targets are at least 56 px. Inline SVG icons, no new dependency.
+- **Behaviour kept:** API-key handling, validator display, replan confirmation, offline queue/sync and tenant behaviour use the same code. All 34 console and 17 driver tests pass unchanged; no test was weakened.
+- **New tests:** console +5 (`src/test/design.test.jsx`: engine styles, status strip flags, dock open/focus/Esc/close); driver +3 (`src/test/design.test.jsx`: target sizes, icon + word statuses, "Server unreachable" on a 5xx).
+- **Checked in a real browser** (desktop Chrome via Claude in Chrome; uvicorn on a temp SQLite DB, research endpoints off, OSRM pointed at a closed port, Ollama not installed; console on the Vite dev server, driver as a production build on `vite preview`). Screenshots and an index are in `docs/report/ui/`. All data is synthetic.
+  - Console: sign-in; Plans list; plan views for an auto/hybrid plan with the real OSRM fallback warning, a planar hybrid plan and an urgent-order replan; route highlight; Drivers panel; replan form (displayed, not submitted); copilot page and dock with the real "no local model" state; signed-out state; a research page with its "switched off" banner; keyboard focus; the plan page and the dock at 390 px (in a 390 px iframe). No console errors (only React Router's existing future-flag warnings).
+  - Driver: stop list; Delivered (synced at once); the Failed form; the API stopped, so a report was queued, "Server unreachable" was shown, then the API was restarted and Sync now sent it; an expired link after an API restart without a fixed link secret (the unsent report was mentioned). All at 390 px in an iframe.
+  - **Found and fixed in the browser:** the map zoomed on the mouse wheel and trapped page scrolling (wheel zoom is now off); the driver badge said "Online" while showing the saved copy after a 5xx; the teal focus ring was 2.9:1 on the dark rail; the status chip and the long badge squeezed the titles at 390 px; Drivers table columns too wide.
+  - **Found, not changed (existing behaviour, outside this task):** the console signs you out if the backend is unreachable when a page loads, because `AuthContext` treats any failed `whoami` as a bad key. The driver app numbers routes from 1 ("Route 2") while the console numbers vehicles from 0 ("Vehicle 1").
+  - **Not checked:** a real phone or device emulation (the window resize did not apply; 390 px was checked in an iframe); sunlight readability beyond the measured contrast; the copilot with a real model, including the Confirm/Cancel buttons in the browser (unit tests only); the research pages' own workflows (research endpoints off); the Overview and Methodology pages after the restyle; a screen reader; Docker builds.
+- **Tests at the end of this session (exit codes checked):** console **39 passed**, driver PWA **20 passed**, both builds exit 0; `python -m ruff check .` exit 0; backend **268 passed** (exit 0, 16 library deprecation warnings; backend unchanged).
+
 ## First solver observations from P1 (5 s, one seed, Rohit's laptop; indicative only, do not quote; superseded for OR-Tools by the P2 audit)
 | Instance | OR-Tools (default) | GA (with repair) |
 | --- | --- | --- |
@@ -206,6 +225,7 @@ Last updated: 5 Nov 2026, seventh unattended session: retry rule for failed deli
 - Selector: trained on synthetic data only; on the held-out benchmarks it had the lowest overall regret but lost to always-GA+LS on CVRP and to always-hybrid at 3 s; it ignores the budget (model card).
 - P10: the 10 s held-out run is PARTIAL (134 of 216 runs; decision 0024; resume command there); copilot numbers NOT RUN; no calibration of the distance estimate. Gehring-Homberger not downloaded; hybrid split untuned. The full list is in `docs/limitations.md`.
 - Team answers still missing (docs/decisions/0002). Docker and Ollama not installed.
+- UI redesign (branch `ui-redesign`, not merged): not tried on a real phone; copilot Confirm/Cancel not seen in a browser (no model); research pages, Overview and Methodology only restyled through shared components, not re-walked; the console signs out when the backend is down during a page load (existing `AuthContext` behaviour, left unchanged on purpose).
 
 ## Known quirks
 - Instance ids hash coordinates as given: `10` and `10.0` give different ids (baseline behaviour, kept so old ids stay valid). The API always sends floats.
@@ -214,6 +234,8 @@ Last updated: 5 Nov 2026, seventh unattended session: retry rule for failed deli
 1. Finish the 10 s held-out run with `--resume` (82 runs, about 14 min; close other programs first so memory is free; command in decision 0024), then `python experiments/selector_heldout_eval.py` and `python experiments/p10_report.py`; the PARTIAL labels go away by themselves. Update the deck's slide 24 if a verdict changes.
 2. Install Docker Desktop (WSL2); run `docker compose up --build` (API + worker + Postgres) and fix what breaks (migrations and the queue lock on Postgres first). Team: choose the OSRM map source (decision 0020) and run one plan with `distance_source=osrm`.
 3. Team: freeze `docs/eval/copilot_instructions_DRAFT.json`; install Ollama and measure the copilot for that exact model; fill [weeks remaining] / [review dates] in the deck. Then: retrain or drop the selector's budget-blind trees (it never changes its choice with the budget), and test the driver PWA on a phone.
+
+4. Team: review the `ui-redesign` branch (screenshots in `docs/report/ui/`) and merge it, or ask for changes; try the driver app on a real phone outdoors. Decide whether a backend outage should sign the console out (`AuthContext`).
 
 ## Restart commands
 See CLAUDE.md "Commands". In a new session: read CLAUDE.md, PLAN.md and PROGRESS.md, run the backend tests and report the real result.
@@ -243,6 +265,14 @@ Commands added in the third unattended session:
 "$TEMP/lmv/Scripts/python" -m pip install -r backend/requirements.txt   # now also langgraph, langchain-core, langchain-ollama
 # frontend tests: copy frontend/src etc. to %TEMP%\lmfe_s3 (npm ci there once), then:  npx vitest run   # 30 passed
 LOGIMIND_LLM_PROVIDER=none uvicorn app.main:app --port 8000             # copilot off on purpose; default "ollama" uses it only if running
+```
+
+Commands added in the eighth unattended session (Git Bash; the tokens in `design/` must sit next to the app copies):
+```
+rm -rf "$TEMP/design" && cp -r design "$TEMP/design"         # %TEMP%\lmfe_s3 and %TEMP%\lmdrv resolve ../design
+# copy frontend/* (not node_modules) to %TEMP%\lmfe_s3 and driver/* to %TEMP%\lmdrv, then in each:
+npx vitest run; echo "vitest exit=$?"                          # console 39 passed, driver 20 passed
+npx vite build; echo "build exit=$?"
 ```
 
 Commands added in the seventh unattended session (Git Bash, repo root; exit codes checked, never piped):

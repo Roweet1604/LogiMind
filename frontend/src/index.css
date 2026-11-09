@@ -10,6 +10,7 @@
   html { @apply bg-paper text-ink font-sans antialiased; font-feature-settings: 'cv11', 'ss01'; }
   body { @apply text-sm; }
   :focus-visible { @apply outline outline-2 outline-offset-2 outline-accent; }
+  .bg-nav :focus-visible { @apply outline-accent-soft; } /* teal on the dark rail is 2.9:1; the tint is 14.6:1 */
   table, .num, input[type='number'] { font-variant-numeric: tabular-nums; }
   h1 { @apply text-xl font-semibold tracking-tight; }
   h2 { @apply text-base font-semibold tracking-tight; }

@@ -48,7 +48,7 @@ export default function DriverLinks({ plan, routes }) {
         </div>
       )}
       <TableWrap>
-        <thead><tr><th className="num">Route</th><th className="num">Stops done</th><th>Active links</th><th><span className="sr-only">Actions</span></th></tr></thead>
+        <thead><tr><th className="num w-20">Route</th><th className="num w-28">Stops done</th><th>Active links</th><th><span className="sr-only">Actions</span></th></tr></thead>
         <tbody>{routes.map((r, i) => {
           if (!r.length) return null
           const doneCount = r.filter((cid) => latest[cid]).length

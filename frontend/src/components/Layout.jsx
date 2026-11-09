@@ -1,5 +1,5 @@
 import { BookOpen, Check, ClipboardList, FlaskConical, KeyRound, LayoutGrid, MessageSquare, PanelRightClose, PanelRightOpen, Play, Route as RouteIcon, Scale, SlidersHorizontal } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useApp } from '../state/AppContext'
 import { useAuth } from '../state/AuthContext'
@@ -78,15 +78,17 @@ function BackendStatus({ health }) {
 // Docked copilot: the same conversation as the /copilot page, beside whatever page is open.
 function CopilotDock({ onClose }) {
   const { status } = useCopilot()
+  const close = useRef(null)
+  useEffect(() => { close.current?.focus() }, [])  // keyboard users land in the panel
   return (
-    <aside id="copilot-dock" aria-label="Copilot panel"
+    <aside id="copilot-dock" aria-label="Copilot panel" onKeyDown={(e) => { if (e.key === 'Escape') onClose() }}
       className="fixed inset-0 z-[1100] flex flex-col bg-panel lg:sticky lg:top-14 lg:z-auto lg:h-[calc(100vh-3.5rem)] lg:w-dock lg:shrink-0 lg:border-l lg:border-rule">
       <div className="flex items-center justify-between gap-2 border-b border-rule px-4 py-3">
         <div className="min-w-0">
           <h2 className="flex items-center gap-2"><MessageSquare size={16} aria-hidden="true" />Copilot</h2>
           <div className="mt-1"><ModelStatus status={status} /></div>
         </div>
-        <button type="button" className="btn btn-ghost px-2" onClick={onClose} aria-label="Close the copilot panel">
+        <button ref={close} type="button" className="btn btn-ghost px-2" onClick={onClose} aria-label="Close the copilot panel (Esc)">
           <PanelRightClose size={18} aria-hidden="true" />
         </button>
       </div>

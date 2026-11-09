@@ -38,7 +38,7 @@ export default function RouteMap({ instance, routes, algo, focus = null, height 
       <div style={{ height }} className="isolate overflow-hidden rounded-md border border-rule" role="img"
         aria-label={`Map of ${nonEmpty.length} routes${a ? ` from ${a.label}` : ''}. A route table is available below.`}>
         <MapContainer crs={planar ? L.CRS.Simple : L.CRS.EPSG3857} minZoom={planar ? -6 : 2} zoomSnap={0.25}
-          center={points[0]} zoom={planar ? 0 : 11} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
+          center={points[0]} zoom={planar ? 0 : 11} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false}>
           {!planar && <TileLayer attribution="&copy; OpenStreetMap contributors" url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" />}
           <Fit points={points} />
           {a && nonEmpty.map(({ r, i }) => {
@@ -46,7 +46,7 @@ export default function RouteMap({ instance, routes, algo, focus = null, height 
             const dim = focus != null && focus !== i
             return (
               <Polyline key={i} positions={line}
-                pathOptions={{ color: a.color, weight: dim ? 1.5 : focus === i ? 4.5 : 2.5, opacity: dim ? 0.25 : 0.95, dashArray: a.dash }}>
+                pathOptions={{ color: a.color, weight: dim ? 2 : focus === i ? 5 : 3.5, opacity: dim ? 0.25 : 0.95, dashArray: a.dash }}>
                 <Tooltip sticky>Route {i + 1}: {r.length} stops</Tooltip>
               </Polyline>
             )
@@ -72,7 +72,7 @@ export default function RouteMap({ instance, routes, algo, focus = null, height 
       <p className="mt-2 text-xs text-ink2">
         {planar
           ? 'Planar coordinates; segments are straight lines (Euclidean distance).'
-          : 'Segments are drawn as straight lines between stops; they are not the road paths.'}
+          : 'Segments are drawn as straight lines between stops; they are not the road paths.'} Zoom with the + and − buttons or a double-click.
         {a && <> {a.label}: {a.dashLabel}.</>} Filled-white dot = served customer, red = unserved, black = depot.
       </p>
     </div>

@@ -8,6 +8,7 @@
   html { @apply bg-paper text-ink font-sans antialiased; -webkit-tap-highlight-color: transparent; }
   body { @apply text-lg; font-variant-numeric: tabular-nums; }
   :focus-visible { @apply outline outline-[3px] outline-offset-2 outline-accent; }
+  .bg-nav :focus-visible { @apply outline-accent-soft; } /* readable focus ring on the dark header */
 }
 
 @layer components {

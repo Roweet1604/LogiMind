@@ -82,21 +82,19 @@ function StopCard({ stop, next, online, timeUnit, onReport, onPhoto, photoState 
   return (
     <li className={`rounded-lg border-2 bg-panel p-4 ${next ? 'border-accent shadow-[0_0_0_2px_theme(colors.accent.soft)]' : 'border-rule'}`}
       aria-label={`Stop ${stop.seq}, customer ${stop.customer_id}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-base font-medium text-ink2">
-            Stop {stop.seq}{next && <span className="ml-2 rounded bg-accent px-2 py-0.5 text-sm font-bold uppercase tracking-wide text-white">Next</span>}
-          </p>
-          <p className={`${next ? 'text-3xl' : 'text-2xl'} font-bold leading-tight`}>Customer {stop.customer_id}</p>
-          <p className="mt-0.5 text-lg text-ink2">
-            {plural(stop.demand, 'unit')}
-            {stop.due_time != null && <> · window {stop.ready_time}–{stop.due_time} {timeUnit}</>}
-          </p>
-        </div>
-        <span className={`inline-flex shrink-0 items-center gap-1 rounded-md border-2 px-2.5 py-1 text-base font-semibold ${cls}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="whitespace-nowrap text-base font-medium text-ink2">
+          Stop {stop.seq}{next && <span className="ml-2 rounded bg-accent px-2 py-0.5 text-sm font-bold uppercase tracking-wide text-white">Next</span>}
+        </p>
+        <span className={`inline-flex items-center gap-1 rounded-md border-2 px-2.5 py-0.5 text-base font-semibold ${cls}`}>
           {Icon && <Icon size={18} />}{label}{stop.queued && ' · waiting to sync'}
         </span>
       </div>
+      <p className={`mt-1 ${next ? 'text-3xl' : 'text-2xl'} font-bold leading-tight`}>Customer {stop.customer_id}</p>
+      <p className="mt-0.5 text-lg text-ink2">
+        {plural(stop.demand, 'unit')}
+        {stop.due_time != null && <> · window {stop.ready_time}–{stop.due_time} {timeUnit}</>}
+      </p>
       {stop.status === 'failed' && stop.reason && <p className="mt-1 text-lg font-medium text-err">{REASONS[stop.reason] || stop.reason}</p>}
       <div className="mt-4 space-y-2">
         {url
@@ -228,19 +226,20 @@ export default function App() {
   const stops = withQueued(route.stops, queue)
   const done = stops.filter((s) => s.status !== 'pending').length
   const nextSeq = stops.find((s) => s.status === 'pending')?.seq
+  // Display only: the phone can be online while the server is not answering (then the saved copy is shown).
+  const connected = online && source !== 'cache'
+  const connection = !online ? 'Offline' : source === 'cache' ? 'Server unreachable' : 'Online'
   return (
     <main className="mx-auto max-w-xl pb-10">
       <div className="sticky top-0 z-10">
       <header className="bg-nav px-4 pb-3 pt-3 text-white">
         <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="truncate text-base text-nav-text">{route.company}</p>
-            <h1 className="truncate text-2xl font-bold">Route {route.route_index + 1}{route.plan_name && <span className="text-lg font-normal text-nav-text"> · {route.plan_name}</span>}</h1>
-          </div>
-          <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-md border-2 px-3 py-1.5 text-lg font-bold ${online ? 'border-ok bg-ok-soft text-ok' : 'border-warn bg-warn-soft text-warn'}`}>
-            {online ? <CloudIcon size={20} /> : <CloudOffIcon size={20} />}{online ? 'Online' : 'Offline'}
+          <p className="min-w-0 truncate text-base text-nav-text">{route.company}</p>
+          <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-md border-2 px-3 py-1 text-lg font-bold ${connected ? 'border-ok bg-ok-soft text-ok' : 'border-warn bg-warn-soft text-warn'}`}>
+            {connected ? <CloudIcon size={20} /> : <CloudOffIcon size={20} />}{connection}
           </span>
         </div>
+        <h1 className="mt-1 truncate text-2xl font-bold">Route {route.route_index + 1}{route.plan_name && <span className="text-lg font-normal text-nav-text"> · {route.plan_name}</span>}</h1>
         <p className="mt-2 text-lg" aria-live="polite">{done} of {stops.length} stops done · link valid until {clock(route.expires_at)}</p>
         <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/15" aria-hidden="true">
           <div className="h-full rounded-full bg-accent-soft" style={{ width: `${stops.length ? (100 * done) / stops.length : 0}%` }} />
