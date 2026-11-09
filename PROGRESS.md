@@ -198,6 +198,8 @@ Last updated: 10 Nov 2026, eighth unattended session (branch `ui-redesign`): red
   - **Not checked:** a real phone or device emulation (the window resize did not apply; 390 px was checked in an iframe); sunlight readability beyond the measured contrast; the copilot with a real model, including the Confirm/Cancel buttons in the browser (unit tests only); the research pages' own workflows (research endpoints off); the Overview and Methodology pages after the restyle; a screen reader; Docker builds.
 - **Tests at the end of this session (exit codes checked):** console **39 passed**, driver PWA **20 passed**, both builds exit 0; `python -m ruff check .` exit 0; backend **268 passed** (exit 0, 16 library deprecation warnings; backend unchanged).
 
+- **`npm run dev` for both sides** (decision 0026, same session, at the team's request): `cd backend && npm run dev` starts uvicorn on :8000 with auto-reload and the inline worker (Python found in `LOGIMIND_PYTHON`, `%TEMP%\lmv`, `.venv` or the PATH); `cd frontend && npm run dev` was already Vite on :5173. Both were started and answered (health 200, console page 200, `/api` proxy 200). `npm run worker` and `npm test` also exist in `backend/`. Not checked: macOS/Linux, and Ctrl+C in an interactive terminal.
+
 ## First solver observations from P1 (5 s, one seed, Rohit's laptop; indicative only, do not quote; superseded for OR-Tools by the P2 audit)
 | Instance | OR-Tools (default) | GA (with repair) |
 | --- | --- | --- |

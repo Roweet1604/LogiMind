@@ -15,7 +15,18 @@ An API-first hybrid optimization platform with an AI dispatch copilot for small-
 ## Quick start (Windows)
 Keep the virtual environment and `node_modules` **outside OneDrive** (OneDrive sync and long paths break installs).
 
-Backend:
+Two terminals, after the one-time setup below (decision 0026):
+```
+cd backend  && npm run dev      # API on http://localhost:8000 (auto-reload; runs the solver jobs in-process)
+cd frontend && npm run dev      # ops console on http://localhost:5173 (proxies /api to :8000)
+```
+`backend/package.json` has no Node dependencies (no `npm install` needed there). Its `dev` script finds Python in
+`LOGIMIND_PYTHON`, else `%TEMP%\lmv`, else `backend\.venv` or `.venv`, else `python` on the PATH, and starts uvicorn
+with `LOGIMIND_WORKER=inline` unless you set it. Also: `npm run worker` (separate worker; set
+`LOGIMIND_WORKER=external` for the API first) and `npm test` (pytest). Other settings stay environment variables.
+Sign in to the console with a key from `python manage.py create-tenant "<name>"` (run in `backend\`).
+
+Backend setup and manual commands:
 ```
 python -m venv %TEMP%\lmv
 %TEMP%\lmv\Scripts\activate

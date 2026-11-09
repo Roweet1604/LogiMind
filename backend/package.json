@@ -1,0 +1,11 @@
+{
+  "name": "logimind-backend",
+  "private": true,
+  "version": "0.1.0",
+  "description": "npm shortcuts for the Python backend (decision 0026). No Node dependencies; npm install is not needed.",
+  "scripts": {
+    "dev": "node scripts/dev.mjs api",
+    "worker": "node scripts/dev.mjs worker",
+    "test": "node scripts/dev.mjs test"
+  }
+}

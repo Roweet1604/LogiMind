@@ -40,6 +40,8 @@ Start every session by reading this file, `PLAN.md` and `PROGRESS.md`, then run 
 python -m venv %TEMP%\lmv
 %TEMP%\lmv\Scripts\python -m pip install -r backend\requirements.txt
 cd backend && %TEMP%\lmv\Scripts\python -m pytest -q          # backend tests
+cd backend && npm run dev                                      # API on :8000 (inline worker, reload; decision 0026)
+cd frontend && npm run dev                                     # ops console on :5173
 python experiments\benchmarks\fetch_benchmarks.py              # download benchmark files (once)
 %TEMP%\lmv\Scripts\python experiments\run_benchmarks.py --sizes 10 --ga-seeds 1 --time-budget 1 --out %TEMP%\bench
 ```
