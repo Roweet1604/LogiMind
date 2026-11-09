@@ -1,3 +1,4 @@
+import { colors } from '../../../design/tokens.js'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CartesianGrid, ErrorBar, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { api, exportUrl } from '../lib/api'
@@ -7,7 +8,7 @@ import { useApp } from '../state/AppContext'
 import { Download } from 'lucide-react'
 import { Badge, EmptyState, Field, Notice, NumberInput, PageHeader, Panel, Spinner, TableWrap } from '../components/ui'
 
-const TICK = { fontSize: 12, fill: '#596067' }
+const TICK = { fontSize: 12, fill: colors.ink2 }
 
 const SIZES = [10, 25, 50, 100]
 
@@ -20,9 +21,9 @@ function SizeChart({ title, unit, metric, data, selectedBudgets }) {
       <div style={{ height: 280 }}>
         <ResponsiveContainer>
           <LineChart data={pts} margin={{ top: 6, right: 16, bottom: 18, left: 0 }}>
-            <CartesianGrid stroke="#EEEBE2" />
-            <XAxis dataKey="n" type="number" domain={['dataMin', 'dataMax']} tick={TICK} stroke="#D6D1C3" label={{ value: 'customers', position: 'insideBottom', offset: -12, fontSize: 12, fill: '#596067' }} />
-            <YAxis tick={TICK} stroke="#D6D1C3" width={56} />
+            <CartesianGrid stroke={colors.rule2} />
+            <XAxis dataKey="n" type="number" domain={['dataMin', 'dataMax']} tick={TICK} stroke={colors.rule} label={{ value: 'customers', position: 'insideBottom', offset: -12, fontSize: 12, fill: colors.ink2 }} />
+            <YAxis tick={TICK} stroke={colors.rule} width={56} />
             <Tooltip formatter={(v, n) => [`${fmt(v)} ${unit}`, n]} labelFormatter={(n) => `${n} customers`} />
             <Legend verticalAlign="top" height={24} />
             <Line name="OR-Tools" type="monotone" dataKey={`ortools_${metric}_mean`} stroke={ALGOS.ortools.color} strokeWidth={2.5} dot={{ r: 4 }} isAnimationActive={false} connectNulls />

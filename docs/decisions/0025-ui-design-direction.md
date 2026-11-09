@@ -1,6 +1,7 @@
 # 0025: UI design direction (ops console and driver app)
 
 Date: 10 Nov 2026. Status: accepted (decided unattended by Claude Code, branch `ui-redesign`).
+**Palette, fonts and radii superseded by decision 0027 ("Freight Yard": concrete grey, safety yellow, Barlow Condensed + IBM Plex Sans, 4px corners).** Layout, status rules and behaviour below still apply.
 
 ## Direction (8 lines)
 1. Tone: a calm, precise dispatch control room and engineering tool; no marketing look, no chat-app look.

@@ -1,28 +1,32 @@
-// LogiMind design tokens: the one place for colours, type, spacing and radii (decision 0025).
-// Read by frontend/tailwind.config.js, driver/tailwind.config.js and frontend/src/lib/algos.js.
-// Contrast of every text pair was checked (>= 4.5:1); see the decision record.
+// LogiMind design tokens, "Freight Yard" theme: the one place for colours, type, spacing and radii
+// (decisions 0025 and 0027). Read by frontend/tailwind.config.js, driver/tailwind.config.js and
+// frontend/src/lib/algos.js. Every text/background pair was checked (>= 4.5:1); the list is in decision 0027.
+//
+// Rule: the safety yellow (accent) is a BACKGROUND on light surfaces, always with ink text on it.
+// It is a text/icon colour only on dark surfaces (nav, driver header, warning badges).
 
 export const colors = {
-  paper: '#F3F1EB',          // warm neutral page background
-  panel: '#FFFFFF',          // working surfaces
-  sunken: '#F8F7F3',         // table heads, inputs on paper
-  ink: '#15191C',            // charcoal text
-  ink2: '#596067',           // secondary text (5.6:1 on paper)
-  rule: '#E2DED2',           // borders
-  rule2: '#EEEBE2',          // inner dividers, neutral tint
-  nav: { DEFAULT: '#14181B', text: '#C5CACD', muted: '#8A9196', hover: '#1F252A', line: '#2B3237' },
-  accent: { DEFAULT: '#1E6B70', dark: '#165458', soft: '#DCEBEA' },   // the one action colour
-  // Engine identity: colour AND line pattern (see ENGINE_LINES below).
-  ortools: { DEFAULT: '#2A5DA8', soft: '#E4ECF7' },
-  ga: { DEFAULT: '#C2641A', text: '#98490F', soft: '#F7E9DA' },
-  hybrid: { DEFAULT: '#3B4651', soft: '#E6E9EC' },
-  // Semantic status colours (always paired with an icon and a word).
-  ok: { DEFAULT: '#2B6B3C', soft: '#E1EEE3' },
-  warn: { DEFAULT: '#8A5F0E', soft: '#F6ECD3' },
-  err: { DEFAULT: '#A53A2A', soft: '#F6E2DD' },
-  draft: { DEFAULT: '#4A5560', soft: '#EDEAE2' },
-  // Map marks
-  map: { bg: '#ECE8DC', stop: '#1E2326', unserved: '#A33A2B' },
+  paper: '#EDEDEA',          // concrete grey page background
+  panel: '#FFFFFF',          // panels and cards
+  sunken: '#F6F6F3',         // table heads, quiet blocks
+  ink: '#1A1A1A',            // text, strong dividers, focus ring on light surfaces
+  ink2: '#55554F',           // muted text (6.4:1 on paper)
+  rule: '#CFCFCA',           // borders
+  rule2: '#E2E2DD',          // inner dividers, neutral tint
+  nav: { DEFAULT: '#1A1A1A', text: '#D6D6D0', muted: '#A3A39B', hover: '#2A2A27', line: '#33332F' },
+  // Safety yellow: action backgrounds (ink text on top), and text only on dark surfaces.
+  accent: { DEFAULT: '#FFC400', dark: '#E5B000', soft: '#FFF1BF' },
+  // Engine identity: colour AND line pattern (see ENGINE_LINES). Yellow is never a data line.
+  ortools: { DEFAULT: '#1D4ED8', soft: '#E6ECFB' },
+  ga: { DEFAULT: '#C2410C', text: '#9A3412', soft: '#FBEDE6' },
+  hybrid: { DEFAULT: '#57606A', soft: '#ECEDEF' },
+  // Status (always with an icon and a word):
+  ok: { DEFAULT: '#166534', soft: '#EEF5EF' },             // feasible: green text on white, ink border
+  warn: { DEFAULT: '#FFC400', soft: '#1A1A1A', body: '#EDEDEA' }, // warning: dark block, yellow title/text
+  err: { DEFAULT: '#B42318', text: '#8F1D14', soft: '#FDECEA' },  // infeasible/timeout/failed: red
+  draft: { DEFAULT: '#FFC400', soft: '#1A1A1A' },          // draft/synthetic/preliminary: warning style, dashed
+  // Map
+  map: { bg: '#E2E2DD', road: '#C9C9C3', stop: '#1A1A1A', unserved: '#B42318' },
 }
 
 export const ENGINE_LINES = {
@@ -32,7 +36,8 @@ export const ENGINE_LINES = {
 }
 
 export const fontFamily = {
-  sans: ['"Inter Variable"', 'Inter', '"Segoe UI"', 'system-ui', 'sans-serif'],
+  sans: ['"IBM Plex Sans"', '"Segoe UI"', 'system-ui', 'sans-serif'],
+  display: ['"Barlow Condensed"', '"Arial Narrow"', '"IBM Plex Sans"', 'sans-serif'],
   mono: ['"JetBrains Mono Variable"', 'ui-monospace', 'Consolas', 'monospace'],
 }
 
@@ -50,7 +55,8 @@ export const fontSize = {
 // Spacing follows Tailwind's 4 px grid; these are the named layout sizes used by both apps.
 export const spacing = { rail: '15rem', dock: '26rem', routes: '22rem', tap: '3.5rem', 'tap-lg': '4rem' }
 
-export const borderRadius = { DEFAULT: '6px', md: '6px', lg: '8px' }
-export const boxShadow = { panel: '0 1px 2px rgba(21,25,28,0.05)', dock: '-1px 0 0 #E2DED2' }
+// 4 px corners everywhere (pills too); no shadows beyond a hairline border.
+export const borderRadius = { none: '0', sm: '4px', DEFAULT: '4px', md: '4px', lg: '4px', full: '4px' }
+export const boxShadow = { panel: 'none', dock: 'none' }
 
 export default { colors, fontFamily, fontSize, spacing, borderRadius, boxShadow }

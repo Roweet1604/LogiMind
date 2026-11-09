@@ -1,4 +1,4 @@
-/** Design tokens come from design/tokens.js (shared with the driver app; decision 0025). */
+/** Design tokens come from design/tokens.js (shared with the driver app; decisions 0025, 0027). */
 import tokens from '../design/tokens.js'
 
 export default {

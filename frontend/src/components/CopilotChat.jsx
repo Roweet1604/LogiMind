@@ -75,7 +75,7 @@ function Reply({ m, onConfirm, busy }) {
   const [kind, label, icon] = KIND[m.kind] || ['neutral', m.kind, undefined]
   const pending = m.kind === 'confirm' && m.open
   return (
-    <div className={`rounded-md border bg-panel px-3.5 py-3 ${pending ? 'border-warn/60' : 'border-rule'}`}>
+    <div className={`rounded-md border bg-panel px-3.5 py-3 ${pending ? 'border-2 border-ink' : 'border-rule'}`}>
       <div className="mb-1.5 flex items-center gap-2">
         <Bot size={15} className="text-ink2" aria-hidden="true" />
         <span className="text-xs font-medium text-ink2">Copilot</span><Badge kind={kind} icon={icon}>{label}</Badge>
@@ -94,11 +94,11 @@ function Reply({ m, onConfirm, busy }) {
       )}
       {m.tool_calls && <PlanLinks calls={m.tool_calls} />}
       {pending && (
-        <div className="mt-3 rounded-md border border-warn/40 bg-warn-soft p-3">
+        <div className="mt-3 rounded border border-warn-soft bg-warn-soft p-3 text-warn-body">
           <p className="mb-2 text-xs font-medium text-warn">Nothing changes until you confirm. The new plan is solved and checked by the validator.</p>
           <div className="flex flex-wrap gap-2">
             <button type="button" className="btn btn-primary" disabled={busy} onClick={() => onConfirm(m, true)}>Confirm replan</button>
-            <button type="button" className="btn" disabled={busy} onClick={() => onConfirm(m, false)}>Cancel</button>
+            <button type="button" className="btn btn-on-dark" disabled={busy} onClick={() => onConfirm(m, false)}>Cancel</button>
           </div>
         </div>
       )}

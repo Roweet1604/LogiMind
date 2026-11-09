@@ -1,3 +1,4 @@
+import { colors } from '../../../design/tokens.js'
 import { Link } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { ALGOS } from '../lib/algos'
@@ -7,7 +8,7 @@ import { useRunDetail } from '../components/useRun'
 import RunPicker from '../components/RunPicker'
 import { AlgoTag, EmptyState, FeasibilityBadge, Notice, PageHeader, Panel, Spinner, TableWrap } from '../components/ui'
 
-const TICK = { fontSize: 12, fill: '#596067' }
+const TICK = { fontSize: 12, fill: colors.ink2 }
 
 function Value({ v, digits = 2, better, both }) {
   if (!isNum(v)) return <span className="text-ink2" title="not available">—</span>
@@ -24,9 +25,9 @@ function MiniBar({ title, unit, data }) {
       <div style={{ height: 230 }}>
         <ResponsiveContainer>
           <BarChart data={vals} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-            <CartesianGrid stroke="#EEEBE2" vertical={false} />
-            <XAxis dataKey="name" tick={TICK} stroke="#D6D1C3" />
-            <YAxis tick={TICK} stroke="#D6D1C3" width={48} />
+            <CartesianGrid stroke={colors.rule2} vertical={false} />
+            <XAxis dataKey="name" tick={TICK} stroke={colors.rule} />
+            <YAxis tick={TICK} stroke={colors.rule} width={48} />
             <Tooltip formatter={(v) => [`${fmt(v)} ${unit}`, title]} />
             <Bar dataKey="value" isAnimationActive={false} maxBarSize={72} radius={[3, 3, 0, 0]}>
               {vals.map((d) => <Cell key={d.key} fill={ALGOS[d.key].color} />)}
@@ -130,9 +131,9 @@ export default function Compare() {
               <div style={{ height: 300 }}>
                 <ResponsiveContainer>
                   <LineChart data={histData} margin={{ top: 8, right: 16, bottom: 20, left: 0 }}>
-                    <CartesianGrid stroke="#EEEBE2" />
-                    <XAxis dataKey="generation" type="number" domain={[0, 'dataMax']} tickCount={8} tick={TICK} stroke="#D6D1C3" label={{ value: 'generation', position: 'insideBottom', offset: -12, fontSize: 12, fill: '#596067' }} />
-                    <YAxis tick={TICK} stroke="#D6D1C3" domain={['auto', 'auto']} width={56} />
+                    <CartesianGrid stroke={colors.rule2} />
+                    <XAxis dataKey="generation" type="number" domain={[0, 'dataMax']} tickCount={8} tick={TICK} stroke={colors.rule} label={{ value: 'generation', position: 'insideBottom', offset: -12, fontSize: 12, fill: colors.ink2 }} />
+                    <YAxis tick={TICK} stroke={colors.rule} domain={['auto', 'auto']} width={56} />
                     <Tooltip formatter={(v) => [fmt(v), 'GA best cost']} labelFormatter={(g) => `generation ${g}`} />
                     <Line type="monotone" dataKey="cost" stroke={ALGOS.ga.color} strokeDasharray={ALGOS.ga.dash} dot={false} strokeWidth={2.5} isAnimationActive={false} />
                     {isNum(m(ro)?.estimated_cost) && <ReferenceLine y={m(ro).estimated_cost} stroke={ALGOS.ortools.color} strokeWidth={2} label={{ value: 'OR-Tools final cost', position: 'insideTopRight', fontSize: 12, fill: ALGOS.ortools.color }} />}

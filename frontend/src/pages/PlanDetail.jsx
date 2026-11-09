@@ -194,7 +194,7 @@ function RouteList({ routes, engine, focus, setFocus }) {
         {routes.map((r, i) => (
           <li key={i}>
             <button type="button" disabled={!r.length} aria-pressed={focus === i} onClick={() => setFocus(focus === i ? null : i)}
-              className={`w-full rounded-md border px-3 py-2 text-left disabled:cursor-default ${focus === i ? 'border-accent bg-accent-soft' : 'border-transparent hover:border-rule hover:bg-sunken'}`}>
+              className={`w-full rounded-md border px-3 py-2 text-left disabled:cursor-default ${focus === i ? 'border-ink bg-accent-soft' : 'border-transparent hover:border-rule hover:bg-sunken'}`}>
               <span className="flex items-center gap-2">
                 {a && <svg width="20" height="8" aria-hidden="true"><line x1="1" y1="4" x2="19" y2="4" stroke={a.color} strokeWidth="3" strokeDasharray={a.dash} /></svg>}
                 <span className="font-medium">Vehicle {i}</span>

@@ -21,10 +21,12 @@ function Item({ to, label, icon: Icon, n }) {
   return (
     <NavLink to={to} end={to === '/'}
       className={({ isActive }) =>
-        `flex items-center gap-3 whitespace-nowrap rounded-md border-l-2 px-3 py-2 text-sm font-medium ${isActive ? 'border-accent bg-white/10 text-white' : 'border-transparent text-nav-text hover:bg-nav-hover hover:text-white'}`}>
-      <Icon size={17} aria-hidden="true" />
-      <span className="flex-1">{label}</span>
-      {n && <span className="font-mono text-2xs text-nav-muted">{n}</span>}
+        `flex items-center gap-3 whitespace-nowrap rounded px-3 py-2 text-sm ${isActive ? 'bg-accent font-bold text-ink' : 'font-medium text-nav-text hover:bg-nav-hover hover:text-white'}`}>
+      {({ isActive }) => (<>
+        <Icon size={17} aria-hidden="true" />
+        <span className="flex-1">{label}</span>
+        {n && <span className={`font-mono text-2xs ${isActive ? 'text-ink' : 'text-nav-muted'}`}>{n}</span>}
+      </>)}
     </NavLink>
   )
 }
@@ -49,8 +51,8 @@ function Stepper() {
         return (
           <li key={s.to} className="flex items-center gap-2">
             <Link to={s.to} aria-current={current ? 'step' : undefined}
-              className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm ${current ? 'border-accent bg-accent-soft font-semibold text-accent-dark' : 'border-rule bg-panel text-ink2 hover:text-ink'}`}>
-              <span className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-semibold ${complete[s.to] ? 'bg-accent text-white' : 'border border-rule text-ink2'}`}>
+              className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm ${current ? 'border-ink bg-accent font-bold text-ink' : 'border-rule bg-panel text-ink2 hover:text-ink'}`}>
+              <span className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-semibold ${complete[s.to] ? 'bg-ink text-white' : 'border border-ink2 text-ink2'}`}>
                 {complete[s.to] ? <Check size={12} aria-label="done" /> : i + 1}
               </span>
               {s.label}
@@ -115,12 +117,12 @@ export default function Layout() {
         <aside className="bg-nav text-nav-text md:sticky md:top-0 md:flex md:h-screen md:w-rail md:shrink-0 md:flex-col">
           <div className="flex h-14 items-center gap-3 border-b border-nav-line px-5">
             <svg width="26" height="26" viewBox="0 0 28 28" aria-hidden="true" className="shrink-0">
-              <rect width="28" height="28" rx="6" className="fill-accent" />
-              <path d="M7 20 L12 9 L17 16 L21 8" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              <circle cx="7" cy="20" r="2" fill="#fff" /><circle cx="21" cy="8" r="2" fill="#fff" />
+              <rect width="28" height="28" rx="4" className="fill-accent" />
+              <path d="M7 20 L12 9 L17 16 L21 8" fill="none" className="stroke-ink" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" />
+              <circle cx="7" cy="20" r="2" className="fill-ink" /><circle cx="21" cy="8" r="2" className="fill-ink" />
             </svg>
             <div>
-              <p className="font-semibold leading-tight text-white">LogiMind</p>
+              <p className="font-display text-lg font-bold uppercase leading-none tracking-wider text-accent">LogiMind</p>
               <p className="text-2xs text-nav-muted">Dispatch console</p>
             </div>
           </div>
@@ -152,7 +154,7 @@ export default function Layout() {
             <div className="flex items-center gap-3">
               <span className="hidden sm:inline-flex"><BackendStatus health={health} /></span>
               {state === 'in' && pathname !== '/copilot' && (
-                <button type="button" className={`btn ${dock ? 'border-accent text-accent-dark' : ''}`} onClick={() => setDock((d) => !d)}
+                <button type="button" className={`btn ${dock ? 'bg-accent font-bold' : ''}`} onClick={() => setDock((d) => !d)}
                   aria-expanded={dock} aria-controls="copilot-dock">
                   {dock ? <PanelRightClose size={16} aria-hidden="true" /> : <PanelRightOpen size={16} aria-hidden="true" />}Copilot
                 </button>
@@ -163,14 +165,14 @@ export default function Layout() {
             <main id="main" className="min-w-0 flex-1 px-5 py-6 md:px-8">
               <div className="mx-auto max-w-[1600px]">
                 {health.state === 'down' && (
-                  <div className="mb-5 rounded-md border border-err/40 bg-err-soft px-4 py-3" role="alert">
+                  <div className="mb-5 rounded border border-l-4 border-err bg-err-soft px-4 py-3" role="alert">
                     Backend unreachable. Start it with <code>uvicorn app.main:app --port 8000</code> in <code>backend/</code>.
                   </div>
                 )}
                 {researchOff && (
-                  <div className="mb-5 rounded-md border border-warn/40 bg-warn-soft px-4 py-3" role="status">
+                  <div className="mb-5 rounded border border-warn-soft bg-warn-soft px-4 py-3 text-warn-body" role="status">
                     The research pages are switched off on this backend (they have no tenants). Use{' '}
-                    <Link className="underline" to="/plans">Plans</Link> with an API key, or start the backend with{' '}
+                    <Link className="text-warn underline" to="/plans">Plans</Link> with an API key, or start the backend with{' '}
                     <code>LOGIMIND_DEV_RESEARCH_ENDPOINTS=1</code> for local development.
                   </div>
                 )}

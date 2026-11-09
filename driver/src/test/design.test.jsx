@@ -11,17 +11,19 @@ beforeEach(() => {
   window.history.replaceState(null, '', `/#t=${TOKEN}`)
 })
 
-test('the next stop has the largest Navigate, Delivered and Failed targets; other stops keep large ones', async () => {
+test('Navigate, Delivered and Failed are 64 px on every stop; only the next stop\'s Navigate is the yellow main action', async () => {
   mockFetch({ 'GET /api/driver/route': ROUTE })
   render(<App />)
   await screen.findByText('Customer 3')
-  const next = within(card(3))
-  expect(next.getByRole('link', { name: 'Navigate' })).toHaveClass('tap', 'tap-lg')
-  expect(next.getByRole('button', { name: 'Delivered' })).toHaveClass('tap', 'tap-lg')
-  expect(next.getByRole('button', { name: 'Failed' })).toHaveClass('tap', 'tap-lg')
-  const later = within(card(9))
-  expect(later.getByRole('button', { name: 'Delivered' })).toHaveClass('tap')
-  expect(later.getByRole('button', { name: 'Delivered' })).not.toHaveClass('tap-lg')
+  for (const cid of [7, 3, 9]) {
+    const c = within(card(cid))
+    expect(c.getByRole('button', { name: 'Delivered' })).toHaveClass('tap', 'tap-lg')
+    expect(c.getByRole('button', { name: 'Failed' })).toHaveClass('tap', 'tap-lg')
+  }
+  const nav = within(card(3)).getByRole('link', { name: 'Navigate' })
+  expect(nav).toHaveClass('tap', 'tap-lg', 'bg-accent', 'text-ink') // yellow with ink text, never white on yellow
+  expect(within(card(7)).getByRole('link', { name: 'Navigate' })).toHaveClass('tap-lg')
+  expect(within(card(7)).getByRole('link', { name: 'Navigate' })).not.toHaveClass('bg-accent')
 })
 
 test('a server error with a network still shows the saved copy and says the server is unreachable', async () => {

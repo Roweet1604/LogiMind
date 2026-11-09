@@ -1,19 +1,24 @@
-@import '@fontsource-variable/inter';
+@import '@fontsource/ibm-plex-sans/400.css';
+@import '@fontsource/ibm-plex-sans/500.css';
+@import '@fontsource/ibm-plex-sans/600.css';
+@import '@fontsource/ibm-plex-sans/700.css';
+@import '@fontsource/barlow-condensed/700.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Colours come from design/tokens.js (decision 0025). High contrast for sunlight: charcoal on white/paper. */
+/* "Freight Yard" theme, colours from design/tokens.js (decisions 0025, 0027). Light page for sunlight, dark header.
+   Yellow is a background with ink text on light surfaces; yellow text only on the dark header and warning rows. */
 @layer base {
   html { @apply bg-paper text-ink font-sans antialiased; -webkit-tap-highlight-color: transparent; }
   body { @apply text-lg; font-variant-numeric: tabular-nums; }
-  :focus-visible { @apply outline outline-[3px] outline-offset-2 outline-accent; }
-  .bg-nav :focus-visible { @apply outline-accent-soft; } /* readable focus ring on the dark header */
+  :focus-visible { @apply outline outline-[3px] outline-offset-2 outline-ink; }
+  .bg-nav :focus-visible, .bg-warn-soft :focus-visible { @apply outline-accent; } /* yellow ring on dark surfaces */
 }
 
 @layer components {
-  /* Large touch targets: at least 56 px high, big bold text. */
-  .tap { @apply inline-flex min-h-tap items-center justify-center gap-2 rounded-md px-3 text-center text-lg font-semibold disabled:cursor-not-allowed disabled:opacity-50; }
+  /* Large touch targets: at least 56 px; Navigate / Delivered / Failed are 64 px (tap-lg). */
+  .tap { @apply inline-flex min-h-tap items-center justify-center gap-2 rounded px-3 text-center text-lg font-semibold disabled:cursor-not-allowed disabled:opacity-50; }
   .tap-lg { @apply min-h-tap-lg text-xl; }
-  .tap-secondary { @apply border-2 border-ink/25 bg-panel text-ink active:bg-rule2; }
+  .tap-secondary { @apply border-2 border-ink bg-panel text-ink active:bg-rule2; }
 }

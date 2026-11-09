@@ -42,7 +42,7 @@ export default function DriverLinks({ plan, routes }) {
     <Panel title="Drivers" note="One signed link per route, valid 12 hours; reports do not change the plan">
       {error && <div className="mb-3"><Notice kind="error" title="Request failed">{error.message}</Notice></div>}
       {fresh && (
-        <div className="mb-4 rounded-md border border-accent/30 bg-accent-soft p-3">
+        <div className="mb-4 rounded border border-ink bg-accent-soft p-3">
           <p className="text-xs font-medium">Link for route {fresh.route_index}, valid until {when(fresh.expires_at)}. Send it to the driver; it is shown only now.</p>
           <input readOnly aria-label="Driver link" className="input mt-2 font-mono text-xs" value={fresh.url} onFocus={(e) => e.target.select()} />
         </div>

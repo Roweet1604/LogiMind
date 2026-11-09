@@ -1,4 +1,4 @@
-/** Design tokens come from design/tokens.js (shared with the ops console; decision 0025). Mobile-first. */
+/** Design tokens come from design/tokens.js (shared with the ops console; decisions 0025, 0027). Mobile-first. */
 import tokens from '../design/tokens.js'
 
 export default {
@@ -6,9 +6,10 @@ export default {
   theme: {
     extend: {
       colors: tokens.colors,
-      fontFamily: { sans: tokens.fontFamily.sans },
+      fontFamily: { sans: tokens.fontFamily.sans, display: tokens.fontFamily.display },
       spacing: tokens.spacing,
-      borderRadius: { DEFAULT: '8px', md: '8px', lg: '12px' },
+      borderRadius: tokens.borderRadius,
+      boxShadow: tokens.boxShadow,
     },
   },
   plugins: [],

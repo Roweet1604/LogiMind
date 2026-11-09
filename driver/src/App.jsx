@@ -13,8 +13,8 @@ export const REASONS = {
 export const RETRY_MS = 20000
 // Stop status: colour + icon + word, never colour alone.
 const STATUS = {
-  pending: ['border-ink/20 bg-rule2 text-ink', 'To do', null], delivered: ['border-ok/40 bg-ok-soft text-ok', 'Delivered', CheckIcon],
-  failed: ['border-err/40 bg-err-soft text-err', 'Failed', CrossIcon],
+  pending: ['border-ink2 bg-rule2 text-ink', 'To do', null], delivered: ['border-ink bg-panel text-ok', 'Delivered', CheckIcon],
+  failed: ['border-err bg-err text-white', 'Failed', CrossIcon],
 }
 
 const clock = (iso) => {
@@ -25,8 +25,8 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`
 function Screen({ title, children }) {
   return (
     <main className="mx-auto flex min-h-screen max-w-xl flex-col justify-center gap-4 p-6">
-      <p className="text-base font-semibold text-accent">LogiMind Driver</p>
-      <h1 className="text-3xl font-bold">{title}</h1>
+      <p className="font-display text-lg font-bold uppercase tracking-wider text-ink2">LogiMind Driver</p>
+      <h1 className="font-display text-4xl font-bold uppercase leading-tight tracking-wide">{title}</h1>
       {children}
     </main>
   )
@@ -34,11 +34,12 @@ function Screen({ title, children }) {
 
 function Banner({ kind = 'warn', children }) {
   const [cls, Icon] = {
-    warn: ['border-warn/40 bg-warn-soft text-warn', ClockIcon], err: ['border-err/40 bg-err-soft text-err', AlertIcon],
-    info: ['border-accent/40 bg-accent-soft text-accent-dark', null],
+    // Freight Yard: warnings are yellow on black; errors are red on a red tint with a thick red edge.
+    warn: ['border-warn-soft bg-warn-soft text-warn', ClockIcon], err: ['border-err border-l-8 bg-err-soft text-err-text', AlertIcon],
+    info: ['border-ink bg-accent-soft text-ink', null],
   }[kind]
   return (
-    <div role="status" className={`flex items-start gap-3 rounded-md border-2 px-4 py-3 text-lg font-medium ${cls}`}>
+    <div role="status" className={`flex items-start gap-3 rounded border-2 px-4 py-3 text-lg font-medium ${cls}`}>
       {Icon && <span className="mt-0.5"><Icon /></span>}<div>{children}</div>
     </div>
   )
@@ -49,19 +50,19 @@ function FailForm({ onSubmit, onCancel }) {
   const [note, setNote] = useState('')
   const needsNote = reason === 'other' && !note.trim()
   return (
-    <fieldset className="mt-4 rounded-md border-2 border-err/40 bg-paper p-3">
+    <fieldset className="mt-4 rounded border-2 border-err bg-paper p-3">
       <legend className="px-1 text-lg font-semibold">Why did it fail?</legend>
       <div className="grid grid-cols-2 gap-2">
         {Object.entries(REASONS).map(([k, label]) => (
           <button key={k} type="button" aria-pressed={reason === k} onClick={() => setReason(k)}
-            className={`tap border-2 text-base ${reason === k ? 'border-err bg-err text-white' : 'border-ink/25 bg-panel'}`}>
+            className={`tap border-2 text-base ${reason === k ? 'border-err bg-err text-white' : 'border-ink bg-panel'}`}>
             {reason === k && <CheckIcon size={18} />}{label}
           </button>
         ))}
       </div>
       {reason === 'other' && (
         <label className="mt-3 block text-lg font-medium">Note
-          <textarea className="mt-1 w-full rounded-md border-2 border-ink/25 bg-panel p-3 text-lg" rows={2} maxLength={500}
+          <textarea className="mt-1 w-full rounded border-2 border-ink bg-panel p-3 text-lg" rows={2} maxLength={500}
             value={note} onChange={(e) => setNote(e.target.value)} />
         </label>
       )}
@@ -80,36 +81,36 @@ function StopCard({ stop, next, online, timeUnit, onReport, onPhoto, photoState 
   const url = navUrl(stop)
   const done = stop.status !== 'pending'
   return (
-    <li className={`rounded-lg border-2 bg-panel p-4 ${next ? 'border-accent shadow-[0_0_0_2px_theme(colors.accent.soft)]' : 'border-rule'}`}
+    <li className={`rounded bg-panel p-4 ${next ? 'border-2 border-l-8 border-ink border-l-accent' : 'border-2 border-rule'}`}
       aria-label={`Stop ${stop.seq}, customer ${stop.customer_id}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="whitespace-nowrap text-base font-medium text-ink2">
-          Stop {stop.seq}{next && <span className="ml-2 rounded bg-accent px-2 py-0.5 text-sm font-bold uppercase tracking-wide text-white">Next</span>}
+          Stop {stop.seq}{next && <span className="ml-2 rounded bg-accent px-2 py-0.5 text-sm font-bold uppercase tracking-wide text-ink">Next</span>}
         </p>
-        <span className={`inline-flex items-center gap-1 rounded-md border-2 px-2.5 py-0.5 text-base font-semibold ${cls}`}>
+        <span className={`inline-flex items-center gap-1 rounded border-2 px-2.5 py-0.5 text-base font-semibold ${cls}`}>
           {Icon && <Icon size={18} />}{label}{stop.queued && ' · waiting to sync'}
         </span>
       </div>
-      <p className={`mt-1 ${next ? 'text-3xl' : 'text-2xl'} font-bold leading-tight`}>Customer {stop.customer_id}</p>
+      <p className={`mt-1 font-display ${next ? 'text-4xl' : 'text-3xl'} font-bold uppercase leading-none tracking-wide`}>Customer {stop.customer_id}</p>
       <p className="mt-0.5 text-lg text-ink2">
         {plural(stop.demand, 'unit')}
         {stop.due_time != null && <> · window {stop.ready_time}–{stop.due_time} {timeUnit}</>}
       </p>
-      {stop.status === 'failed' && stop.reason && <p className="mt-1 text-lg font-medium text-err">{REASONS[stop.reason] || stop.reason}</p>}
+      {stop.status === 'failed' && stop.reason && <p className="mt-1 text-lg font-semibold text-err">{REASONS[stop.reason] || stop.reason}</p>}
       <div className="mt-4 space-y-2">
         {url
-          ? <a className={`tap w-full ${next ? 'tap-lg bg-accent text-white active:bg-accent-dark' : 'tap-secondary'}`} href={url} target="_blank" rel="noopener noreferrer"><NavigateIcon />Navigate</a>
-          : <span className="tap w-full border-2 border-dashed border-ink/20 bg-rule2 text-base text-ink2" title="This plan has no map coordinates">No map</span>}
+          ? <a className={`tap tap-lg w-full ${next ? 'bg-accent font-bold text-ink active:bg-accent-dark' : 'tap-secondary'}`} href={url} target="_blank" rel="noopener noreferrer"><NavigateIcon />Navigate</a>
+          : <span className="tap tap-lg w-full border-2 border-dashed border-ink2 bg-rule2 text-base text-ink2" title="This plan has no map coordinates">No map</span>}
         <div className="grid grid-cols-2 gap-2">
-          <button type="button" className={`tap ${next ? 'tap-lg' : ''} ${done ? 'tap-secondary' : 'bg-ok text-white active:brightness-90'}`}
+          <button type="button" className={`tap tap-lg ${done ? 'tap-secondary' : 'bg-ok text-white active:brightness-90'}`}
             onClick={() => { setFailing(false); onReport(stop.customer_id, 'delivered') }}><CheckIcon />Delivered</button>
-          <button type="button" className={`tap ${next ? 'tap-lg' : ''} border-2 border-err bg-panel text-err active:bg-err-soft`} onClick={() => setFailing(true)}><CrossIcon />Failed</button>
+          <button type="button" className="tap tap-lg border-2 border-err bg-panel text-err active:bg-err-soft" onClick={() => setFailing(true)}><CrossIcon />Failed</button>
         </div>
       </div>
       {failing && <FailForm onCancel={() => setFailing(false)}
         onSubmit={(reason, note) => { setFailing(false); onReport(stop.customer_id, 'failed', reason, note) }} />}
       <div className="mt-2">
-        <label className={`tap w-full border-2 text-base ${online ? 'cursor-pointer border-ink/25 bg-panel' : 'border-dashed border-ink/20 bg-rule2 text-ink2'}`}>
+        <label className={`tap w-full border-2 text-base ${online ? 'cursor-pointer border-ink bg-panel' : 'border-dashed border-ink2 bg-rule2 text-ink2'}`}>
           <CameraIcon size={20} />
           {stop.photos > 0 ? `Add another photo (${stop.photos} saved)` : 'Add proof-of-delivery photo'}
           <input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="sr-only"
@@ -217,7 +218,7 @@ export default function App() {
     return (
       <Screen title="Stops not available">
         <p className="text-xl">No connection, and no saved copy of the stop list on this phone yet.</p>
-        <button type="button" className="tap tap-lg bg-accent text-white" onClick={load}><SyncIcon />Try again</button>
+        <button type="button" className="tap tap-lg bg-accent font-bold text-ink" onClick={load}><SyncIcon />Try again</button>
       </Screen>
     )
   }
@@ -235,18 +236,18 @@ export default function App() {
       <header className="bg-nav px-4 pb-3 pt-3 text-white">
         <div className="flex items-center justify-between gap-3">
           <p className="min-w-0 truncate text-base text-nav-text">{route.company}</p>
-          <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-md border-2 px-3 py-1 text-lg font-bold ${connected ? 'border-ok bg-ok-soft text-ok' : 'border-warn bg-warn-soft text-warn'}`}>
+          <span className={`inline-flex shrink-0 items-center gap-1.5 rounded border-2 px-3 py-1 text-lg font-bold ${connected ? 'border-panel bg-panel text-ok' : 'border-warn bg-nav text-warn'}`}>
             {connected ? <CloudIcon size={20} /> : <CloudOffIcon size={20} />}{connection}
           </span>
         </div>
-        <h1 className="mt-1 truncate text-2xl font-bold">Route {route.route_index + 1}{route.plan_name && <span className="text-lg font-normal text-nav-text"> · {route.plan_name}</span>}</h1>
+        <h1 className="mt-1 truncate font-display text-3xl font-bold uppercase leading-tight tracking-wide">Route {route.route_index + 1}{route.plan_name && <span className="font-sans text-lg font-normal normal-case tracking-normal text-nav-text"> · {route.plan_name}</span>}</h1>
         <p className="mt-2 text-lg" aria-live="polite">{done} of {stops.length} stops done · link valid until {clock(route.expires_at)}</p>
-        <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/15" aria-hidden="true">
-          <div className="h-full rounded-full bg-accent-soft" style={{ width: `${stops.length ? (100 * done) / stops.length : 0}%` }} />
+        <div className="mt-2 h-2 overflow-hidden rounded bg-white/15" aria-hidden="true">
+          <div className="h-full rounded bg-accent" style={{ width: `${stops.length ? (100 * done) / stops.length : 0}%` }} />
         </div>
       </header>
       {queue.length > 0 && (
-        <div className="flex items-center justify-between gap-3 border-b-2 border-warn/40 bg-warn-soft px-4 py-2">
+        <div className="flex items-center justify-between gap-3 border-t border-nav-line bg-warn-soft px-4 py-2">
           <p className="flex items-center gap-2 text-lg font-semibold text-warn"><ClockIcon />{plural(queue.length, 'update')} waiting to sync</p>
           <button type="button" className="tap tap-secondary shrink-0 px-4" onClick={() => sync()}><SyncIcon size={20} />Sync now</button>
         </div>
