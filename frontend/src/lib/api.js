@@ -70,6 +70,7 @@ export const api = {
   listExperiments: () => request('/api/experiments'),
   // Tenant API (needs an API key)
   whoami: (key) => request('/api/whoami', { key }),
+  demoSession: () => request('/api/demo/session', { key: '' }),  // local demo mode only (decision 0029)
   listPlans: () => request('/api/plans'),
   getPlan: (id) => request(`/api/plans/${id}`),
   createPlan: (body) => request('/api/plans', { method: 'POST', body }),

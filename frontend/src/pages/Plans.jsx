@@ -141,6 +141,13 @@ export default function Plans() {
   const navigate = useNavigate()
   const refresh = useCallback(() => api.listPlans().then(setPlans).catch(setError), [])
   useEffect(() => { if (state === 'in') refresh() }, [state, refresh])
+  // Keep the list fresh while a plan is still queued or being solved (e.g. the demo plans right after start-up).
+  const waiting = plans?.some((p) => p.state === 'queued' || p.state === 'running')
+  useEffect(() => {
+    if (!waiting) return undefined
+    const t = setInterval(refresh, 2000)
+    return () => clearInterval(t)
+  }, [waiting, refresh])
 
   if (state !== 'in') {
     return (

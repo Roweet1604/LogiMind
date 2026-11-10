@@ -69,11 +69,16 @@ if not exist "%TEMP%" (echo [error] TEMP is not set & exit /b 1)
 rem ---- environment shared by the windows -------------------------------------------------------------------------
 rem A separate worker window runs the solver jobs, so the API only queues them.
 set "LOGIMIND_WORKER=external"
+rem Demo mode (decision 0029): demo tenant with synthetic plans; the console signs in by itself. Local only:
+rem the API listens on 127.0.0.1 and the backend refuses demo mode for any other bind host.
+if not defined LOGIMIND_DEMO_MODE set "LOGIMIND_DEMO_MODE=1"
+set "LOGIMIND_BIND_HOST=127.0.0.1"
 if not defined LOGIMIND_DRIVER_APP_URL set "LOGIMIND_DRIVER_APP_URL=http://localhost:%DRIVER_PORT%"
-set "VITE_BACKEND_URL=http://localhost:%API_PORT%"
+rem 127.0.0.1, not localhost: the API listens on IPv4 loopback only.
+set "VITE_BACKEND_URL=http://127.0.0.1:%API_PORT%"
 if not defined LOGIMIND_DRIVER_LINK_SECRET echo [note] LOGIMIND_DRIVER_LINK_SECRET is not set: driver links stop working when the API restarts.
 
-%LAUNCH% "LogiMind API :%API_PORT%" /d "%ROOT%\backend" cmd /k ""%LOGIMIND_PYTHON%" -m uvicorn app.main:app --reload --port %API_PORT%"
+%LAUNCH% "LogiMind API :%API_PORT%" /d "%ROOT%\backend" cmd /k ""%LOGIMIND_PYTHON%" -m uvicorn app.main:app --reload --host %LOGIMIND_BIND_HOST% --port %API_PORT%"
 %LAUNCH% "LogiMind worker" /d "%ROOT%\backend" cmd /k ""%LOGIMIND_PYTHON%" -m app.jobs.worker"
 rem npm install runs first only where node_modules is missing (decided here: an "if ... &" inside cmd /k did not run).
 set "FE_CMD=npm run dev -- --port %CONSOLE_PORT% --strictPort"

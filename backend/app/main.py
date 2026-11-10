@@ -25,9 +25,12 @@ Environment variables
   LOGIMIND_WORKER              "external" (default): solver jobs wait in the database queue for a worker process
                                (python -m app.jobs.worker). "inline": the API runs the same worker loop in a thread
                                (development and tests only). See app/jobs/worker.py for the worker's settings.
+  LOGIMIND_DEMO_MODE / LOGIMIND_BIND_HOST  "1" + a loopback host: local demo tenant with synthetic plans and
+                               console auto sign-in (app/demo.py, decision 0029). OFF by default; never in Compose.
 """
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
 
@@ -35,6 +38,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.copilot import router as copilot_router
+from app.api.demo import router as demo_router
 from app.api.driver import router as driver_router
 from app.api.notifications import router as notifications_router
 from app.api.platform import router as platform_router
@@ -43,6 +47,7 @@ from app.copilot.agent import Copilot
 from app.copilot.llm import llm_from_env
 from app.db.migrate import upgrade_to_head
 from app.db.session import make_engine, make_session_factory
+from app.demo import DemoState, demo_from_env, setup_demo
 from app.distances.service import DistanceService, distance_service_from_env
 from app.driver.links import LinkSigner, secret_from_env
 from app.driver.service import DriverService
@@ -58,7 +63,9 @@ from app.services.webhooks import HttpxSender
 
 
 def create_app(data_dir: Path | None = None, legacy_open: bool | None = None, clock=None,
-               distances: DistanceService | None = None, worker: str | None = None) -> FastAPI:
+               distances: DistanceService | None = None, worker: str | None = None,
+               demo: bool | None = None) -> FastAPI:
+    """demo: None reads LOGIMIND_DEMO_MODE / LOGIMIND_BIND_HOST (app/demo.py); True/False override it (tests)."""
     default_dir = Path(__file__).resolve().parents[2] / "experiments" / "results" / "api_data"
     app = FastAPI(title="LogiMind API", version="0.2.0",
                   description="Route planning with OR-Tools, GA and hybrid engines. Tenant endpoints "
@@ -89,12 +96,18 @@ def create_app(data_dir: Path | None = None, legacy_open: bool | None = None, cl
     app.state.notifications = NotificationService(app.state.db, sender_from_env(), **clock_opts)
     app.state.driver = DriverService(app.state.db, data_dir, LinkSigner(secret_from_env()),
                                      on_stop_event=app.state.notifications.on_stop_event, **clock_opts)
+    app.state.demo = demo_from_env() if demo is None else DemoState(demo, "set by the caller")
+    if demo is None and os.environ.get("LOGIMIND_DEMO_MODE"):
+        logging.getLogger("logimind.demo").warning("demo mode: %s", app.state.demo.reason)
+    if app.state.demo.enabled:
+        app.state.demo.key = setup_demo(app.state.db, app.state.plans)
     app.include_router(router)
     app.state.copilot = Copilot(app.state.plans, llm_from_env())
     app.include_router(platform_router)
     app.include_router(copilot_router)
     app.include_router(driver_router)
     app.include_router(notifications_router)
+    app.include_router(demo_router)
     return app
 
 

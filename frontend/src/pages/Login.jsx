@@ -30,7 +30,9 @@ export default function Login() {
       <Panel className="max-w-xl">
         {me ? (
           <div className="space-y-3">
-            <Notice kind="ok" title={`Signed in as ${me.tenant_name || me.tenant_id}`}>Key {me.key_id}</Notice>
+            <Notice kind="ok" title={`Signed in as ${me.tenant_name || me.tenant_id}`}>
+              {me.demo ? 'Demo mode: signed in automatically to the local demo tenant. All its data is synthetic. Sign out to use your own API key.' : `Key ${me.key_id}`}
+            </Notice>
             <button type="button" className="btn" onClick={logout}>Sign out</button>
           </div>
         ) : (

@@ -150,6 +150,7 @@ export default function Layout() {
             <div className="flex min-w-0 items-center gap-2 text-sm">
               <span className="text-ink2">Tenant</span>
               <span className="truncate font-medium">{me ? (me.tenant_name || me.tenant_id) : <Link className="link" to="/login">not signed in</Link>}</span>
+              {me?.demo && <span title="Signed in automatically to the local demo tenant. All data is synthetic."><Badge kind="draft">Demo mode</Badge></span>}
             </div>
             <div className="flex items-center gap-3">
               <span className="hidden sm:inline-flex"><BackendStatus health={health} /></span>
