@@ -28,8 +28,9 @@ with a new `LOGIMIND_DRIVER_LINK_SECRET` (existing values are never changed), an
 and `driver\`. Then it checks the ports, opens four windows: **API** (http://127.0.0.1:8000, local only),
 **worker** (runs the solver jobs), **console** (http://localhost:5173) and **driver app** (http://localhost:5174),
 waits until the API and the console answer, and opens the console. If a port is busy it names the port (and the
-program, when Windows shows it), stops nothing and exits. `--dry-run` shows what would happen; `--no-browser` skips
-the browser. Other ports: set `API_PORT`, `CONSOLE_PORT`, `DRIVER_PORT` first.
+program and its PID, read from the system's list of listening sockets; decision 0034), stops nothing and exits.
+`--dry-run` shows what would happen; `--no-browser` skips the browser; `--force-ports` skips the port check in an
+emergency. Other ports: set `API_PORT`, `CONSOLE_PORT`, `DRIVER_PORT` first.
 
 **Demo mode** (decision 0029): `start-dev.bat` turns it on. The API creates the tenant "Demo Fleet (synthetic)" with
 three plans on made-up orders, and the console signs in to it by itself (label "Demo mode"). It works only on this

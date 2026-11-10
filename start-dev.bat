@@ -3,6 +3,7 @@ rem LogiMind on this computer (Windows), decisions 0028-0030. Double-click it, o
 rem   start-dev.bat                                   set up what is missing, start everything, open the console
 rem   start-dev.bat --dry-run                         show what would happen; change and start nothing
 rem   start-dev.bat --no-browser                      start everything but do not open the browser
+rem   start-dev.bat --force-ports                     emergency: skip the busy-port check (decision 0034)
 rem   start-dev.bat tenant "Acme Fleet"               create a tenant; prints its API key ONCE
 rem First run (once): makes the Python environment in %TEMP%\lmv, installs the backend packages, writes
 rem backend\.env with a new driver-link secret, and runs npm install in frontend\ and driver\ (npm runs nowhere else).
@@ -14,8 +15,13 @@ cd /d "%~dp0"
 set "ROOT=%CD%"
 set "DRY="
 set "BROWSER=1"
-if /i "%~1"=="--dry-run" set "DRY=1"
-if /i "%~1"=="--no-browser" set "BROWSER="
+set "FORCE_PORTS="
+rem Flags may come in any order, e.g. start-dev.bat --no-browser --force-ports
+for %%A in (%*) do (
+  if /i "%%~A"=="--dry-run" set "DRY=1"
+  if /i "%%~A"=="--no-browser" set "BROWSER="
+  if /i "%%~A"=="--force-ports" set "FORCE_PORTS=1"
+)
 if not exist "%TEMP%" (echo [error] The TEMP folder is not set. & exit /b 1)
 
 rem ---- 1. Python environment (one time) --------------------------------------------------------------------------
@@ -101,10 +107,14 @@ for %%D in (frontend driver) do (
 )
 
 rem ---- 4. Ports: report what is busy; never stop anything --------------------------------------------------------
+rem Busy = the system lists a LISTENING socket on the port (with its PID and program); see decision 0034.
 if not defined API_PORT set "API_PORT=8000"
 if not defined CONSOLE_PORT set "CONSOLE_PORT=5173"
 if not defined DRIVER_PORT set "DRIVER_PORT=5174"
-if exist "%LOGIMIND_PYTHON%" (
+if defined FORCE_PORTS (
+  echo [skipped] --force-ports: ports %API_PORT%, %CONSOLE_PORT% and %DRIVER_PORT% were NOT checked. A server whose port
+  echo           is really taken will stop with its own error in its window.
+) else if exist "%LOGIMIND_PYTHON%" (
   "%LOGIMIND_PYTHON%" "%ROOT%\backend\scripts\devtools.py" ports %API_PORT% %CONSOLE_PORT% %DRIVER_PORT%
   if errorlevel 1 if not defined DRY exit /b 1
 )
