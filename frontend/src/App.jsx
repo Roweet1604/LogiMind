@@ -11,12 +11,15 @@ import Login from './pages/Login'
 import Plans from './pages/Plans'
 import PlanDetail from './pages/PlanDetail'
 import Copilot from './pages/Copilot'
+import Drivers from './pages/Drivers'
+import ResearchOverview from './pages/ResearchOverview'
 
 export default function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<Overview />} />
+        <Route path="research" element={<ResearchOverview />} />
         <Route path="setup" element={<ProblemSetup />} />
         <Route path="run" element={<RunOptimization />} />
         <Route path="results" element={<RouteResults />} />
@@ -26,6 +29,7 @@ export default function App() {
         <Route path="login" element={<Login />} />
         <Route path="plans" element={<Plans />} />
         <Route path="plans/:id" element={<PlanDetail />} />
+        <Route path="drivers" element={<Drivers />} />
         <Route path="copilot" element={<Copilot />} />
         <Route path="*" element={<p>Page not found.</p>} />
       </Route>

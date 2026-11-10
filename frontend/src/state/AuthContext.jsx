@@ -12,11 +12,13 @@ const flag = (k) => { try { return sessionStorage.getItem(k) === '1' } catch { r
 const setFlag = (k, on) => { try { if (on) sessionStorage.setItem(k, '1'); else sessionStorage.removeItem(k) } catch { /* blocked */ } }
 
 // Tenant login with an API key. The key is checked against GET /api/whoami before it is kept.
+// If the server does not answer, the key is KEPT and the state is 'offline' (Retry checks again); only a key the
+// server rejects signs the tab out.
 // Demo mode (local development server only, decision 0029): with no usable key, the console asks the backend for
 // the demo tenant's key and signs in by itself. When demo mode is off, that request gets 404 and nothing happens.
 export function AuthProvider({ children }) {
   const [me, setMe] = useState(null)              // {tenant_id, tenant_name, key_id, demo}
-  const [state, setState] = useState('checking')
+  const [state, setState] = useState('checking')  // checking | in | out | offline
 
   const start = useCallback(async () => {
     setState('checking')
@@ -25,7 +27,8 @@ export function AuthProvider({ children }) {
         const m = await api.whoami()
         setMe({ ...m, demo: flag(DEMO_FLAG) }); setState('in')
         return
-      } catch {
+      } catch (e) {
+        if (e.unreachable) { setState('offline'); return }
         setApiKey('')
       }
     }
@@ -36,7 +39,10 @@ export function AuthProvider({ children }) {
         setApiKey(d.api_key); setFlag(DEMO_FLAG, true)
         setMe({ ...m, demo: true }); setState('in')
         return
-      } catch { /* demo mode is off (404) or not allowed: normal sign-in */ }
+      } catch (e) {
+        if (e.unreachable) { setState('offline'); return }
+        /* demo mode is off (404) or not allowed: normal sign-in */
+      }
     }
     setFlag(DEMO_FLAG, false); setMe(null); setState('out')
   }, [])
@@ -56,6 +62,6 @@ export function AuthProvider({ children }) {
     setApiKey(''); setFlag(DEMO_FLAG, false); setMe(null); setState('out')
   }, [])
 
-  const value = useMemo(() => ({ me, state, login, logout }), [me, state, login, logout])
+  const value = useMemo(() => ({ me, state, login, logout, retry: start }), [me, state, login, logout, start])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

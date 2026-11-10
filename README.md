@@ -1,5 +1,12 @@
 # LogiMind
 
+## How to run (Windows)
+1. Install Python 3.12+ (python.org, tick "Add to PATH") and Node.js LTS (nodejs.org). Nothing else.
+2. Double-click `start-dev.bat` in this folder (or type `start-dev.bat` in Command Prompt here).
+3. The first run sets itself up (Python packages, `backend\.env`, npm packages); this download can take 10-30 minutes, once.
+4. Four "LogiMind" windows open and the browser opens the console, signed in to "Demo Fleet (synthetic)" with ready plans.
+5. To stop, close the four "LogiMind" windows. If a port is busy, the script says which one and stops nothing.
+
 An API-first hybrid optimization platform with an AI dispatch copilot for small-fleet logistics (Capstone ASAC-CP-056).
 
 **Status:** P1-P3, P5, P7 and P9 done; P4 road matrix done offline (not yet run against a self-hosted OSRM); P6 done except that Docker Compose is written but UNTESTED (durable job queue and worker process added 5 Nov 2026); P8 copilot built but tested only with a fake LLM (no real model run yet). Route solvers (OR-Tools, our own GA, a hybrid), an engine picker, a tenant API with plans, imports, webhooks and replanning, a dispatch copilot, a driver PWA and stub ETA notifications. See `PROGRESS.md` for what works and what does not yet; `PLAN.md` has the roadmap.
@@ -12,40 +19,32 @@ An API-first hybrid optimization platform with an AI dispatch copilot for small-
 - [docs/report/evaluation.md](docs/report/evaluation.md): P10 evaluation (tables, figures, significance tests)
 - [docs/report/deck_draft.md](docs/report/deck_draft.md): revised slide content (draft)
 
-## Quick start (Windows)
+## Quick start (Windows), in more detail
 Keep the Python virtual environment **outside OneDrive** (OneDrive sync and long paths break installs).
 
-**One-time setup** (from the repository folder, in Command Prompt):
-```
-python -m venv %TEMP%\lmv
-%TEMP%\lmv\Scripts\python -m pip install -r backend\requirements.txt
-copy backend\.env.example backend\.env
-%TEMP%\lmv\Scripts\python -c "import secrets; print(secrets.token_urlsafe(48))"
-notepad backend\.env
-```
-In Notepad, paste the printed text after `LOGIMIND_DRIVER_LINK_SECRET=` (keeps driver links valid across restarts)
-and save. `backend\.env` is git-ignored: never commit it and never put API keys in it.
+**`start-dev.bat`** (decisions 0028, 0030) does everything that is missing, once: creates `%TEMP%\lmv` with `py -3`
+or `python`, installs `backendequirements.txt`, writes `backend\.env` (git-ignored) from `backend\.env.example`
+with a new `LOGIMIND_DRIVER_LINK_SECRET` (existing values are never changed), and runs `npm install` in `frontend\`
+and `driver\`. Then it checks the ports, opens four windows: **API** (http://127.0.0.1:8000, local only),
+**worker** (runs the solver jobs), **console** (http://localhost:5173) and **driver app** (http://localhost:5174),
+waits until the API and the console answer, and opens the console. If a port is busy it names the port (and the
+program, when Windows shows it), stops nothing and exits. `--dry-run` shows what would happen; `--no-browser` skips
+the browser. Other ports: set `API_PORT`, `CONSOLE_PORT`, `DRIVER_PORT` first.
 
-**Test tenant and API key** (the key is printed once; only its SHA-256 is stored):
+**Demo mode** (decision 0029): `start-dev.bat` turns it on. The API creates the tenant "Demo Fleet (synthetic)" with
+three plans on made-up orders, and the console signs in to it by itself (label "Demo mode"). It works only on this
+computer (API bound to 127.0.0.1) and is never on in Docker Compose. To start without it, put
+`LOGIMIND_DEMO_MODE=0` in `backend\.env`. "Sign out" on the Account page lets you use a normal API key.
+
+**Your own tenant and API key** (the key is printed once; only its SHA-256 is stored):
 ```
-start-dev.bat tenant "Demo Fleet (synthetic)"
+start-dev.bat tenant "Acme Fleet"
 ```
-Copy the `lm_...` key it prints. Lost it? `cd backend` then
+Copy the `lm_...` key it prints and paste it on the console's **Account** page. Lost it? `cd backend` then
 `%TEMP%\lmv\Scripts\python manage.py issue-key <tenant_id>`.
 
-**Start everything with one command** (decision 0028):
-```
-start-dev.bat
-```
-It opens four windows: **API** (http://localhost:8000), **worker** (runs the solver jobs), **console**
-(http://localhost:5173) and **driver app** (http://localhost:5174). It reads `backend\.env`, runs `npm install` first
-in `frontend\` or `driver\` if their `node_modules` is missing, and refuses to start if a port is already in use
-(on Windows a second server on the same port does not fail, and requests can reach the old one).
-`start-dev.bat --dry-run` prints the four commands without starting anything. Other ports: set `API_PORT`,
-`CONSOLE_PORT`, `DRIVER_PORT` first. Stop: close the four "LogiMind" windows.
-
-Then open http://localhost:5173/login, paste the key into **API key** and press **Sign in**. For demo data, on
-**Plans** click **Use a synthetic sample (12 orders)**, then **Create plan**.
+**Research pages** (OR-Tools vs GA comparison, Benchmark lab, Methodology) appear under one "Research" link only when
+the API runs with `LOGIMIND_DEV_RESEARCH_ENDPOINTS=1` (decision 0031).
 
 **The same by hand, one Command Prompt each** (run `set` lines for every variable in `backend\.env` first, or put
 them in each window; the API needs `LOGIMIND_WORKER=external` when a separate worker runs):

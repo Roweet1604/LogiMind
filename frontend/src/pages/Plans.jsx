@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { AlgoTag, Badge, EmptyState, Field, Notice, NumberInput, PageHeader, Panel, Spinner, TableWrap } from '../components/ui'
 import { fmt, fmtTime } from '../lib/format'
 import { api } from '../lib/api'
+import { SignInGate } from '../components/Gate'
 import { sampleOrders } from '../lib/sample'
 import { useAuth } from '../state/AuthContext'
 
@@ -15,7 +16,7 @@ export function PlanBadge({ plan, size }) {
   return <Badge kind="bad" size={size}>no plan</Badge>
 }
 
-const isSynthetic = (name) => /^synthetic/i.test(name || '')
+const isSynthetic = (name) => /synthetic/i.test(name || '')
 
 const ENGINES = [
   ['auto', 'Auto (selector explains its choice)'], ['ortools', 'OR-Tools'], ['hybrid', 'Hybrid (OR-Tools seed + GA)'],
@@ -149,15 +150,7 @@ export default function Plans() {
     return () => clearInterval(t)
   }, [waiting, refresh])
 
-  if (state !== 'in') {
-    return (
-      <>
-        <PageHeader title="Plans" />
-        {state === 'checking' ? <Spinner label="Checking key" />
-          : <EmptyState title="Sign in first">Plans belong to a tenant. <Link className="underline" to="/login">Sign in with an API key</Link>.</EmptyState>}
-      </>
-    )
-  }
+  if (state !== 'in') return <><PageHeader title="Plans" /><SignInGate what="plans" /></>
   return (
     <>
       <PageHeader title="Plans">Each plan is solved by the chosen engine and checked by the independent validator. Only the validator decides “feasible”.</PageHeader>

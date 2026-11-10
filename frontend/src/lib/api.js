@@ -2,26 +2,37 @@
 const BASE = import.meta.env?.VITE_API_BASE ?? ''
 
 export class ApiError extends Error {
-  constructor(message, { status = 0, errors = [] } = {}) {
+  constructor(message, { status = 0, errors = [], unreachable = false } = {}) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.errors = errors
+    this.unreachable = unreachable  // no answer from the server (not running, or the dev proxy could not reach it)
   }
 }
+
+// Plain words for people who run the demo, not developers.
+export const SERVER_DOWN = "The server isn't running. Run start-dev.bat, then press Retry."
+const PLAIN = {
+  401: 'Your sign-in key was not accepted. Sign in again.',
+  403: 'This part of LogiMind is switched off on this server.',
+  404: 'That item was not found. It may have been removed, or it belongs to another account.',
+  429: 'Too many requests in a short time. Wait a few seconds and try again.',
+}
+const plain = (status) => PLAIN[status] || (status >= 500 ? 'Something went wrong on the server. Please try again.' : 'The request could not be completed.')
 
 // FastAPI returns either {detail: {message, errors}}, {detail: "text"}, or {detail: [pydantic issues]}.
 export function parseErrorBody(status, body) {
   const d = body?.detail
   if (d && typeof d === 'object' && !Array.isArray(d)) {
-    return new ApiError(d.message || `Request failed (${status})`, { status, errors: d.errors || [] })
+    return new ApiError(d.message || plain(status), { status, errors: d.errors || [] })
   }
   if (Array.isArray(d)) {
     const errors = d.map((e) => `${(e.loc || []).filter((p) => p !== 'body').join('.')}: ${e.msg}`)
-    return new ApiError('Request has invalid fields', { status, errors })
+    return new ApiError('Some fields are not valid', { status, errors })
   }
-  if (typeof d === 'string') return new ApiError(d, { status })
-  return new ApiError(`Request failed (${status})`, { status })
+  if (typeof d === 'string') return new ApiError(status === 401 ? PLAIN[401] : d, { status })
+  return new ApiError(plain(status), { status })
 }
 
 // Tenant API key: kept in memory and in sessionStorage only (gone when the tab closes), never in localStorage.
@@ -46,11 +57,13 @@ async function request(path, { method = 'GET', body, form, raw = false, key } = 
       body: form || (body ? JSON.stringify(body) : undefined),
     })
   } catch {
-    throw new ApiError('Cannot reach the backend. Is it running on port 8000?', { status: 0 })
+    throw new ApiError(SERVER_DOWN, { status: 0, unreachable: true })
   }
   if (!res.ok) {
     let parsed = null
     try { parsed = await res.json() } catch { /* non-JSON error body */ }
+    // The dev proxy answers 500/502/503/504 with no JSON body when the API is not running.
+    if (parsed === null && res.status >= 500) throw new ApiError(SERVER_DOWN, { status: res.status, unreachable: true })
     throw parseErrorBody(res.status, parsed)
   }
   return raw ? res : res.json()

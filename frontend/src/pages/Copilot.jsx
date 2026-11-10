@@ -1,13 +1,13 @@
-import { Link } from 'react-router-dom'
 import CopilotChat, { CopilotProvider, ModelStatus, useCopilot } from '../components/CopilotChat'
-import { EmptyState, PageHeader, Panel } from '../components/ui'
+import { PageHeader, Panel } from '../components/ui'
 import { useAuth } from '../state/AuthContext'
+import { SignInGate } from '../components/Gate'
 
 function CopilotPage() {
   const { state } = useAuth()
   const { status } = useCopilot()
   if (state !== 'in') {
-    return <><PageHeader title="Copilot" /><EmptyState title="Sign in first"><Link className="link" to="/login">Sign in with an API key</Link> to use the copilot.</EmptyState></>
+    return <><PageHeader title="Copilot" /><SignInGate what="the copilot" /></>
   }
   return (
     <>

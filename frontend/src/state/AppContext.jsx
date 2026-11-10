@@ -33,23 +33,30 @@ export function AppProvider({ children }) {
     if (id) localStorage.setItem(KEY, id); else localStorage.removeItem(KEY)
   }, [])
 
-  // Initial load + health.
-  useEffect(() => {
-    api.health().then((h) => setHealth({ state: 'ok', env: h.environment, research: h.research_endpoints !== false }))
-      .catch((e) => setHealth({ state: 'down', message: e.message }))
-    refreshInstances().catch(() => {})
+  // Health on load and on Retry. The research instances are only asked for when the research endpoints are on
+  // (otherwise every page load got a 403).
+  const checkHealth = useCallback(() => {
+    setHealth((h) => (h.state === 'down' ? { ...h, retrying: true } : h))
+    return api.health().then((h) => {
+      const research = h.research_endpoints !== false
+      setHealth({ state: 'ok', env: h.environment, research, demo: h.demo_mode === true })
+      if (research) refreshInstances().catch(() => {})
+      return true
+    }).catch((e) => { setHealth({ state: 'down', message: e.message }); return false })
   }, [refreshInstances])
+  useEffect(() => { checkHealth() }, [checkHealth])
 
-  // Load the current instance and its runs.
+  // Load the current instance and its runs (research mode only).
+  const researchOn = health.state === 'ok' && health.research
   useEffect(() => {
-    if (!currentId) { setInstance(null); setRuns([]); return }
+    if (!currentId || !researchOn) { setInstance(null); setRuns([]); return }
     let alive = true
     api.getInstance(currentId).then((i) => alive && setInstance(i)).catch(() => {
       if (alive) { setInstance(null); selectInstance('') } // stale id (e.g. data folder was cleared)
     })
     refreshRuns().catch(() => {})
     return () => { alive = false }
-  }, [currentId, refreshRuns, selectInstance])
+  }, [currentId, researchOn, refreshRuns, selectInstance])
 
   // Default selection = most recent completed run per algorithm, including runs that found no solution
   // (a failed run must stay visible rather than being silently skipped).
@@ -66,8 +73,8 @@ export function AppProvider({ children }) {
 
   const value = useMemo(() => ({
     instances, instance, currentId, selectInstance, refreshInstances, runs, refreshRuns,
-    selected, setSelected, health,
-  }), [instances, instance, currentId, selectInstance, refreshInstances, runs, refreshRuns, selected, health])
+    selected, setSelected, health, checkHealth,
+  }), [instances, instance, currentId, selectInstance, refreshInstances, runs, refreshRuns, selected, health, checkHealth])
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

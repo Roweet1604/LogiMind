@@ -22,10 +22,12 @@ test('parseErrorBody handles all FastAPI error shapes', () => {
   const b = parseErrorBody(422, { detail: [{ loc: ['body', 'n_customers'], msg: 'too small' }] })
   expect(b.errors[0]).toBe('n_customers: too small')
   expect(parseErrorBody(404, { detail: 'run not found' }).message).toBe('run not found')
-  expect(parseErrorBody(500, null).message).toMatch(/500/)
+  expect(parseErrorBody(500, null).message).toMatch(/went wrong on the server/)
+  expect(parseErrorBody(500, null).status).toBe(500)
 })
 
 test('network failure becomes a readable ApiError', async () => {
   globalThis.fetch = vi.fn(async () => { throw new TypeError('failed') })
-  await expect(api.health()).rejects.toThrow(/Cannot reach the backend/)
+  await expect(api.health()).rejects.toThrow(/The server isn't running\. Run start-dev\.bat/)
+  await expect(api.health()).rejects.toMatchObject({ unreachable: true, status: 0 })
 })

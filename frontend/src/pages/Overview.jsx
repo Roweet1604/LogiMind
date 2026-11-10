@@ -1,77 +1,84 @@
-import { ArrowRight, Download } from 'lucide-react'
+import { ArrowRight, ClipboardList, MessageSquare, Truck } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { exportUrl } from '../lib/api'
+import { SignInGate } from '../components/Gate'
+import { AlgoTag, EmptyState, Notice, PageHeader, Panel, Spinner, Stats, TableWrap } from '../components/ui'
+import { api } from '../lib/api'
 import { fmt, fmtTime } from '../lib/format'
-import { useApp } from '../state/AppContext'
-import { AlgoTag, Badge, EmptyState, PageHeader, Panel, TableWrap } from '../components/ui'
+import { useAuth } from '../state/AuthContext'
+import { PlanBadge } from './Plans'
 
+// Start page for dispatchers: the tenant's plans at a glance and where to go next.
+// The research comparison (OR-Tools vs GA) lives under Research (dev only).
 export default function Overview() {
-  const { instance, runs, health } = useApp()
-  const done = runs.filter((r) => r.state === 'completed')
-  const hasBoth = done.some((r) => r.algorithm === 'ortools') && done.some((r) => r.algorithm === 'ga')
-  const next = !instance
-    ? { to: '/setup', label: 'Set up a problem' }
-    : !done.length ? { to: '/run', label: 'Run optimization' }
-    : !hasBoth ? { to: '/run', label: 'Run the other algorithm' }
-    : { to: '/compare', label: 'Compare algorithms' }
+  const { state, me } = useAuth()
+  const [plans, setPlans] = useState(null)
+  const [error, setError] = useState(null)
+  useEffect(() => {
+    if (state !== 'in') return
+    api.listPlans().then(setPlans).catch(setError)
+  }, [state])
 
-  const steps = [
-    ['/setup', '1', 'Problem setup', instance ? `${instance.customers.length} customers loaded` : 'No instance yet', Boolean(instance)],
-    ['/run', '2', 'Run optimization', done.length ? `${done.length} completed run${done.length > 1 ? 's' : ''} on this instance` : 'No runs yet', done.length > 0],
-    ['/results', '3', 'Route results', 'Stop order, load and feasibility per vehicle', done.length > 0],
-    ['/compare', '4', 'Compare algorithms', 'Metrics from the shared evaluator', hasBoth],
-    ['/benchmark', '5', 'Benchmark lab', 'Repeated runs across instance sizes', null],
-  ]
+  const count = (f) => (plans ? plans.filter(f).length : null)
   return (
     <>
-      <PageHeader title="Supply chain route optimization"
-        actions={<Link className="btn btn-primary" to={next.to}>{next.label}<ArrowRight size={16} aria-hidden="true" /></Link>}>
-        A comparison of Google OR-Tools and a custom genetic algorithm on the capacitated vehicle routing problem (CVRP).
-        Both solve the same instance under the same cost model, and one independent validator checks every solution.
+      <PageHeader title="Overview"
+        actions={state === 'in' && <Link className="btn btn-primary" to="/plans">Open plans<ArrowRight size={16} aria-hidden="true" /></Link>}>
+        Plan delivery routes for your fleet. Every route comes from a solver and is checked by an independent validator
+        before it is called feasible.
       </PageHeader>
-
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-        <Panel title="Workflow">
-          <ol>
-            {steps.map(([to, n, label, status, ok]) => (
-              <li key={to} className="flex items-center gap-4 border-b border-rule2 py-3 last:border-0">
-                <span className="w-5 font-mono text-ink2">{n}</span>
-                <div className="min-w-0 flex-1">
-                  <Link className="font-medium underline decoration-rule underline-offset-4 hover:decoration-ink" to={to}>{label}</Link>
-                  <p className="text-xs text-ink2">{status}</p>
-                </div>
-                {ok !== null && <Badge kind={ok ? 'ok' : 'neutral'}>{ok ? 'done' : 'open'}</Badge>}
-              </li>
-            ))}
-          </ol>
-          {health.state === 'ok' && (
-            <p className="mt-3 text-xs text-ink2">Backend: Python {health.env.python}, OR-Tools {health.env.ortools}, {health.env.cpu_count} CPU(s). Measured runtimes depend on this machine.</p>
+      <SignInGate what="the overview" />
+      {state === 'in' && (
+        <div className="space-y-6">
+          {me?.demo && (
+            <Notice kind="warn" title="Demo mode">
+              You are signed in to the local demo account. Its orders are synthetic (made up for the demo), not real customers.
+            </Notice>
           )}
-        </Panel>
-
-        <Panel title="Recent runs on the current instance" note="real runs only"
-          actions={runs.length > 0 && <a className="btn" href={exportUrl.runs()} download><Download size={16} aria-hidden="true" />Export CSV</a>}>
-          {!runs.length ? (
-            <EmptyState title="No runs yet">{instance ? <Link className="underline" to="/run">Run an algorithm</Link> : <Link className="underline" to="/setup">Load an instance first</Link>}. Results appear here as they are produced.</EmptyState>
-          ) : (
-            <TableWrap>
-              <thead><tr><th className="th">Started</th><th className="th">Algorithm</th><th className="th">Feasible</th><th className="th text-right">Distance ({instance?.distance_unit || 'km'})</th><th className="th text-right">Cost</th><th className="th text-right">Runtime (s)</th></tr></thead>
-              <tbody>
-                {runs.slice(0, 10).map((r) => (
-                  <tr key={r.run_id}>
-                    <td className="td">{fmtTime(r.created_at)}</td>
-                    <td className="td"><AlgoTag algo={r.algorithm} /></td>
-                    <td className="td">{r.state !== 'completed' ? <Badge kind="warn">{r.state}</Badge> : r.row?.feasible == null ? <Badge kind="bad">no solution</Badge> : r.row.feasible ? <Badge kind="ok">feasible</Badge> : <Badge kind="bad">infeasible</Badge>}</td>
-                    <td className="td text-right num">{fmt(r.row?.total_distance)}</td>
-                    <td className="td text-right num">{fmt(r.row?.estimated_cost)}</td>
-                    <td className="td text-right num">{fmt(r.row?.runtime_seconds)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </TableWrap>
+          {error && <Notice kind="error" title="Could not load plans">{error.message}</Notice>}
+          {!plans && !error && <Spinner label="Loading plans" />}
+          {plans && (
+            <Stats items={[
+              { label: 'Plans', value: String(plans.length) },
+              { label: 'Feasible', value: String(count((p) => p.state === 'completed' && p.feasible === true)), sub: 'checked by the validator' },
+              { label: 'Being solved', value: String(count((p) => p.state === 'queued' || p.state === 'running')) },
+              { label: 'Need attention', value: String(count((p) => p.state === 'failed' || (p.state === 'completed' && p.feasible !== true))), sub: 'failed or not feasible' },
+            ]} />
           )}
-        </Panel>
-      </div>
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+            <Panel title="Latest plans">
+              {plans && plans.length === 0 && <EmptyState title="No plans yet"><Link className="link" to="/plans">Create the first plan</Link> from an order file.</EmptyState>}
+              {plans && plans.length > 0 && (
+                <TableWrap>
+                  <thead><tr><th>Plan</th><th>Validator</th><th>Engine</th><th className="num">Orders</th><th className="num">Distance</th><th>Created</th></tr></thead>
+                  <tbody>
+                    {plans.slice(0, 6).map((p) => (
+                      <tr key={p.plan_id} className="hover:bg-sunken">
+                        <td><Link className="link" to={`/plans/${p.plan_id}`}>{p.name || p.plan_id}</Link></td>
+                        <td><PlanBadge plan={p} /></td>
+                        <td><AlgoTag algo={p.engine} /></td>
+                        <td className="num">{p.n_customers}</td>
+                        <td className="num">{fmt(p.total_distance)}</td>
+                        <td className="whitespace-nowrap text-xs">{fmtTime(p.created_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </TableWrap>
+              )}
+            </Panel>
+            <Panel title="What you can do">
+              <ul className="space-y-4 text-sm">
+                <li className="flex gap-3"><ClipboardList size={18} aria-hidden="true" className="mt-0.5 shrink-0" />
+                  <span><Link className="link font-medium" to="/plans">Plans</Link>: import orders, plan routes, and replan after a breakdown, a failed delivery or an urgent order.</span></li>
+                <li className="flex gap-3"><Truck size={18} aria-hidden="true" className="mt-0.5 shrink-0" />
+                  <span><Link className="link font-medium" to="/drivers">Drivers</Link>: send each driver a link to their stop list and see what they report.</span></li>
+                <li className="flex gap-3"><MessageSquare size={18} aria-hidden="true" className="mt-0.5 shrink-0" />
+                  <span><Link className="link font-medium" to="/copilot">Copilot</Link>: ask in plain words. It never writes routes itself.</span></li>
+              </ul>
+            </Panel>
+          </div>
+        </div>
+      )}
     </>
   )
 }

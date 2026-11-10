@@ -1,9 +1,10 @@
-import { BookOpen, Check, ClipboardList, FlaskConical, KeyRound, LayoutGrid, MessageSquare, PanelRightClose, PanelRightOpen, Play, Route as RouteIcon, Scale, SlidersHorizontal } from 'lucide-react'
+import { BookOpen, Check, ClipboardList, FlaskConical, KeyRound, LayoutGrid, Microscope, MessageSquare, PanelRightClose, PanelRightOpen, Play, Route as RouteIcon, Scale, SlidersHorizontal, Truck } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useApp } from '../state/AppContext'
 import { useAuth } from '../state/AuthContext'
 import CopilotChat, { CopilotProvider, ModelStatus, useCopilot } from './CopilotChat'
+import { RetryButton } from './Gate'
 import { Badge } from './ui'
 
 const FLOW = [
@@ -65,16 +66,19 @@ function Stepper() {
   )
 }
 
+// The sidebar for everyone: the operations pages and the account. The research tools sit behind one "Research"
+// link that appears only when the server runs with LOGIMIND_DEV_RESEARCH_ENDPOINTS=1 (decision 0031).
 const OPS = [
   { to: '/plans', label: 'Plans', icon: ClipboardList },
+  { to: '/drivers', label: 'Drivers', icon: Truck },
   { to: '/copilot', label: 'Copilot', icon: MessageSquare },
 ]
-const RESEARCH_PATHS = [...FLOW, ...MORE.filter((m) => m.to === '/benchmark')].map((s) => s.to)
+const RESEARCH_PATHS = ['/research', ...FLOW.map((s) => s.to), ...MORE.map((s) => s.to)]
 
 function BackendStatus({ health }) {
-  if (health.state === 'ok') return <Badge kind="ok">backend connected</Badge>
-  if (health.state === 'down') return <Badge kind="bad">backend unreachable</Badge>
-  return <Badge kind="busy">checking backend</Badge>
+  if (health.state === 'ok') return <Badge kind="ok">server connected</Badge>
+  if (health.state === 'down') return <Badge kind="bad">server not running</Badge>
+  return <Badge kind="busy">checking server</Badge>
 }
 
 // Docked copilot: the same conversation as the /copilot page, beside whatever page is open.
@@ -106,9 +110,12 @@ export default function Layout() {
   const { instance, health } = useApp()
   const { me, state } = useAuth()
   const { pathname } = useLocation()
+  const research = health.state === 'ok' && health.research === true
+  const inResearch = RESEARCH_PATHS.includes(pathname)
   const [dock, setDock] = useState(false)
   const inFlow = FLOW.some((s) => s.to === pathname)
-  const researchOff = health.state === 'ok' && health.research === false && RESEARCH_PATHS.includes(pathname)
+  const researchOff = health.state === 'ok' && health.research === false && inResearch
+  const offline = health.state === 'down' || state === 'offline'
   const showDock = dock && state === 'in' && pathname !== '/copilot'
   return (
     <CopilotProvider>
@@ -128,28 +135,32 @@ export default function Layout() {
           </div>
           <nav aria-label="Main" className="flex gap-1 overflow-x-auto px-3 py-3 md:flex-1 md:flex-col md:gap-0.5 md:overflow-y-auto">
             <Item to="/" label="Overview" icon={LayoutGrid} />
-            <Group>Operations</Group>
             {OPS.map((i) => <Item key={i.to} {...i} />)}
-            <Group>Research workflow (dev only)</Group>
-            {FLOW.map((i, k) => <Item key={i.to} {...i} n={k + 1} />)}
-            <Group>Research</Group>
-            {MORE.map((i) => <Item key={i.to} {...i} />)}
+            {research && <Item to="/research" label="Research" icon={Microscope} />}
+            {research && inResearch && (
+              <div className="md:pl-4">
+                {FLOW.map((i, k) => <Item key={i.to} {...i} n={k + 1} />)}
+                {MORE.map((i) => <Item key={i.to} {...i} />)}
+              </div>
+            )}
             <Group>Account</Group>
-            <Item to="/login" label="API key" icon={KeyRound} />
+            <Item to="/login" label="Account" icon={KeyRound} />
           </nav>
-          <div className="hidden border-t border-nav-line px-5 py-4 text-xs md:block">
-            <p className="mb-1 text-nav-muted">Current research instance</p>
-            {instance ? (
-              <p className="break-all font-mono text-[12px] leading-snug text-white">{instance.instance_id}<span className="block text-nav-text">{instance.customers.length} customers · {instance.metric}</span></p>
-            ) : <p className="text-nav-text">None selected</p>}
-          </div>
+          {research && (
+            <div className="hidden border-t border-nav-line px-5 py-4 text-xs md:block">
+              <p className="mb-1 text-nav-muted">Current research instance</p>
+              {instance ? (
+                <p className="break-all font-mono text-[12px] leading-snug text-white">{instance.instance_id}<span className="block text-nav-text">{instance.customers.length} customers · {instance.metric}</span></p>
+              ) : <p className="text-nav-text">None selected</p>}
+            </div>
+          )}
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-[1050] flex h-14 items-center justify-between gap-3 border-b border-rule bg-panel px-5 md:px-8">
             <div className="flex min-w-0 items-center gap-2 text-sm">
               <span className="text-ink2">Tenant</span>
-              <span className="truncate font-medium">{me ? (me.tenant_name || me.tenant_id) : <Link className="link" to="/login">not signed in</Link>}</span>
+              <span className="truncate font-medium">{me ? (me.tenant_name || me.tenant_id) : state === 'offline' ? 'waiting for the server' : <Link className="link" to="/login">not signed in</Link>}</span>
               {me?.demo && <span title="Signed in automatically to the local demo tenant. All data is synthetic."><Badge kind="draft">Demo mode</Badge></span>}
             </div>
             <div className="flex items-center gap-3">
@@ -165,16 +176,16 @@ export default function Layout() {
           <div className="flex min-h-0 flex-1">
             <main id="main" className="min-w-0 flex-1 px-5 py-6 md:px-8">
               <div className="mx-auto max-w-[1600px] [container-type:inline-size]">
-                {health.state === 'down' && (
-                  <div className="mb-5 rounded border border-l-4 border-err bg-err-soft px-4 py-3" role="alert">
-                    Backend unreachable. Start it with <code>uvicorn app.main:app --port 8000</code> in <code>backend/</code>.
+                {offline && (
+                  <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded border border-l-4 border-err bg-err-soft px-4 py-3" role="alert">
+                    <span>The server isn't running. Run start-dev.bat, then press Retry.{me ? ' You stay signed in.' : ''}</span>
+                    <RetryButton />
                   </div>
                 )}
                 {researchOff && (
                   <div className="mb-5 rounded border border-warn-soft bg-warn-soft px-4 py-3 text-warn-body" role="status">
-                    The research pages are switched off on this backend (they have no tenants). Use{' '}
-                    <Link className="text-warn underline" to="/plans">Plans</Link> with an API key, or start the backend with{' '}
-                    <code>LOGIMIND_DEV_RESEARCH_ENDPOINTS=1</code> for local development.
+                    The research pages are switched off on this server. Go to{' '}
+                    <Link className="text-warn underline" to="/plans">Plans</Link> to plan routes.
                   </div>
                 )}
                 {inFlow && <Stepper />}

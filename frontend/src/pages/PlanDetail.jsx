@@ -8,6 +8,7 @@ import { ALGOS } from '../lib/algos'
 import { api } from '../lib/api'
 import { fmt, fmtInt, fmtSeconds, SOLVER_STATUS_TEXT } from '../lib/format'
 import { useAuth } from '../state/AuthContext'
+import { SignInGate } from '../components/Gate'
 import { PlanBadge } from './Plans'
 
 export const planRoutes = (p) => p?.result?.routes ?? p?.result?.solve?.routes ?? null
@@ -230,7 +231,7 @@ export default function PlanDetail() {
     return () => { alive = false; clearTimeout(timer) }
   }, [id, state])
 
-  if (state !== 'in') return <Notice title="Sign in first"><Link className="link" to="/login">Sign in with an API key</Link> to see plans.</Notice>
+  if (state !== 'in') return <SignInGate what="plans" />
   if (error) return <Notice kind="error" title="Could not load the plan">{error.message}</Notice>
   if (!plan) return <Spinner label="Loading plan" />
 

@@ -17,15 +17,15 @@ export default function Login() {
       await login(key)
       navigate('/plans')
     } catch (err) {
-      setError(err.status === 401 ? 'This API key was not accepted (missing, wrong or revoked).' : err.message)
+      setError(err.status === 401 ? 'This API key was not accepted. Check that you copied all of it, or ask for a new one.' : err.message)
     } finally { setBusy(false) }
   }
 
   return (
     <>
-      <PageHeader title="Sign in with an API key">
-        Plans, imports and replans belong to one tenant. Ask your admin for a key
-        (<code className="font-mono">python manage.py create-tenant "Name"</code> prints one once).
+      <PageHeader title="Account">
+        Plans, imports and replans belong to one company account. Sign in with the API key you were given by the person
+        who runs LogiMind.
       </PageHeader>
       <Panel className="max-w-xl">
         {me ? (
@@ -37,7 +37,7 @@ export default function Login() {
           </div>
         ) : (
           <form onSubmit={submit} className="space-y-4">
-            <Field label="API key" htmlFor="api-key" hint="Kept only for this browser tab (sessionStorage, cleared when the tab closes) and sent as X-API-Key.">
+            <Field label="API key" htmlFor="api-key" hint="Kept only in this browser tab and forgotten when you close it.">
               <input id="api-key" className="input font-mono" type="password" autoComplete="off" value={key}
                 onChange={(e) => setKey(e.target.value)} placeholder="lm_..." />
             </Field>
