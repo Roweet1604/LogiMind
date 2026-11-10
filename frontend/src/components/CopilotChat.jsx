@@ -134,7 +134,7 @@ function UnavailableNotice({ status }) {
   }
   return (
     <Notice kind="error" title={status.problem || `${nameOf(status)} is not available`}>
-      {status.reason} Plans, imports and replans still work from the Plans page.
+      {status.reason}{/[.!?]$/.test(status.reason || '') ? '' : '.'} Plans, imports and replans still work from the Plans page.
     </Notice>
   )
 }

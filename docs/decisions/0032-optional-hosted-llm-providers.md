@@ -50,3 +50,23 @@ laptops. Free hosted tiers let the team try real models without a GPU, while the
 ## Tests
 `backend/tests/test_llm_providers.py` (21, fake HTTP layer through `httpx.MockTransport`, no network);
 `frontend/src/test/providers.test.jsx` (3).
+
+## Checked in a real browser (10 Nov 2026, Chrome via Claude in Chrome)
+Set-up: a scratch clone of this commit with its own `backend\.env` (`LOGIMIND_LLM_PROVIDER=groq`, a fake key,
+`GROQ_MODEL=fake-groq-model`, `LOGIMIND_GROQ_BASE_URL=http://127.0.0.1:8097/v1`) and a local **fake Groq server**
+(OpenAI-compatible, accepts only the fake key, picks intents by keywords; not a language model). So the real
+`GroqLLM` code, the agent and the console ran end to end; only the "model" was fake. The developer's own
+`backend\.env` was not changed.
+- Panel and page showed "groq · fake-groq-model" and the note on what is sent to the provider.
+- "explain the latest plan" → answer from the `explain` tool; "re-run … with OR-Tools" → a new validated plan.
+- A breakdown request → "needs confirmation"; **Cancel** → "Cancelled. The plan was not changed."; again → **Confirm**
+  → the replan ran and was reported honestly as NOT feasible (one vehicle could not carry the orders).
+- "move customer 3 to vehicle 2 by hand" → refused (the fake chose `refuse`; this checks the path, not a model).
+- A 429 from the provider → "Groq rate limit reached (HTTP 429); try again in 20 s".
+- Wrong key → "Groq key missing or rejected (HTTP 401)"; empty key → "Groq key missing or rejected: GROQ_API_KEY is
+  empty in backend\.env" (page and docked panel); provider down → "Groq not reachable". Input disabled each time.
+- No key in the status reply, the page or localStorage; neither test key in the API's logs. The fake server saw
+  `response_format: json_schema` and temperature 0 on every call.
+- Found and fixed: the hosted reason ran into the next sentence (missing full stop).
+- **Not checked:** the real Groq or Gemini service (no key is set in the developer's `backend\.env`); Gemini in the
+  browser at all (unit tests with the fake HTTP layer only); answer quality of any real model.
