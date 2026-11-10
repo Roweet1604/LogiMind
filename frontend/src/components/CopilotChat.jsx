@@ -13,8 +13,8 @@ const KIND = {
 }
 
 // Copilot model providers (decision 0032). Hosted ones run on the provider's servers; the key never reaches the console.
-export const PROVIDERS = { ollama: 'Ollama', groq: 'Groq', gemini: 'Gemini', fake: 'Fake model', none: 'None' }
-export const isHosted = (status) => status?.provider === 'groq' || status?.provider === 'gemini'
+export const PROVIDERS = { ollama: 'Ollama', groq: 'Groq', gemini: 'Gemini', openai: 'the OpenAI-compatible service', fake: 'Fake model', none: 'None' }
+export const isHosted = (status) => ['groq', 'gemini', 'openai'].includes(status?.provider)
 const nameOf = (status) => PROVIDERS[status?.provider] || status?.provider || 'Model'
 
 // One conversation per signed-in key, shared by the docked panel and the /copilot page.
@@ -59,8 +59,11 @@ export function CopilotProvider({ children }) {
     } catch (err) { setError(err) } finally { setBusy(false) }
   }, [session])
 
-  const value = useMemo(() => ({ status, messages, busy, error, loadStatus, send, confirm }),
-    [status, messages, busy, error, loadStatus, send, confirm])
+  // Copilot settings changed in this tab: ask the server again which model is in use.
+  const settingsChanged = useCallback(() => { setStatus(null); loadStatus() }, [loadStatus])
+
+  const value = useMemo(() => ({ status, messages, busy, error, loadStatus, send, confirm, settingsChanged }),
+    [status, messages, busy, error, loadStatus, send, confirm, settingsChanged])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 

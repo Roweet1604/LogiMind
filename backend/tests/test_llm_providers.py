@@ -156,7 +156,7 @@ def test_availability_probes_once_then_uses_the_cache():
     assert len(http.requests) == 1
     http2 = FakeHTTP(groq_ok("{}", model="something-else"))
     av = groq(http2).availability()
-    assert not av.available and "does not offer the model" in av.reason
+    assert not av.available and "not found in its model list" in av.reason and av.problem == "Groq model not found"
 
 
 # ---- errors: shown as what they are, never with the key ---------------------------------------------------
@@ -167,8 +167,8 @@ def test_availability_probes_once_then_uses_the_cache():
     (lambda r: httpx.Response(429, headers={"retry-after": "7"}, json={"error": {"message": "slow down"}}),
      "rate_limit", "rate limit reached (HTTP 429); try again in 7 s"),
     (lambda r: httpx.Response(503, text="upstream down"), "server", "server problem (HTTP 503)"),
-    (lambda r: httpx.Response(404, json={"error": {"message": "model not found"}}), "bad_request",
-     "does not know the model"),
+    (lambda r: httpx.Response(404, json={"error": {"message": "model not found"}}), "model",
+     "model 'openai/gpt-oss-20b' not found (HTTP 404)"),
     (lambda r: httpx.Response(400, json={"error": {"message": f"bad schema near {KEY}"}}), "bad_request",
      "refused the request (HTTP 400): bad schema near ***"),
     (lambda r: (_ for _ in ()).throw(httpx.ConnectError("no route", request=r)), "network", "could not be reached"),

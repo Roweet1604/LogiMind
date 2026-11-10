@@ -27,6 +27,8 @@ from urllib.parse import urlsplit
 
 import httpx
 
+from app.copilot.netguard import MAX_RESPONSE_BYTES, BlockedURL, PinnedTransport, Resolver, check_base_url, check_public
+
 
 @dataclass
 class Availability:
@@ -76,6 +78,10 @@ class FakeLLM:
     def availability(self) -> Availability:
         return Availability(True, self.provider, self.model, "deterministic fake for tests")
 
+    def test_connection(self) -> dict[str, Any]:
+        return {"ok": True, "kind": "ok", "provider": self.provider, "model": self.model,
+                "message": "Works: deterministic fake model (tests only)."}
+
     def complete_json(self, system: str, messages: list[dict[str, str]], schema: dict[str, Any]) -> str:
         self.calls.append({"system": system, "messages": [dict(m) for m in messages], "schema": schema})
         out = self.respond(system, messages) if self.respond else (self.script.pop(0) if self.script else "{}")
@@ -95,6 +101,9 @@ class NoLLM:
 
     def complete_json(self, system, messages, schema) -> str:
         raise LLMUnavailable(self.reason)
+
+    def test_connection(self) -> dict[str, Any]:
+        return {"ok": False, "kind": "none", "provider": self.provider, "model": None, "message": self.reason}
 
 
 @dataclass
@@ -119,6 +128,16 @@ class OllamaLLM:
                                 f"run `ollama pull {self.model}`")
         return Availability(True, self.provider, self.model, "local Ollama model")
 
+    def test_connection(self) -> dict[str, Any]:
+        av = self.availability()
+        if av.available:
+            return {"ok": True, "kind": "ok", "provider": self.provider, "model": self.model,
+                    "message": f"Works: the local Ollama has the model {self.model}."}
+        kind = "model" if "not installed" in av.reason else "network"
+        msg = (f"Ollama is running, but the model {self.model} is not installed." if kind == "model"
+               else f"Ollama is not reachable at {self.url}: it is not running on this computer.")
+        return {"ok": False, "kind": kind, "provider": self.provider, "model": self.model, "message": msg}
+
     def complete_json(self, system: str, messages: list[dict[str, str]], schema: dict[str, Any]) -> str:
         av = self.availability()
         if not av.available:
@@ -136,7 +155,9 @@ class OllamaLLM:
 BACKEND_ENV = Path(__file__).resolve().parents[2] / ".env"
 ENV_FILE = "backend\\.env"
 SHORT = {"auth": "key missing or rejected", "rate_limit": "rate limit reached", "network": "not reachable",
-         "server": "server problem", "bad_request": "request refused", "bad_response": "unusable answer"}
+         "server": "server problem", "bad_request": "request refused", "bad_response": "unusable answer",
+         "model": "model not found", "blocked": "address not allowed"}
+UI = "Copilot settings"  # where a key or model typed in the console is fixed
 
 
 def read_dotenv(path: Path) -> dict[str, str]:
@@ -189,21 +210,43 @@ class HostedLLM:
     label: str = ""
     key_var: str = ""
     model_var: str = ""
+    settings_from: str = "env"  # "env" (backend/.env) or "ui" (Copilot settings in the console, decision 0033)
+    guarded: bool = False  # True: the base URL is checked and pinned (netguard) before every call
+    resolve: Resolver | None = field(default=None, repr=False)  # tests: a fake DNS
     _cache: tuple[float, Availability] | None = field(default=None, repr=False)
 
     def _scrub(self, text: str) -> str:
         return text.replace(self.api_key, "***") if self.api_key else text
 
+    def _where(self, var: str) -> str:
+        return UI if self.settings_from == "ui" else f"{var} in {ENV_FILE}"
+
     def _setup_problem(self) -> Availability | None:
         if not self.api_key:
+            why = "no key in Copilot settings" if self.settings_from == "ui" else \
+                f"{self.key_var} is empty in {ENV_FILE}"
             return Availability(False, self.provider, self.model or None,
-                                f"{self.label} key missing or rejected: {self.key_var} is empty in {ENV_FILE}",
-                                f"{self.label} key missing or rejected")
+                                f"{self.label} key missing or rejected: {why}", f"{self.label} key missing or rejected")
         if not self.model:
             return Availability(False, self.provider, None,
-                                f"{self.label} model not set: put a model name in {self.model_var} in {ENV_FILE}",
+                                f"{self.label} model not set: put a model name in {self._where(self.model_var)}",
                                 f"{self.label} model not set")
         return None
+
+    def test_connection(self) -> dict[str, Any]:
+        """One minimal call (the model list or the model itself, never a completion). Only success or a plain
+        error comes back; never the key."""
+        bad = self._setup_problem()
+        if bad:
+            kind = "auth" if not self.api_key else "model"
+            return {"ok": False, "kind": kind, "provider": self.provider, "model": self.model, "message": bad.reason}
+        try:
+            self._probe()
+        except LLMError as exc:
+            return {"ok": False, "kind": exc.kind, "provider": self.provider, "model": self.model,
+                    "message": self._scrub(str(exc))}
+        return {"ok": True, "kind": "ok", "provider": self.provider, "model": self.model,
+                "message": f"Works: {self.label} accepted the key and offers the model {self.model}."}
 
     def availability(self) -> Availability:
         bad = self._setup_problem()
@@ -237,15 +280,34 @@ class HostedLLM:
         raise NotImplementedError
 
     def _request(self, method: str, path: str, body: dict | None = None) -> dict:
+        transport = self.transport
+        if self.guarded:
+            try:
+                host, port = check_base_url(self.base_url)
+                pinned_ip = check_public(host, port, self.resolve)
+            except BlockedURL as exc:
+                raise LLMError("blocked", f"{self.label}: {exc}.") from None
+            transport = transport or PinnedTransport({host: pinned_ip})
         try:
-            with httpx.Client(base_url=self.base_url, timeout=self.timeout_s, transport=self.transport) as client:
-                r = client.request(method, path, json=body, headers=self._headers())
+            with httpx.Client(base_url=self.base_url, timeout=httpx.Timeout(self.timeout_s, connect=5.0),
+                              transport=transport, follow_redirects=False) as client:
+                with client.stream(method, path, json=body, headers=self._headers()) as streamed:
+                    raw = b""
+                    for chunk in streamed.iter_bytes():
+                        raw += chunk
+                        if len(raw) > MAX_RESPONSE_BYTES:
+                            raise LLMError("bad_response", f"{self.label} sent an answer larger than 1 MB; it was "
+                                                           "not read.")
+                    r = httpx.Response(streamed.status_code, headers=streamed.headers, content=raw)
         except httpx.TimeoutException:
             raise LLMError("network", f"{self.label} did not answer within {self.timeout_s:g} s (network timeout). "
                                       "Check the internet connection and try again.") from None
         except httpx.TransportError as exc:
             raise LLMError("network", f"{self.label} could not be reached ({type(exc).__name__}). Check the "
                                       "internet connection and try again.") from None
+        if 300 <= r.status_code < 400:
+            raise LLMError("bad_request", f"{self.label} answered with a redirect (HTTP {r.status_code}); redirects "
+                                          "are not followed. Check the base URL.")
         if r.is_success:
             try:
                 return r.json()
@@ -262,16 +324,17 @@ class HostedLLM:
         detail = self._scrub(detail)[:200]
         code = r.status_code
         if code in (401, 403) or (code == 400 and ("API_KEY_INVALID" in r.text or "API key not valid" in r.text)):
-            return LLMError("auth", f"{self.label} key missing or rejected (HTTP {code}). Check {self.key_var} in "
-                                    f"{ENV_FILE} and restart the server.")
+            fix = "Check the key in Copilot settings." if self.settings_from == "ui" else \
+                f"Check {self.key_var} in {ENV_FILE} and restart the server."
+            return LLMError("auth", f"{self.label} key missing or rejected (HTTP {code}). {fix}")
         if code == 429:
             wait = r.headers.get("retry-after")
             return LLMError("rate_limit", f"{self.label} rate limit reached (HTTP 429)"
                                           + (f"; try again in {wait} s" if wait else "; try again in a minute")
                                           + ". Free tiers allow only a few requests per minute.")
         if code == 404:
-            return LLMError("bad_request", f"{self.label} does not know the model {self.model!r} (HTTP 404). "
-                                           f"Check {self.model_var} in {ENV_FILE}.")
+            return LLMError("model", f"{self.label}: model {self.model!r} not found (HTTP 404). "
+                                     f"Check the model name in {self._where(self.model_var)}.")
         if code >= 500:
             return LLMError("server", f"{self.label} had a server problem (HTTP {code}). Try again later.")
         return LLMError("bad_request", f"{self.label} refused the request (HTTP {code})"
@@ -285,22 +348,22 @@ class HostedLLM:
 
 
 @dataclass
-class GroqLLM(HostedLLM):
-    """Groq's OpenAI-compatible API with `response_format` json_schema (structured outputs)."""
-    base_url: str = "https://api.groq.com/openai/v1"
-    provider: str = "groq"
-    label: str = "Groq"
-    key_var: str = "GROQ_API_KEY"
-    model_var: str = "GROQ_MODEL"
+class OpenAICompatLLM(HostedLLM):
+    """Any OpenAI-compatible chat API (base URL from Copilot settings, always guarded) with `response_format`
+    json_schema. Paid services charge for every call."""
+    provider: str = "openai"
+    label: str = "OpenAI-compatible service"
+    key_var: str = "key"
+    model_var: str = "model"
 
     def _headers(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self.api_key}"}
 
     def _probe(self) -> None:
-        ids = {m.get("id") for m in self._request("GET", "/models").get("data", [])}
+        ids = {m.get("id") for m in (self._request("GET", "/models").get("data") or []) if isinstance(m, dict)}
         if self.model not in ids:
-            raise LLMError("bad_request", f"Groq does not offer the model {self.model!r}. "
-                                          f"Check {self.model_var} in {ENV_FILE}.")
+            raise LLMError("model", f"{self.label}: model {self.model!r} not found in its model list. "
+                                    f"Check the model name in {self._where(self.model_var)}.")
 
     def _complete(self, system, messages, schema):
         body = {"model": self.model, "temperature": 0,
@@ -311,7 +374,17 @@ class GroqLLM(HostedLLM):
         try:
             return str(data["choices"][0]["message"]["content"])
         except (KeyError, IndexError, TypeError):
-            raise LLMError("bad_response", "Groq returned no answer.") from None
+            raise LLMError("bad_response", f"{self.label} returned no answer.") from None
+
+
+@dataclass
+class GroqLLM(OpenAICompatLLM):
+    """Groq's OpenAI-compatible API with `response_format` json_schema (structured outputs)."""
+    base_url: str = "https://api.groq.com/openai/v1"
+    provider: str = "groq"
+    label: str = "Groq"
+    key_var: str = "GROQ_API_KEY"
+    model_var: str = "GROQ_MODEL"
 
 
 @dataclass
@@ -371,3 +444,46 @@ def llm_from_env(env: dict[str, str] | None = None, dotenv: Path | None = None) 
             llm.base_url = base.rstrip("/")
         return llm
     return NoLLM(reason=f"unknown LOGIMIND_LLM_PROVIDER {provider!r}; expected ollama, groq, gemini or none")
+
+
+# ---- settings typed in the console (decision 0033) ----------------------------------------------------------
+UI_PROVIDERS = ("ollama", "groq", "gemini", "openai")
+
+
+class SettingsError(ValueError):
+    """Copilot settings from the console are not usable. Plain message; never contains the key."""
+
+
+def llm_from_settings(s: dict[str, str], env: dict[str, str] | None = None, dotenv: Path | None = None,
+                      transport: httpx.BaseTransport | None = None, resolve: Resolver | None = None) -> LLM | None:
+    """Build the LLM for ONE request from the console's settings (provider, model, key, base_url). None when the
+    console chose no provider (the server's own settings apply). Fields the console leaves empty fall back to
+    backend/.env. Nothing here is stored."""
+    provider = s.get("provider", "").strip().lower()
+    if not provider:
+        return None
+    if provider not in UI_PROVIDERS:
+        raise SettingsError("unknown provider; choose Ollama (local), Groq, Gemini or OpenAI-compatible")
+    env = os.environ if env is None else env
+    model, key = s.get("model", "").strip(), s.get("key", "").strip()
+    if provider == "ollama":  # always the server's own local Ollama URL: plain http only ever goes there
+        return OllamaLLM(url=env.get("LOGIMIND_OLLAMA_URL", "http://localhost:11434"),
+                         model=model or env.get("LOGIMIND_OLLAMA_MODEL", "llama3.2:3b"))
+    if provider == "openai":
+        base = s.get("base_url", "").strip().rstrip("/")
+        try:
+            check_base_url(base)
+        except BlockedURL as exc:
+            raise SettingsError(f"OpenAI-compatible base URL: {exc}") from None
+        return OpenAICompatLLM(model=model, api_key=key, base_url=base, settings_from="ui", guarded=True,
+                               transport=transport, resolve=resolve)
+    cls, prefix = HOSTED[provider]
+    conf = read_dotenv(BACKEND_ENV if dotenv is None else dotenv)
+    llm = cls(model=model or conf.get(f"{prefix}_MODEL", ""), api_key=key or conf.get(f"{prefix}_API_KEY", ""),
+              settings_from="ui" if key else "env", transport=transport, resolve=resolve)
+    override = conf.get(f"LOGIMIND_{prefix}_BASE_URL", "")
+    if override and _is_loopback_url(override):  # operator's own setting in backend/.env (decision 0032)
+        llm.base_url = override.rstrip("/")
+    else:  # the provider's public address: checked and pinned like any other outbound call
+        llm.guarded = True
+    return llm

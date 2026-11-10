@@ -57,6 +57,7 @@ class GraphState(TypedDict, total=False):
     message: str
     history: list[dict[str, str]]
     plans_context: str
+    llm: Any  # the LLM for this request (console settings, decision 0033) or the server's default
     attempts: int
     error: str | None
     raw: str | None
@@ -106,7 +107,7 @@ class Copilot:
                          {"role": "user", "content": f"That output was invalid: {state['error']}. "
                                                      "Return only one JSON object that matches the schema."}]
         system = SYSTEM.format(plans=state["plans_context"])
-        raw = self.llm.complete_json(system, messages, self.schema)
+        raw = (state.get("llm") or self.llm).complete_json(system, messages, self.schema)
         try:
             env = IntentEnvelope.model_validate_json(raw)
         except ValidationError as exc:
@@ -127,30 +128,40 @@ class Copilot:
                           "parse_error": state.get("error")}}
 
     # ---- public API ---------------------------------------------------------------
-    def status(self) -> dict:
-        return self.llm.availability().to_dict()
+    def status(self, llm: LLM | None = None) -> dict:
+        return (llm or self.llm).availability().to_dict()
+
+    def test_connection(self, llm: LLM | None = None) -> dict:
+        llm = llm or self.llm
+        if hasattr(llm, "test_connection"):
+            return llm.test_connection()
+        av = llm.availability()
+        return {"ok": av.available, "kind": "ok" if av.available else "network", "provider": av.provider,
+                "model": av.model, "message": av.reason}
 
     def _session(self, who: Principal, session_id: str | None) -> tuple[str, Session]:
         sid = session_id or f"chat-{uuid.uuid4().hex[:12]}"
         with self._lock:
             return sid, self.sessions.setdefault((who.tenant_id, sid), Session())
 
-    def chat(self, who: Principal, message: str, session_id: str | None = None) -> dict:
+    def chat(self, who: Principal, message: str, session_id: str | None = None, llm: LLM | None = None) -> dict:
+        """`llm`: this request's model from the console's settings (never stored); None = the server's own."""
+        llm = llm or self.llm
         sid, session = self._session(who, session_id)
         session.pending = None  # a new message cancels an unconfirmed change
-        av = self.llm.availability()
+        av = llm.availability()
         if not av.available:
             return {"session_id": sid, "kind": "unavailable", "text": f"The copilot is not available: {av.reason}. "
                     "Plans, imports and replans still work from the console.", "llm": av.to_dict(), "tool_calls": []}
         try:
             state = self.graph.invoke({"message": message, "history": session.history[-MAX_HISTORY:],
-                                       "plans_context": _plans_context(self.plans, who), "attempts": 0})
+                                       "plans_context": _plans_context(self.plans, who), "attempts": 0, "llm": llm})
         except LLMUnavailable as exc:
             return {"session_id": sid, "kind": "unavailable", "text": f"The copilot is not available: {exc}.",
                     "tool_calls": []}
         except LLMError as exc:  # hosted provider: rejected key, rate limit, network, server error, as they are
             return {"session_id": sid, "kind": "unavailable" if exc.kind == "auth" else "error", "text": str(exc),
-                    "llm_error": exc.kind, "llm": self.llm.availability().to_dict(), "tool_calls": []}
+                    "llm_error": exc.kind, "llm": llm.availability().to_dict(), "tool_calls": []}
         reply = state.get("reply") or self._decide(who, session, state["intent"])
         reply.setdefault("tool_calls", [])
         reply["parse_attempts"] = state.get("attempts")

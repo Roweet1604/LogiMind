@@ -4,6 +4,7 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useApp } from '../state/AppContext'
 import { useAuth } from '../state/AuthContext'
 import CopilotChat, { CopilotProvider, ModelStatus, useCopilot } from './CopilotChat'
+import CopilotSettings from './CopilotSettings'
 import { RetryButton } from './Gate'
 import { Badge } from './ui'
 
@@ -101,6 +102,7 @@ function CopilotDock({ onClose }) {
       <p className="border-b border-rule2 bg-sunken px-4 py-2 text-2xs text-ink2">
         The model reads your request only. Routes come from the solvers and are checked by the validator.
       </p>
+      <CopilotSettings compact />
       <div className="min-h-0 flex-1"><CopilotChat compact /></div>
     </aside>
   )

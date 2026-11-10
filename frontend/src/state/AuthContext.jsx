@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { api, getApiKey, setApiKey } from '../lib/api'
+import { clearLlmSettings } from '../lib/llmSettings'
 
 const Ctx = createContext(null)
 export const useAuth = () => useContext(Ctx)
@@ -60,6 +61,7 @@ export function AuthProvider({ children }) {
   const logout = useCallback(() => {
     if (flag(DEMO_FLAG)) setFlag(NO_DEMO, true)
     setApiKey(''); setFlag(DEMO_FLAG, false); setMe(null); setState('out')
+    clearLlmSettings()  // a provider key pasted in Copilot settings goes with the sign-in
   }, [])
 
   const value = useMemo(() => ({ me, state, login, logout, retry: start }), [me, state, login, logout, start])

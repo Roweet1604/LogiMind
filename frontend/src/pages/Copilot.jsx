@@ -1,4 +1,5 @@
 import CopilotChat, { CopilotProvider, isHosted, ModelStatus, PROVIDERS, useCopilot } from '../components/CopilotChat'
+import CopilotSettings from '../components/CopilotSettings'
 import { PageHeader, Panel } from '../components/ui'
 import { useAuth } from '../state/AuthContext'
 import { SignInGate } from '../components/Gate'
@@ -22,8 +23,9 @@ function CopilotPage() {
           <Panel title="Model">
             <ModelStatus status={status} />
             {status?.available && !isHosted(status) && <p className="mt-2 text-xs text-ink2">Runs locally. Replies are templates over tool results; numbers no tool produced are blocked.</p>}
-            {status?.available && isHosted(status) && <p className="mt-2 text-xs text-ink2">Runs on {PROVIDERS[status.provider]}&apos;s servers (optional free tier): your messages and your plans&apos; names and ids are sent there, routes are not. Replies are still templates over tool results.</p>}
+            {status?.available && isHosted(status) && <p className="mt-2 text-xs text-ink2">Runs on {PROVIDERS[status.provider]}&apos;s servers: your messages and your plans&apos; names and ids are sent there, routes are not. Replies are still templates over tool results.</p>}
           </Panel>
+          <CopilotSettings />
           <Panel title="What it can do">
             <ul className="list-disc space-y-1 pl-4 text-ink2">
               <li>Solve with OR-Tools, the GA or the hybrid</li>

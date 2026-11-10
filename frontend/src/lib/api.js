@@ -1,3 +1,5 @@
+import { llmHeaders } from './llmSettings'
+
 // Thin client for the FastAPI backend. Errors keep the server's reasons so the UI can show them.
 const BASE = import.meta.env?.VITE_API_BASE ?? ''
 
@@ -44,12 +46,13 @@ export function setApiKey(key) {
   try { if (apiKey) sessionStorage.setItem(KEY_STORE, apiKey); else sessionStorage.removeItem(KEY_STORE) } catch { /* storage blocked */ }
 }
 
-async function request(path, { method = 'GET', body, form, raw = false, key } = {}) {
+async function request(path, { method = 'GET', body, form, raw = false, key, extra } = {}) {
   let res
   const headers = {}
   if (body) headers['Content-Type'] = 'application/json'
   const k = key ?? apiKey
   if (k) headers['X-API-Key'] = k
+  Object.assign(headers, extra || {})  // e.g. the copilot settings (headers, never the URL)
   try {
     res = await fetch(`${BASE}${path}`, {
       method,
@@ -92,8 +95,9 @@ export const api = {
   listDriverLinks: (id) => request(`/api/plans/${id}/driver-links`),
   revokeDriverLink: (linkId) => request(`/api/driver-links/${linkId}`, { method: 'DELETE' }),
   stopReports: (id) => request(`/api/plans/${id}/stop-reports`),
-  copilotStatus: () => request('/api/copilot/status'),
-  copilotChat: (message, sessionId) => request('/api/copilot/chat', { method: 'POST', body: { message, session_id: sessionId || null } }),
+  copilotStatus: () => request('/api/copilot/status', { extra: llmHeaders() }),
+  copilotTest: (settings) => request('/api/copilot/test', { method: 'POST', extra: llmHeaders(settings) }),
+  copilotChat: (message, sessionId) => request('/api/copilot/chat', { method: 'POST', body: { message, session_id: sessionId || null }, extra: llmHeaders() }),
   copilotConfirm: (sessionId, pendingId, approve) =>
     request('/api/copilot/confirm', { method: 'POST', body: { session_id: sessionId, pending_id: pendingId, approve } }),
   importOrders: (file) => {
