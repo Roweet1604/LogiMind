@@ -112,6 +112,32 @@ Frontend (Node 18+): `cd frontend`, `npm install`, `npm run dev` (http://localho
 
 Driver app (P9 PWA, decisions 0015-0016): copy `driver/` outside OneDrive, then `npm ci`, `npm run dev` (http://localhost:5174, proxies `/api` to :8000), `npm test`, `npm run build && npm run preview` to try the service worker. A dispatcher makes a link per route on the plan page (or `POST /api/plans/{id}/driver-links`); set `LOGIMIND_DRIVER_LINK_SECRET` (32+ characters) so links survive a restart. Customer ETA messages use a stub sender that only logs (decision 0017).
 
+## Optional hosted copilot model (Groq or Gemini, decision 0032)
+The copilot uses a **local** Ollama model by default. If you cannot run Ollama, you can use a **free tier** of a
+hosted model service instead. Planning, the solvers and all tests work without it.
+
+1. **Create a key** (both have a free tier; the pages may change):
+   - Groq: sign in at https://console.groq.com, open **API Keys**, press **Create API Key**, copy it once.
+   - Gemini: sign in at https://aistudio.google.com, open **Get API key**, press **Create API key**, copy it.
+2. **Put it in `backend\.env` only** (open it with `notepad backend\.env`), for example for Groq:
+   ```
+   LOGIMIND_LLM_PROVIDER=groq
+   GROQ_API_KEY=<paste the key here>
+   GROQ_MODEL=<a model id from the provider's model list>
+   ```
+   For Gemini use `LOGIMIND_LLM_PROVIDER=gemini`, `GEMINI_API_KEY` and `GEMINI_MODEL`. Choose a model that supports
+   structured (JSON-schema) output; at the time of writing, for example, `openai/gpt-oss-20b` on Groq or
+   `gemini-2.5-flash` on Gemini. Check the provider's current model list.
+3. **Restart** (close the LogiMind windows, run `start-dev.bat`). The copilot panel shows the provider and model,
+   for example `groq · openai/gpt-oss-20b`, or a plain message such as "Groq key missing or rejected".
+
+> **Warning: never commit, paste or share a key.** `backend\.env` is git-ignored; keep the key there and nowhere
+> else (not in chat, screenshots, the README or another file). If a key leaks, delete it in the provider's console
+> at once and create a new one. Free tiers have small per-minute limits ("rate limit reached" in the panel), and
+> what you send (your messages and your plans' names and ids, never routes) goes to the provider, which may use it
+> to improve its models: use synthetic data only. Hosted answers have **not** been measured (see the evaluation
+> report).
+
 ## Road distances (P4, decision 0019)
 `POST /api/plans` takes `distance_source`: `straight_line` (default), `osrm` (road distances and travel times from a **self-hosted** OSRM at `LOGIMIND_OSRM_URL`), or `estimate` (straight line x 1.3 at 25 km/h, labelled as not road data). If OSRM is not set, not running, or cannot route a pair, the plan uses the estimate and says so (`distance_source.fallback: true` with the reason, and a warning on the plan page). Matrices are cached in `matrix_cache.sqlite` in the data dir. Tests replay recorded OSRM answers and run offline. Re-record a fixture from your own OSRM with `python experiments\osrm\record_fixture.py --base-url http://localhost:5000 --out <file>`.
 

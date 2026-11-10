@@ -9,8 +9,13 @@ import { Badge, Notice, Spinner } from './ui'
 const KIND = {
   answer: ['neutral', 'answer', MessageSquare], clarify: ['warn', 'question', HelpCircle],
   confirm: ['draft', 'needs confirmation', undefined], refuse: ['neutral', 'not supported', Ban],
-  error: ['bad', 'error', undefined], unavailable: ['bad', 'no model', undefined],
+  error: ['bad', 'error', undefined], unavailable: ['bad', 'not available', undefined],
 }
+
+// Copilot model providers (decision 0032). Hosted ones run on the provider's servers; the key never reaches the console.
+export const PROVIDERS = { ollama: 'Ollama', groq: 'Groq', gemini: 'Gemini', fake: 'Fake model', none: 'None' }
+export const isHosted = (status) => status?.provider === 'groq' || status?.provider === 'gemini'
+const nameOf = (status) => PROVIDERS[status?.provider] || status?.provider || 'Model'
 
 // One conversation per signed-in key, shared by the docked panel and the /copilot page.
 // The conversation is cleared when the signed-in key changes, so a session never crosses tenants.
@@ -109,10 +114,29 @@ function Reply({ m, onConfirm, busy }) {
 // The server's reason is written for developers; the console leaves out the setup commands it suggests.
 const withoutCommands = (reason) => String(reason).replace(/[;,]?\s*\b(install|run)\b[^;]*`[^`]*`.*$/i, '').trim()
 
+// Always names the active provider and model, also when it is not available.
 export function ModelStatus({ status }) {
-  if (!status) return <Spinner label="Checking for a local model" />
-  if (!status.available) return <Badge kind="bad">no local model</Badge>
-  return <Badge kind="ok" icon={ShieldCheck}>{status.provider} · {status.model}</Badge>
+  if (!status) return <Spinner label="Checking the copilot model" />
+  const label = `${status.provider}${status.model ? ` · ${status.model}` : ''}`
+  if (!status.available) return <Badge kind="bad">{label}: not available</Badge>
+  return <Badge kind="ok" icon={ShieldCheck}>{label}</Badge>
+}
+
+function UnavailableNotice({ status }) {
+  if (!isHosted(status)) {
+    return (
+      <Notice kind="error" title={status.problem || 'No local model is available'}>
+        The copilot needs a language model running on this computer, and none was found. Plans, imports and replans
+        still work from the Plans page.
+        {status.reason && <details className="mt-2 text-xs"><summary className="cursor-pointer">Technical details</summary>{withoutCommands(status.reason)}</details>}
+      </Notice>
+    )
+  }
+  return (
+    <Notice kind="error" title={status.problem || `${nameOf(status)} is not available`}>
+      {status.reason} Plans, imports and replans still work from the Plans page.
+    </Notice>
+  )
 }
 
 // The conversation and the input. `compact` is the docked side panel; the /copilot page uses the full width.
@@ -141,11 +165,7 @@ export default function CopilotChat({ compact = false }) {
     <div className={`flex min-h-0 flex-col ${compact ? 'h-full' : ''}`}>
       {off && (
         <div className={compact ? 'px-4 pt-3' : 'mb-3'}>
-          <Notice kind="error" title="No local model is available">
-            The copilot needs a language model running on this computer, and none was found. Plans, imports and replans
-            still work from the Plans page.
-            {status.reason && <details className="mt-2 text-xs"><summary className="cursor-pointer">Technical details</summary>{withoutCommands(status.reason)}</details>}
-          </Notice>
+          <UnavailableNotice status={status} />
         </div>
       )}
       <div className={`space-y-3 ${compact ? 'min-h-0 flex-1 overflow-y-auto px-4 py-3' : 'mb-4 min-h-[16rem]'}`} aria-live="polite">
@@ -161,7 +181,7 @@ export default function CopilotChat({ compact = false }) {
         <form onSubmit={submit} className="flex gap-2">
           <label htmlFor={compact ? 'copilot-dock-input' : 'copilot-input'} className="sr-only">Message to the copilot</label>
           <input id={compact ? 'copilot-dock-input' : 'copilot-input'} className="input" value={text} onChange={(e) => setText(e.target.value)}
-            disabled={busy || off || !status} placeholder={off ? 'No local model available' : 'Type a request'} maxLength={2000} />
+            disabled={busy || off || !status} placeholder={off ? 'Copilot not available' : 'Type a request'} maxLength={2000} />
           <button type="submit" className="btn btn-primary" disabled={busy || off || !status || !text.trim()}>Send</button>
         </form>
       </div>

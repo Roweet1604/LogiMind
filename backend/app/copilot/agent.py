@@ -23,7 +23,7 @@ from langgraph.graph import END, START, StateGraph
 from pydantic import ValidationError
 
 from app.copilot.explain import render, ungrounded_numbers
-from app.copilot.llm import LLM, LLMUnavailable
+from app.copilot.llm import LLM, LLMError, LLMUnavailable
 from app.copilot.schemas import TOOL_FOR, IntentEnvelope, Reroute
 from app.copilot.tools import CopilotTools, ToolError
 from app.db.keys import Principal
@@ -148,6 +148,9 @@ class Copilot:
         except LLMUnavailable as exc:
             return {"session_id": sid, "kind": "unavailable", "text": f"The copilot is not available: {exc}.",
                     "tool_calls": []}
+        except LLMError as exc:  # hosted provider: rejected key, rate limit, network, server error, as they are
+            return {"session_id": sid, "kind": "unavailable" if exc.kind == "auth" else "error", "text": str(exc),
+                    "llm_error": exc.kind, "llm": self.llm.availability().to_dict(), "tool_calls": []}
         reply = state.get("reply") or self._decide(who, session, state["intent"])
         reply.setdefault("tool_calls", [])
         reply["parse_attempts"] = state.get("attempts")

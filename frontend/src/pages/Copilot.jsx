@@ -1,4 +1,4 @@
-import CopilotChat, { CopilotProvider, ModelStatus, useCopilot } from '../components/CopilotChat'
+import CopilotChat, { CopilotProvider, isHosted, ModelStatus, PROVIDERS, useCopilot } from '../components/CopilotChat'
 import { PageHeader, Panel } from '../components/ui'
 import { useAuth } from '../state/AuthContext'
 import { SignInGate } from '../components/Gate'
@@ -21,7 +21,8 @@ function CopilotPage() {
         <aside className="space-y-4 text-sm">
           <Panel title="Model">
             <ModelStatus status={status} />
-            {status?.available && <p className="mt-2 text-xs text-ink2">Runs locally. Replies are templates over tool results; numbers no tool produced are blocked.</p>}
+            {status?.available && !isHosted(status) && <p className="mt-2 text-xs text-ink2">Runs locally. Replies are templates over tool results; numbers no tool produced are blocked.</p>}
+            {status?.available && isHosted(status) && <p className="mt-2 text-xs text-ink2">Runs on {PROVIDERS[status.provider]}&apos;s servers (optional free tier): your messages and your plans&apos; names and ids are sent there, routes are not. Replies are still templates over tool results.</p>}
           </Panel>
           <Panel title="What it can do">
             <ul className="list-disc space-y-1 pl-4 text-ink2">
