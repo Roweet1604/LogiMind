@@ -2,6 +2,7 @@ import { Ban, Bot, HelpCircle, MessageSquare, ShieldCheck, Wrench } from 'lucide
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
+import { loadLlmSettings } from '../lib/llmSettings'
 import { useAuth } from '../state/AuthContext'
 import { Badge, Notice, Spinner } from './ui'
 
@@ -35,7 +36,12 @@ export function CopilotProvider({ children }) {
 
   const loadStatus = useCallback(() => {
     if (state !== 'in') return
-    api.copilotStatus().then(setStatus).catch((e) => setStatus({ available: false, reason: e.message }))
+    api.copilotStatus().then(setStatus).catch((e) => {
+      // e.g. a 400 for Copilot settings the server refused: say so, with the provider chosen in this tab
+      const s = loadLlmSettings()
+      setStatus({ available: false, provider: s.provider || 'server', model: s.model || null, reason: e.message,
+        problem: e.status === 400 ? 'Copilot settings not accepted' : '' })
+    })
   }, [state])
 
   const closeConfirms = (list) => list.map((m) => (m.kind === 'confirm' ? { ...m, open: false } : m))

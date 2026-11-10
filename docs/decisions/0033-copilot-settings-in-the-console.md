@@ -57,3 +57,28 @@ it to the server is safe only if the server never keeps it and cannot be used to
 a host resolving to 192.168.x, a host with one public and one private address, IPv6 ULA, IPv4-mapped; pinning;
 DNS change between calls; redirects; 1 MB cap; plain results; key never in replies, logs or audit; precedence;
 invariants; tenant isolation). `frontend/src/test/copilotSettings.test.jsx`.
+
+## Checked in a real browser (10 Nov 2026, Chrome via Claude in Chrome)
+Set-up: a scratch clone of commit 017113d with its own `backend\.env` (server model `none`; Groq's address set to a
+local **fake Groq server** by the operator setting from decision 0032; no Groq key on the server). The fake server
+accepts only one fake key, answers 429 for another, 401 otherwise; it is not a language model. All keys typed were
+fake. The developer's own `backend\.env` was not changed.
+- Copilot settings → Groq, model, key → Test connection: **Key rejected** (wrong key), **Rate limit reached**
+  (429, "try again in 20 s"), **Model not found** (unknown model), **Works**; then a chat answer built from the
+  `explain` tool, with the panel showing "groq · fake-groq-model". After saving, the key field was empty and only
+  "••••" plus the last 4 characters showed.
+- OpenAI-compatible: `http://…` → **Settings not accepted** (https only); `https://169.254.169.254/latest/meta-data`,
+  `https://localhost:8075/api` (resolved by the real system DNS to 127.0.0.1) and `https://10.0.0.5/v1` →
+  **Address not allowed**, before anything was sent.
+- Fake server stopped → **Not reachable**. **Clear key** → key gone from sessionStorage; the status fell back to the
+  server's settings ("GROQ_API_KEY is empty in backend\.env"), as designed.
+- localStorage stayed empty; no request URL contained a key (network log); the key was not in the page; none of the
+  four fake keys was in the API's logs.
+- **Found and fixed:** after settings the server refused (400), the panel said "undefined: not available" and
+  "No local model is available". It now says "Copilot settings not accepted" with the provider and model (test added).
+- Seen once, not reproduced: the settings box was closed after a test. A later hot reload of the page also closed it
+  (it is a plain `<details>` and does not remember being open); the same refused test with the page unchanged kept it
+  open.
+- **Not checked:** a real provider (no real key used); the success path of an OpenAI-compatible service and the
+  pinned TLS connection to a real public https host (unit tests only: no public test server); Gemini in the browser;
+  the docked panel's copy of the box (same component, unit-tested); the 1 MB cap and redirects (unit tests only).

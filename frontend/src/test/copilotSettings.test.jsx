@@ -112,3 +112,14 @@ test('signing out clears the copilot settings with the sign-in', async () => {
   await userEvent.click(await screen.findByRole('button', { name: /sign out/i }))
   expect(sessionStorage.getItem('logimind.llm')).toBeNull()
 })
+
+test('settings the server refuses are shown as "Copilot settings not accepted", not as a missing local model', async () => {
+  sessionStorage.setItem('logimind.llm', JSON.stringify({ provider: 'openai', model: 'm-1', baseUrl: 'http://x', key: KEY }))
+  recording({ ...BASE, 'GET /api/copilot/status': { __status: 400, body: { detail:
+    'Copilot settings: OpenAI-compatible base URL: the base URL must start with https://.' } } })
+  renderPage(<Copilot />)
+  expect(await screen.findByText('Copilot settings not accepted')).toBeInTheDocument()
+  expect(screen.getByText('openai · m-1: not available')).toBeInTheDocument()
+  expect(screen.queryByText(/no local model is available/i)).not.toBeInTheDocument()
+  expect(document.body.textContent).not.toContain(KEY)
+})
