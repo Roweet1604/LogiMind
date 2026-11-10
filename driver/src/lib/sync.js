@@ -22,6 +22,7 @@ export async function flushQueue(token, queue, send = postStatus) {
   const synced = []
   const rejected = []
   let i = 0
+  let stoppedStatus = null
   for (; i < queue.length; i++) {
     const item = queue[i]
     try {
@@ -29,11 +30,13 @@ export async function flushQueue(token, queue, send = postStatus) {
       synced.push(item)
     } catch (err) {
       const s = err.status ?? 0
-      if (s === 0 || s === 401 || s === 408 || s === 429 || s >= 500) break
+      if (s === 0 || s === 401 || s === 408 || s === 429 || s >= 500) { stoppedStatus = s; break }
       rejected.push({ item, error: err.message })
     }
   }
-  return { remaining: queue.slice(i), synced, rejected, stoppedBy: i < queue.length ? 'unsent' : null }
+  // serverDown: the server did not answer (no reply, or a 5xx from it or the proxy in front of it)
+  return { remaining: queue.slice(i), synced, rejected, stoppedBy: i < queue.length ? 'unsent' : null,
+    serverDown: stoppedStatus === 0 || stoppedStatus >= 500 }
 }
 
 // The status a stop should show: the newest queued report wins over the last one the server knows.

@@ -1,13 +1,14 @@
 import { CheckCircle2, XCircle } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../lib/api'
+import { asUtc } from '../lib/format'
 import { Notice, Panel, TableWrap } from './ui'
 
 const REASON = {
   not_home: 'nobody home', refused: 'refused', wrong_address: 'wrong address', access_problem: 'no access',
   damaged: 'damaged', other: 'other',
 }
-const when = (iso) => (iso ? new Date(iso).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—')
+const when = (iso) => (iso ? new Date(asUtc(iso)).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—')
 
 // Dispatcher view of P9: make a signed link per route for the driver app, revoke it, and see drivers' reports.
 // Shown only for completed, feasible plans (the backend refuses links for anything else).
@@ -79,7 +80,7 @@ export default function DriverLinks({ plan, routes }) {
                 <td className="text-xs">{when(e.received_at)}</td><td className="num">{photos[e.customer_id] || 0}</td>
               </tr>))}</tbody>
           </TableWrap>
-          <p className="mt-2 text-xs text-ink2">A failed stop is not replanned automatically; use the replan form below if needed.</p>
+          <p className="mt-2 text-xs text-ink2">A failed stop is not replanned automatically; use the plan's replan form if needed.</p>
         </div>
       )}
     </Panel>

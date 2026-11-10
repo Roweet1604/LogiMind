@@ -13,9 +13,12 @@ export function fmtSeconds(v) {
   return isNum(v) ? `${v.toFixed(v < 10 ? 2 : 1)} s` : '—'
 }
 
+// The database stores UTC; SQLite drops the zone, so a timestamp without one is read as UTC, not local time.
+export const asUtc = (iso) => (/^\d{4}-\d\d-\d\dT[\d:.]+$/.test(iso) ? `${iso}Z` : iso)
+
 export function fmtTime(iso) {
   if (!iso) return '—'
-  const d = new Date(iso)
+  const d = new Date(asUtc(iso))
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleString('en-GB', { hour12: false, dateStyle: 'short', timeStyle: 'medium' })
 }
 

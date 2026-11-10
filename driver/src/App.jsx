@@ -134,6 +134,7 @@ export default function App() {
   const [queue, setQueueState] = useState(() => (token ? loadQueue(token) : []))
   const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine !== false))
   const [syncNote, setSyncNote] = useState(null)
+  const [serverDown, setServerDown] = useState(false) // a report could not be sent: the server did not answer
   const [photo, setPhoto] = useState({})
   const queueRef = useRef(queue)
   const syncing = useRef(false)
@@ -143,7 +144,7 @@ export default function App() {
   const load = useCallback(async () => {
     try {
       const r = await getRoute(token)
-      setRoute(r); setSource('live'); setFatal(null); setOnline(true)
+      setRoute(r); setSource('live'); setFatal(null); setOnline(true); setServerDown(false)
       saveRoute(token, r)
     } catch (err) {
       if (err.status === 401) { setFatal('expired'); return }
@@ -159,6 +160,7 @@ export default function App() {
     try {
       const res = await flushQueue(token, queueRef.current)
       if (res.synced.length || res.rejected.length) setOnline(true)
+      setServerDown(res.serverDown)
       // reports made while this flush ran stay queued behind the unsent ones
       const sent = new Set([...res.synced, ...res.rejected.map((r) => r.item)])
       setQueue(queueRef.current.filter((q) => !sent.has(q)))
@@ -228,8 +230,9 @@ export default function App() {
   const done = stops.filter((s) => s.status !== 'pending').length
   const nextSeq = stops.find((s) => s.status === 'pending')?.seq
   // Display only: the phone can be online while the server is not answering (then the saved copy is shown).
-  const connected = online && source !== 'cache'
-  const connection = !online ? 'Offline' : source === 'cache' ? 'Server unreachable' : 'Online'
+  const unreachable = source === 'cache' || serverDown
+  const connected = online && !unreachable
+  const connection = !online ? 'Offline' : unreachable ? 'Server unreachable' : 'Online'
   return (
     <main className="mx-auto max-w-xl pb-10">
       <div className="sticky top-0 z-10">

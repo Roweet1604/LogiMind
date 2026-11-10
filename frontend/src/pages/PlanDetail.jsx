@@ -35,7 +35,8 @@ export function ReplanPanel({ plan, onReplanned }) {
   const [sending, setSending] = useState(false)
 
   if (plan.state !== 'completed' || plan.feasible !== true) {
-    return <Notice title="Replanning needs a completed, feasible plan">This plan is {plan.feasible === false ? 'infeasible' : plan.state}.</Notice>
+    const why = plan.state !== 'completed' ? `still ${plan.state}` : plan.feasible === false ? 'not feasible' : 'without a solution'
+    return <Notice title="Replanning needs a completed, feasible plan">This plan is {why}.</Notice>
   }
   const pending = used.flatMap(({ r, v }) => r.slice(completed[v] || 0))
   const anyFrozen = Object.values(completed).some((n) => n > 0)

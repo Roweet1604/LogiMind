@@ -46,3 +46,22 @@ test('stop status and connection status are words with an icon, not colour alone
   const online = screen.getByText('Online')
   expect(online.querySelector('svg')).not.toBeNull()
 })
+
+test('a report the server does not answer turns the badge to "Server unreachable" until a report gets through', async () => {
+  let up = false
+  mockFetch({
+    'GET /api/driver/route': ROUTE,
+    'POST /api/driver/stops/3/status': () => (up ? { ok: true } : { __status: 502, detail: 'Bad Gateway' }),
+  })
+  const user = (await import('@testing-library/user-event')).default
+  render(<App />)
+  await screen.findByText('Customer 3')
+  expect(screen.getByText('Online')).toBeInTheDocument()
+  await user.click(within(card(3)).getByRole('button', { name: 'Delivered' }))
+  expect(await screen.findByText('Server unreachable')).toBeInTheDocument()
+  expect(screen.queryByText('Online')).not.toBeInTheDocument()
+  up = true
+  await user.click(screen.getByRole('button', { name: /sync now/i }))
+  expect(await screen.findByText('Online')).toBeInTheDocument()
+  expect(screen.queryByText('Server unreachable')).not.toBeInTheDocument()
+})

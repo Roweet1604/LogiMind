@@ -73,12 +73,27 @@ const DISTANCE_SOURCES = [
   ['estimate', 'Estimate: straight line × detour factor'],
 ]
 
+// Middle of the orders, for a lon/lat depot that is nowhere near them (the planar default 50/50 would be in Kazakhstan).
+export function centreOf(customers) {
+  const mean = (k) => customers.reduce((s, c) => s + c[k], 0) / customers.length
+  return { x: Math.round(mean('x') * 1e4) / 1e4, y: Math.round(mean('y') * 1e4) / 1e4 }
+}
+
 function NewPlan({ onCreated }) {
-  const [orders, setOrders] = useState(null)
+  const [orders, setOrdersRaw] = useState(null)
   const [f, setF] = useState({ depot_x: 50, depot_y: 50, vehicle_count: 3, vehicle_capacity: 20, engine: 'auto', time_limit_s: 3, distance_source: 'straight_line' })
+  const [depotMoved, setDepotMoved] = useState(false)
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
-  const set = (k) => (v) => setF((p) => ({ ...p, [k]: v }))
+  const set = (k) => (v) => { if (k.startsWith('depot')) setDepotMoved(false); setF((p) => ({ ...p, [k]: v })) }
+  const setOrders = (o) => {
+    setOrdersRaw(o)
+    if (o?.coordinates !== 'lonlat' || !o.customers?.length) { setDepotMoved(false); return }
+    const c = centreOf(o.customers)
+    if (Math.abs(f.depot_x - c.x) <= 1 && Math.abs(f.depot_y - c.y) <= 1) return
+    setF((p) => ({ ...p, depot_x: c.x, depot_y: c.y }))
+    setDepotMoved(true)
+  }
 
   async function submit(e) {
     e.preventDefault()
@@ -107,6 +122,7 @@ function NewPlan({ onCreated }) {
           <h3 className="col-span-2 text-xs font-semibold uppercase tracking-wider text-ink2">2 · Fleet and engine</h3>
           <Field label="Depot x (or lon)" htmlFor="depot-x"><NumberInput id="depot-x" value={f.depot_x} onChange={set('depot_x')} step="any" /></Field>
           <Field label="Depot y (or lat)" htmlFor="depot-y"><NumberInput id="depot-y" value={f.depot_y} onChange={set('depot_y')} step="any" /></Field>
+          {depotMoved && <p className="col-span-2 text-xs text-ink2" role="status">Depot set to the middle of the orders. Change it to your real depot.</p>}
           <Field label="Vehicles" htmlFor="vehicles"><NumberInput id="vehicles" value={f.vehicle_count} onChange={set('vehicle_count')} min={1} /></Field>
           <Field label="Capacity per vehicle" htmlFor="capacity"><NumberInput id="capacity" value={f.vehicle_capacity} onChange={set('vehicle_capacity')} min={1} /></Field>
           <Field label="Engine" htmlFor="engine">
