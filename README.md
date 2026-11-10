@@ -14,7 +14,7 @@ An API-first hybrid optimization platform with an AI dispatch copilot for small-
 ## Documents
 - [docs/architecture.md](docs/architecture.md): components, rules, a plan's life
 - [docs/api_guide.md](docs/api_guide.md): the API step by step
-- [docs/demo_script.md](docs/demo_script.md): a 10-minute demo using verified features only
+- [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md): the 15-minute presentation script; every step marked VERIFIED or NOT VERIFIED from the browser walk-through in [docs/report/demo/](docs/report/demo/README.md)
 - [docs/limitations.md](docs/limitations.md): everything UNTESTED, NOT VERIFIED or NOT RUN
 - [docs/report/evaluation.md](docs/report/evaluation.md): P10 evaluation (tables, figures, significance tests)
 - [docs/report/deck_draft.md](docs/report/deck_draft.md): revised slide content (draft)

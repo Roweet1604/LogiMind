@@ -1,6 +1,6 @@
 # Limitations: what is UNTESTED, NOT VERIFIED or not built
 
-Last checked: 5 Nov 2026. Words: **UNTESTED** = written but never run; **NOT VERIFIED** = runs in automated tests, but not checked in the real setting; **NOT RUN** = no measurement exists. Do not present any item below as working or measured.
+Last checked: 5 Nov 2026; browser findings added 10 Nov 2026 (docs/report/demo/README.md). Words: **UNTESTED** = written but never run; **NOT VERIFIED** = runs in automated tests, but not checked in the real setting; **NOT RUN** = no measurement exists. Do not present any item below as working or measured.
 
 ## UNTESTED (never run)
 - **Docker Compose** (`docker-compose.yml`, `backend/Dockerfile`, `frontend/` and `driver/` Dockerfiles and nginx configs, `.env.example`): Docker is not installed on the development laptop (decision 0020). This includes the `worker` service, PostgreSQL, the volumes, the nginx `/api` proxy and the one-command start.
@@ -23,6 +23,9 @@ Last checked: 5 Nov 2026. Words: **UNTESTED** = written but never run; **NOT VER
 - **ETA messages**: only a stub sender that logs; no SMS or e-mail provider exists (zero-cost rule).
 
 ## Known design limits (built this way on purpose, or not yet fixed)
+- **Replans forget earlier disruptions** (found in the browser walk-through, 10 Nov 2026): a breakdown or a retry rule applies only to the replan that records it. A later replan of the new plan can give the broken vehicle stops again and can put a retried customer next; completed stops must be re-entered each time. For the demo, replan from the original plan.
+- **No arrival times on the console's plan page**: time windows are respected (validator), but planned arrival and window per stop are shown only in the driver app and the API.
+- **Selector model card** is a document (`docs/model_card_selector.md`), not a console page; the Methodology page does not describe the hybrid or the selector.
 - **Engine picker**: trained and evaluated on synthetic data; not a proven improvement over always using the hybrid (model card).
 - **Hybrid**: the 50/50 split between OR-Tools and the GA is untuned; the hybrid is not a clear win over OR-Tools (P3 and the held-out set, see report).
 - **GA and frozen stops**: the GA cannot keep completed stops; replans with frozen stops must use OR-Tools.
