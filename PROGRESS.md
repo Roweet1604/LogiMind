@@ -1,6 +1,6 @@
 # LogiMind progress
 
-Last updated: 10 Nov 2026, fourteenth session (branch `ui-redesign`): start-dev.bat's port check reads the system's listener table and names PID and program; `--force-ports` (decision 0034). Thirteenth: Copilot settings in the console (decision 0033).
+Last updated: 10 Nov 2026, fifteenth session (branch `ui-redesign`): "Load models" in the Copilot settings box (decision 0035). Fourteenth: start-dev.bat's port check reads the listener table (decision 0034).
 
 ## Done and verified
 ### Phase 0
@@ -231,6 +231,13 @@ Last updated: 10 Nov 2026, fourteenth session (branch `ui-redesign`): start-dev.
 - **Checked after the third commit (not committed, per the three-commit limit):** `start-dev.bat` in the real repository on ports 8050/5195/5196: it filled the empty `LOGIMIND_DRIVER_LINK_SECRET` in `backend\.env`, started, waited and opened the default browser (Edge gained tabs; its address could not be read from here). In Chrome, a new tab on that console signed in by itself with three feasible synthetic plans and the five-item sidebar; no console errors. With the API restarted with `LOGIMIND_DEV_RESEARCH_ENDPOINTS=1`: one "Research" link, its six sub-pages under it when open, the research footer only in this mode, Benchmark lab not switched off. The demo tenant now exists in the developer's local database.
 - **Not checked:** `start-dev.bat` on the default ports (5173 was busy with the developer's own server); a computer without Python or Node.js; the driver app (not changed); a phone. Plan "Created" times show UTC (for example 09:11 for 14:41 IST); existing behaviour, not changed.
 - **Tests at the end (exit codes checked):** ruff exit 0; backend **292 passed** (exit 0, 16 library deprecation warnings; Python 3.14.7, OR-Tools 9.15.6755); console **52 passed**, build exit 0; driver PWA **20 passed**.
+
+### Fifteenth session, 10 Nov 2026: "Load models" (decision 0035)
+- **Branch note:** the repository was on `main` when this session started, and the fourteenth session's commit 2d7649b had gone straight onto `main`. `ui-redesign` was fast-forwarded to `main` and this session's commit is on `ui-redesign`.
+- **Built:** "Load models" in the Copilot settings box → `POST /api/copilot/models` (same key header, guard, https, timeouts and 1 MB cap). Groq / OpenAI-compatible `GET /models`, Gemini `GET /models?pageSize=1000` (generateContent models only), Ollama `/api/tags`; non-chat models (embedding, speech, guard, moderation, image) filtered out; sorted. Picking a model fills the name and runs Test connection at once. A list that cannot be fetched gives a plain reason and the text field stays. With no model name (console settings, none in `backend\.env`) the first chat model of the list is used and named; the console writes it into the field.
+- **Tests:** backend +14 (`tests/test_copilot_models.py`, fake HTTP and DNS), console +7 (`src/test/copilotModels.test.jsx`).
+- **Browser check** with a fake Groq server (screenshots 43-47 in `docs/report/demo/`): Key rejected with the fallback; 2 chat models listed (speech and guard filtered); pick → Works; empty name → "another-chat-model was chosen"; metadata address blocked; provider down → Not reachable; no key in localStorage, page or logs. Not checked: a real provider's list, Gemini's and Ollama's lists in the browser.
+- **Tests at the end (exit codes checked):** ruff exit 0; console **77 passed**; driver PWA **21 passed**; console build exit 0. Backend: the first full run had **1 failure**, `tests/test_replan.py::test_replan_is_tenant_isolated` (its first 1 s plan was not finished within the test's 30 s wait; that run took 317 s instead of about 250 s). Alone it passed 3 of 3 and its file 15 of 15; the second full run: **386 passed** (exit 0). This change touches no replan code; the cause of the slow run was not found (laptop load is a guess). The test was not changed.
 
 ### Fourteenth session, 10 Nov 2026: the busy-port report (decision 0034)
 - **Reported:** start-dev.bat said 8000, 5173 and 5174 were busy while `netstat ... | findstr` printed nothing.

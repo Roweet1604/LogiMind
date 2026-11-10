@@ -82,6 +82,9 @@ class FakeLLM:
         return {"ok": True, "kind": "ok", "provider": self.provider, "model": self.model,
                 "message": "Works: deterministic fake model (tests only)."}
 
+    def list_models(self) -> list[str]:
+        return [self.model] if self.model else []
+
     def complete_json(self, system: str, messages: list[dict[str, str]], schema: dict[str, Any]) -> str:
         self.calls.append({"system": system, "messages": [dict(m) for m in messages], "schema": schema})
         out = self.respond(system, messages) if self.respond else (self.script.pop(0) if self.script else "{}")
@@ -104,6 +107,9 @@ class NoLLM:
 
     def test_connection(self) -> dict[str, Any]:
         return {"ok": False, "kind": "none", "provider": self.provider, "model": None, "message": self.reason}
+
+    def list_models(self) -> list[str]:
+        raise LLMError("none", self.reason)
 
 
 @dataclass
@@ -137,6 +143,15 @@ class OllamaLLM:
         msg = (f"Ollama is running, but the model {self.model} is not installed." if kind == "model"
                else f"Ollama is not reachable at {self.url}: it is not running on this computer.")
         return {"ok": False, "kind": kind, "provider": self.provider, "model": self.model, "message": msg}
+
+    def list_models(self) -> list[str]:
+        try:
+            r = httpx.get(f"{self.url}/api/tags", timeout=5.0)
+            r.raise_for_status()
+            return chat_models([m.get("name") for m in r.json().get("models", []) if isinstance(m, dict)])
+        except (httpx.HTTPError, ValueError, AttributeError):
+            raise LLMError("network", f"Ollama is not reachable at {self.url}: it is not running on this computer."
+                           ) from None
 
     def complete_json(self, system: str, messages: list[dict[str, str]], schema: dict[str, Any]) -> str:
         av = self.availability()
@@ -176,6 +191,18 @@ def read_dotenv(path: Path) -> dict[str, str]:
     return out
 
 
+# Model ids that are not chat models (speech, embeddings, safety classifiers, images). "Load models" hides them.
+NOT_CHAT = ("embed", "whisper", "tts", "guard", "moderation", "dall-e", "imagen", "image-generation", "transcri",
+            "speech", "audio", "aqa", "rerank", "playai", "orpheus")
+MAX_MODELS = 500
+
+
+def chat_models(names: list[Any]) -> list[str]:
+    """Clean, de-duplicated, sorted list of chat model ids (the first one is the automatic choice)."""
+    ok = {n.strip() for n in names if isinstance(n, str) and 0 < len(n.strip()) <= 200 and n.isprintable()}
+    return sorted(n for n in ok if not any(bad in n.lower() for bad in NOT_CHAT))[:MAX_MODELS]
+
+
 def portable_schema(schema: dict[str, Any]) -> dict[str, Any]:
     """The intent schema without Pydantic's OpenAPI-only `discriminator` keyword (not JSON Schema)."""
     def strip(node):
@@ -213,6 +240,8 @@ class HostedLLM:
     settings_from: str = "env"  # "env" (backend/.env) or "ui" (Copilot settings in the console, decision 0033)
     guarded: bool = False  # True: the base URL is checked and pinned (netguard) before every call
     resolve: Resolver | None = field(default=None, repr=False)  # tests: a fake DNS
+    auto_model: bool = False  # console settings without a model name: use the first chat model in the list
+    chosen_automatically: bool = False
     _cache: tuple[float, Availability] | None = field(default=None, repr=False)
 
     def _scrub(self, text: str) -> str:
@@ -227,7 +256,7 @@ class HostedLLM:
                 f"{self.key_var} is empty in {ENV_FILE}"
             return Availability(False, self.provider, self.model or None,
                                 f"{self.label} key missing or rejected: {why}", f"{self.label} key missing or rejected")
-        if not self.model:
+        if not self.model and not self.auto_model:
             return Availability(False, self.provider, None,
                                 f"{self.label} model not set: put a model name in {self._where(self.model_var)}",
                                 f"{self.label} model not set")
@@ -241,12 +270,38 @@ class HostedLLM:
             kind = "auth" if not self.api_key else "model"
             return {"ok": False, "kind": kind, "provider": self.provider, "model": self.model, "message": bad.reason}
         try:
-            self._probe()
+            self._choose_model()
+            if not self.chosen_automatically:
+                self._probe()
         except LLMError as exc:
             return {"ok": False, "kind": exc.kind, "provider": self.provider, "model": self.model,
                     "message": self._scrub(str(exc))}
         return {"ok": True, "kind": "ok", "provider": self.provider, "model": self.model,
-                "message": f"Works: {self.label} accepted the key and offers the model {self.model}."}
+                "chosen_automatically": self.chosen_automatically, "message": self._works()}
+
+    def _works(self) -> str:
+        if self.chosen_automatically:
+            return (f"Works: {self.label} accepted the key. No model name was given, so {self.model} was chosen "
+                    "(the first chat model in its list).")
+        return f"Works: {self.label} accepted the key and offers the model {self.model}."
+
+    def _choose_model(self) -> None:
+        """Console settings without a model name: take the first chat model from the provider's list."""
+        if self.model or not self.auto_model:
+            return
+        models = self.list_models()
+        if not models:
+            raise LLMError("model", f"{self.label} lists no chat models for this key. Type a model name in {UI}.")
+        self.model, self.chosen_automatically = models[0], True
+
+    def list_models(self) -> list[str]:
+        """The provider's chat models (one list call through the same guard and limits). Never needs a model."""
+        if not self.api_key:
+            raise LLMError("auth", self._setup_problem().reason)
+        return chat_models(self._list_raw())
+
+    def _list_raw(self) -> list[Any]:
+        raise NotImplementedError
 
     def availability(self) -> Availability:
         bad = self._setup_problem()
@@ -256,8 +311,12 @@ class HostedLLM:
         if self._cache and now < self._cache[0]:
             return self._cache[1]
         try:
-            self._probe()
-            av = Availability(True, self.provider, self.model, f"hosted {self.label} model (optional free tier)")
+            self._choose_model()
+            if not self.chosen_automatically:
+                self._probe()
+            how = "chosen automatically: the first chat model in its list" if self.chosen_automatically else \
+                "optional free tier"
+            av = Availability(True, self.provider, self.model, f"hosted {self.label} model ({how})")
         except LLMError as exc:
             av = Availability(False, self.provider, self.model, str(exc), f"{self.label} {SHORT[exc.kind]}")
         self._cache = (now + (300.0 if av.available else 30.0), av)
@@ -268,6 +327,7 @@ class HostedLLM:
         if bad:
             raise LLMUnavailable(bad.reason)
         try:
+            self._choose_model()
             return self._complete(system, messages, portable_schema(schema))
         except LLMError as exc:
             if exc.kind == "auth":  # show the rejected key in the status at once, not after the cache expires
@@ -359,8 +419,11 @@ class OpenAICompatLLM(HostedLLM):
     def _headers(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self.api_key}"}
 
+    def _list_raw(self) -> list[Any]:
+        return [m.get("id") for m in (self._request("GET", "/models").get("data") or []) if isinstance(m, dict)]
+
     def _probe(self) -> None:
-        ids = {m.get("id") for m in (self._request("GET", "/models").get("data") or []) if isinstance(m, dict)}
+        ids = set(self._list_raw())
         if self.model not in ids:
             raise LLMError("model", f"{self.label}: model {self.model!r} not found in its model list. "
                                     f"Check the model name in {self._where(self.model_var)}.")
@@ -402,6 +465,14 @@ class GeminiLLM(HostedLLM):
 
     def _probe(self) -> None:
         self._request("GET", f"/models/{self.model}")
+
+    def _list_raw(self) -> list[Any]:
+        """Models that can generate content; ids without the "models/" prefix. The key stays in the header."""
+        out = []
+        for m in self._request("GET", "/models?pageSize=1000").get("models") or []:
+            if isinstance(m, dict) and "generateContent" in (m.get("supportedGenerationMethods") or []):
+                out.append(str(m.get("name", "")).removeprefix("models/"))
+        return out
 
     def _complete(self, system, messages, schema):
         body = {"systemInstruction": {"parts": [{"text": system}]},
@@ -476,11 +547,12 @@ def llm_from_settings(s: dict[str, str], env: dict[str, str] | None = None, dote
         except BlockedURL as exc:
             raise SettingsError(f"OpenAI-compatible base URL: {exc}") from None
         return OpenAICompatLLM(model=model, api_key=key, base_url=base, settings_from="ui", guarded=True,
-                               transport=transport, resolve=resolve)
+                               transport=transport, resolve=resolve, auto_model=not model)
     cls, prefix = HOSTED[provider]
     conf = read_dotenv(BACKEND_ENV if dotenv is None else dotenv)
     llm = cls(model=model or conf.get(f"{prefix}_MODEL", ""), api_key=key or conf.get(f"{prefix}_API_KEY", ""),
               settings_from="ui" if key else "env", transport=transport, resolve=resolve)
+    llm.auto_model = not llm.model  # chosen in the console without a model name: first chat model in the list
     override = conf.get(f"LOGIMIND_{prefix}_BASE_URL", "")
     if override and _is_loopback_url(override):  # operator's own setting in backend/.env (decision 0032)
         llm.base_url = override.rstrip("/")

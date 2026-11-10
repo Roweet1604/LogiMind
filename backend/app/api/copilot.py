@@ -61,6 +61,13 @@ def copilot_test(request: Request, who: Principal = Depends(require_principal)) 
     return request.app.state.copilot.test_connection(llm_for(request))
 
 
+@router.post("/models")
+def copilot_models(request: Request, who: Principal = Depends(require_principal)) -> dict:
+    """The provider's chat models for the console's "Load models": one list call with the same key header, guard and
+    limits as every other call. Returns names only, or a plain error; never the key."""
+    return request.app.state.copilot.list_models(llm_for(request))
+
+
 @router.post("/chat")
 def copilot_chat(body: ChatIn, request: Request, who: Principal = Depends(require_principal)) -> dict:
     """One message. Reply kinds: answer, clarify, confirm (needs POST /confirm), refuse, error, unavailable.

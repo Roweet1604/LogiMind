@@ -128,7 +128,10 @@ Choose a model that supports structured (JSON-schema) output; at the time of wri
 `openai/gpt-oss-20b` on Groq or `gemini-2.5-flash` on Gemini. Check the provider's current model list.
 
 **Way 1, in the console (one browser tab):** open the copilot panel (or the Copilot page) → **Copilot settings** →
-choose the provider, type the model name, paste the key → **Test connection**. You get a plain answer: "Works",
+choose the provider, paste the key, press **Load models** and pick a model from the list (picking one tests it
+at once), or type the model name → **Test connection**. Leave the name empty to use the first chat model in
+the provider's list; the box says which one it chose (decision 0035). If the list cannot be loaded, the box
+says why and you can still type the name. You get a plain answer: "Works",
 "Key rejected", "Model not found", "Rate limit reached", "Not reachable" or "Address not allowed". The key stays only
 in this browser tab (sessionStorage; gone when the tab closes or you sign out), afterwards only its last 4 characters
 are shown, and **Clear key** removes it. It is sent to our own server with each copilot request and the server never

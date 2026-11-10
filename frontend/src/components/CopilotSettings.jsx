@@ -1,4 +1,4 @@
-import { KeyRound, PlugZap, Trash2 } from 'lucide-react'
+import { KeyRound, ListChecks, PlugZap, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { api } from '../lib/api'
 import { NEEDS_KEY, PROVIDER_OPTIONS, last4, loadLlmSettings, saveLlmSettings } from '../lib/llmSettings'
@@ -23,29 +23,66 @@ export default function CopilotSettings({ compact = false }) {
   const [keyInput, setKeyInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState(null)
-  const set = (k) => (e) => { setForm((f) => ({ ...f, [k]: e.target.value })); setResult(null) }
+  const [models, setModels] = useState(null)        // the provider's chat models after "Load models"
+  const [listResult, setListResult] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const set = (k) => (e) => {
+    setForm((f) => ({ ...f, [k]: e.target.value })); setResult(null)
+    if (k !== 'model') { setModels(null); setListResult(null) }  // another provider or address: list again
+  }
   const needsKey = NEEDS_KEY.has(form.provider)
   const sameProvider = saved.provider === form.provider
   const keyNow = keyInput || (sameProvider ? saved.key : '')
   const idp = compact ? 'dock-llm' : 'page-llm'
 
-  function apply() {
-    const s = saveLlmSettings({ ...form, key: keyNow || '' })
+  function apply(f = form) {
+    const s = saveLlmSettings({ ...f, key: keyNow || '' })
     setSaved(s); setKeyInput('')
     copilot?.settingsChanged()
     return s
   }
 
-  async function test(e) {
-    e.preventDefault()
-    const s = apply()
+  async function runTest(s) {
     setBusy(true); setResult(null)
     try {
       const r = await api.copilotTest(s)
+      if (r.ok && r.model && !s.model) {  // no model name was given: keep the one the server chose (it says which)
+        const f = { ...form, ...s, model: r.model }
+        setForm((old) => ({ ...old, model: r.model }))
+        setSaved(saveLlmSettings({ ...f, key: s.key }))
+        copilot?.settingsChanged()
+      }
       setResult({ kind: r.ok ? 'ok' : r.kind, message: r.message })
     } catch (err) {
       setResult({ kind: err.unreachable ? 'network' : 'settings', message: err.message })
     } finally { setBusy(false) }
+  }
+
+  function test(e) {
+    e.preventDefault()
+    runTest(apply())
+  }
+
+  // "Load models": the provider's list through our server (same key header, guard and limits as every call).
+  async function loadModels() {
+    const s = apply()
+    setLoading(true); setListResult(null); setResult(null)
+    try {
+      const r = await api.copilotModels(s)
+      setModels(r.ok ? r.models : null)
+      setListResult({ kind: r.ok ? 'ok' : r.kind, message: r.ok ? r.message : `${r.message} You can still type the model name.` })
+    } catch (err) {
+      setModels(null)
+      setListResult({ kind: err.unreachable ? 'network' : 'settings', message: `${err.message} You can still type the model name.` })
+    } finally { setLoading(false) }
+  }
+
+  function pick(e) {
+    const model = e.target.value
+    if (!model) return
+    const f = { ...form, model }
+    setForm(f)
+    runTest(apply(f))  // picking a model tests it at once
   }
 
   function clearKey() {
@@ -57,7 +94,9 @@ export default function CopilotSettings({ compact = false }) {
   const summary = saved.provider
     ? `${PROVIDER_OPTIONS.find(([v]) => v === saved.provider)?.[1]}${saved.model ? ` · ${saved.model}` : ''}${saved.key ? ` · key ${last4(saved.key)}` : ''}`
     : 'Server settings'
-  const [kind, headline] = result ? (RESULT[result.kind] || ['error', result.kind === 'settings' ? 'Settings not accepted' : 'Did not work']) : []
+  const headlineOf = (r) => (RESULT[r.kind] || ['error', r.kind === 'settings' ? 'Settings not accepted' : 'Did not work'])
+  const [kind, headline] = result ? headlineOf(result) : []
+  const [listKind, listHeadline] = listResult ? (listResult.kind === 'ok' ? ['ok', 'Models loaded'] : headlineOf(listResult)) : []
   return (
     <details className={`rounded border border-rule bg-panel ${compact ? 'mx-4 mt-3' : ''}`}>
       <summary className="cursor-pointer px-3 py-2 text-sm font-medium">
@@ -70,7 +109,7 @@ export default function CopilotSettings({ compact = false }) {
           </select>
         </Field>
         {form.provider && (
-          <Field label="Model name" htmlFor={`${idp}-model`} hint={form.provider === 'ollama' ? 'Empty: the server’s default model.' : 'Empty: the model in backend\\.env, if any.'}>
+          <Field label="Model name" htmlFor={`${idp}-model`} hint={form.provider === 'ollama' ? 'Empty: the server’s default model.' : 'Empty: the model in backend\\.env, or else the first chat model in the provider’s list.'}>
             <input id={`${idp}-model`} className="input" value={form.model} onChange={set('model')} placeholder={MODEL_HINT[form.provider]}
               autoComplete="off" spellCheck={false} maxLength={200} />
           </Field>
@@ -90,6 +129,15 @@ export default function CopilotSettings({ compact = false }) {
         {needsKey && sameProvider && saved.key && (
           <p className="flex items-center gap-2 text-xs"><KeyRound size={14} aria-hidden="true" />Key saved for this tab: <span className="font-mono">{last4(saved.key)}</span></p>
         )}
+        {models && models.length > 0 && (
+          <Field label={`Available models (${models.length})`} htmlFor={`${idp}-models`} hint="Picking one fills in the model name and tests it.">
+            <select id={`${idp}-models`} className="input" value={models.includes(form.model) ? form.model : ''} onChange={pick} disabled={busy}>
+              <option value="">Pick a model…</option>
+              {models.map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </Field>
+        )}
+        {listResult && <Notice kind={listKind} title={listHeadline}>{listResult.message}</Notice>}
         {needsKey && (
           <p className="text-xs text-ink2">Paid services charge for every message. Your messages and your plans’ names and ids are sent to
             the provider (routes are not). Use synthetic data.</p>
@@ -98,6 +146,11 @@ export default function CopilotSettings({ compact = false }) {
           <button type="submit" className="btn btn-primary" disabled={busy}>
             {busy ? <Spinner label="Testing" /> : <><PlugZap size={16} aria-hidden="true" />Test connection</>}
           </button>
+          {form.provider && (
+            <button type="button" className="btn" onClick={loadModels} disabled={loading || busy}>
+              {loading ? <Spinner label="Loading models" /> : <><ListChecks size={16} aria-hidden="true" />Load models</>}
+            </button>
+          )}
           {needsKey && sameProvider && saved.key && (
             <button type="button" className="btn" onClick={clearKey}><Trash2 size={16} aria-hidden="true" />Clear key</button>
           )}

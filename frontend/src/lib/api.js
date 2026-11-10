@@ -97,6 +97,7 @@ export const api = {
   stopReports: (id) => request(`/api/plans/${id}/stop-reports`),
   copilotStatus: () => request('/api/copilot/status', { extra: llmHeaders() }),
   copilotTest: (settings) => request('/api/copilot/test', { method: 'POST', extra: llmHeaders(settings) }),
+  copilotModels: (settings) => request('/api/copilot/models', { method: 'POST', extra: llmHeaders(settings) }),
   copilotChat: (message, sessionId) => request('/api/copilot/chat', { method: 'POST', body: { message, session_id: sessionId || null }, extra: llmHeaders() }),
   copilotConfirm: (sessionId, pendingId, approve) =>
     request('/api/copilot/confirm', { method: 'POST', body: { session_id: sessionId, pending_id: pendingId, approve } }),

@@ -131,6 +131,23 @@ class Copilot:
     def status(self, llm: LLM | None = None) -> dict:
         return (llm or self.llm).availability().to_dict()
 
+    def list_models(self, llm: LLM | None = None) -> dict:
+        """The provider's chat models for the console's "Load models" (decision 0035). Never the key."""
+        llm = llm or self.llm
+        av = {"provider": getattr(llm, "provider", None)}
+        try:
+            models = llm.list_models()
+        except (LLMError, LLMUnavailable) as exc:
+            text = str(exc)
+            scrub = getattr(llm, "_scrub", None)
+            return {**av, "ok": False, "kind": getattr(exc, "kind", "none"), "models": [],
+                    "message": scrub(text) if scrub else text}
+        if not models:
+            return {**av, "ok": False, "kind": "model", "models": [],
+                    "message": "The provider answered, but its list has no chat models. Type the model name instead."}
+        return {**av, "ok": True, "kind": "ok", "models": models,
+                "message": f"{len(models)} chat model{'s' if len(models) != 1 else ''} found. Pick one."}
+
     def test_connection(self, llm: LLM | None = None) -> dict:
         llm = llm or self.llm
         if hasattr(llm, "test_connection"):
