@@ -13,14 +13,14 @@ import { Field, Spinner } from './ui'
 const TEST_DELAY_MS = 700
 const SERVER_DOWN = "LogiMind's own server is not answering, so the key could not be tested. Start LogiMind with start-dev.bat, then try again."
 const MODEL_HINT = { ollama: 'e.g. llama3.2:3b', groq: 'a model id from Groq’s list', gemini: 'e.g. gemini-2.5-flash',
-  openrouter: 'e.g. a model id ending in :free', openai: 'e.g. gpt-4o-mini' }
+  openrouter: 'e.g. a model id ending in :free', openai: 'a model id from the service’s list' }
 const UNKNOWN_CHOICES = [['', 'Choose the service…'], ['groq', 'Groq'], ['gemini', 'Gemini'], ['openrouter', 'OpenRouter'],
-  ['openai', 'OpenAI'], ['custom', 'Another OpenAI-compatible service (needs its base URL)']]
+  ['custom', 'Another OpenAI-compatible service (needs its base URL)']]
+const NEEDS_BASE = 'Enter the service’s https base URL first; nothing was sent.'
 const TONE = { ok: 'text-ok', error: 'text-err', warn: 'text-warn-body', info: 'text-ink2' }
 
 function labelOf(provider, baseUrl) {
-  if (provider === 'openai' && baseUrl) return 'The OpenAI-compatible service'
-  return { groq: 'Groq', gemini: 'Gemini', openrouter: 'OpenRouter', openai: 'OpenAI', ollama: 'Ollama' }[provider] || provider
+  return { groq: 'Groq', gemini: 'Gemini', openrouter: 'OpenRouter', openai: 'The OpenAI-compatible service', ollama: 'Ollama' }[provider] || provider
 }
 
 export default function CopilotSettings({ compact = false }) {
@@ -105,7 +105,7 @@ export default function CopilotSettings({ compact = false }) {
     setKeyInput(e.target.value); setChosenLine(null); setModels(null)
     const d = detectProvider(e.target.value)
     if (d.kind === 'unsupported') {
-      setSentence({ tone: 'warn', text: `${d.label} keys are not supported yet: LogiMind has no ${d.label} adapter, so nothing was sent.` })
+      setSentence({ tone: 'warn', text: d.message })
     } else if (d.kind === 'unknown') {
       setSentence({ tone: 'info', text: 'This key’s service is not recognised from its start: choose it below; nothing is sent until you do.' })
     } else {
@@ -127,12 +127,15 @@ export default function CopilotSettings({ compact = false }) {
       copilot?.settingsChanged()
       return
     }
+    if (s.provider === 'openai' && !s.baseUrl) { setSentence({ tone: 'info', text: NEEDS_BASE }); return }  // never OpenAI by default
     runTest(s)
   }
 
   async function loadModels() {
     const s = advancedSettings()
-    setSaved(s); setLoading(true); setModels(null)
+    setSaved(s)
+    if (s.provider === 'openai' && !s.baseUrl) { setSentence({ tone: 'info', text: NEEDS_BASE }); return }
+    setLoading(true); setModels(null)
     try {
       const r = await api.copilotModels(s)
       if (r.ok) { setModels(r.models); setSentence({ tone: 'info', text: r.message }) } else {
@@ -148,7 +151,9 @@ export default function CopilotSettings({ compact = false }) {
     if (!model) return
     setAdv((a) => ({ ...a, model }))
     const s = advancedSettings(model)
-    setSaved(s); runTest(s)  // picking a model tests it at once
+    setSaved(s)
+    if (s.provider === 'openai' && !s.baseUrl) { setSentence({ tone: 'info', text: NEEDS_BASE }); return }
+    runTest(s)  // picking a model tests it at once
   }
 
   function clearKey() {

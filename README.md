@@ -23,7 +23,8 @@ An API-first hybrid optimization platform with an AI dispatch copilot for small-
 Keep the Python virtual environment **outside OneDrive** (OneDrive sync and long paths break installs).
 
 **`start-dev.bat`** (decisions 0028, 0030) does everything that is missing, once: creates `%TEMP%\lmv` with `py -3`
-or `python`, installs `backendequirements.txt`, writes `backend\.env` (git-ignored) from `backend\.env.example`
+or `python`, installs `backend
+equirements.txt`, writes `backend\.env` (git-ignored) from `backend\.env.example`
 with a new `LOGIMIND_DRIVER_LINK_SECRET` (existing values are never changed), and runs `npm install` in `frontend\`
 and `driver\`. Then it checks the ports, opens four windows: **API** (http://127.0.0.1:8000, local only),
 **worker** (runs the solver jobs), **console** (http://localhost:5173) and **driver app** (http://localhost:5174),
@@ -123,16 +124,19 @@ all tests work without any model. If you cannot run Ollama, you can use a hosted
 | Groq | free tier | https://console.groq.com → **API Keys** → **Create API Key** |
 | Gemini | free tier | https://aistudio.google.com → **Get API key** → **Create API key** |
 | OpenRouter | free models (ids ending in `:free`) and paid ones | https://openrouter.ai → **Keys** → **Create Key** |
-| OpenAI | **paid** | https://platform.openai.com → **API keys** |
-| Another OpenAI-compatible service | **usually paid** | its own console; you also need its `https://…/v1` base URL |
+| Another OpenAI-compatible service | **usually paid**; optional, never needed | its own console; you also need its `https://…/v1` base URL |
+
+OpenAI itself is not offered: it has no free tier, and LogiMind must stay free to run (CLAUDE.md invariant 12,
+decision 0036).
 
 Choose a model that supports structured (JSON-schema) output; at the time of writing, for example,
 `openai/gpt-oss-20b` on Groq or `gemini-2.5-flash` on Gemini. Check the provider's current model list.
 
 **Way 1, in the console (one browser tab), only the key (decision 0036):** open the copilot panel (or the Copilot
 page) → **Copilot settings** → paste the key into **API key**. The service is recognised from how the key starts,
-in your browser, before anything is sent: `gsk_` Groq, `AIza` Gemini, `sk-or-` OpenRouter, `sk-proj-` / `sk-` OpenAI;
-`sk-ant-` (Anthropic) is not supported yet and nothing is sent. For any other key the box asks which service it is
+in your browser, before anything is sent: `gsk_` Groq, `AIza` Gemini, `sk-or-` OpenRouter;
+an OpenAI key (`sk-proj-` / `sk-`) is not offered and `sk-ant-` (Anthropic) is not supported yet; for both nothing
+is sent. For any other key the box asks which service it is
 for and sends nothing until you choose. A moment after pasting (or when you press Enter) the key is tested with that
 one service, a chat model is chosen from its list (a free one where the service marks them, e.g. OpenRouter's
 `:free` models), and you get one sentence, e.g. "Works: Groq is ready." or "Groq rejected this key. Check that the

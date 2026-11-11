@@ -9,7 +9,7 @@ export const PROVIDER_OPTIONS = [
   ['groq', 'Groq'],
   ['gemini', 'Gemini'],
   ['openrouter', 'OpenRouter'],
-  ['openai', 'OpenAI (or another OpenAI-compatible service)'],
+  ['openai', 'Another OpenAI-compatible service (needs its base URL)'],  // OpenAI itself is not offered (decision 0036)
 ]
 export const NEEDS_KEY = new Set(['groq', 'gemini', 'openai', 'openrouter'])
 const HAS_BASE_URL = new Set(['openai', 'openrouter'])  // empty = the service's own address (decision 0036)

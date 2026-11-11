@@ -1,13 +1,13 @@
 # 0036: Copilot settings need only an API key
 
 Date: 10 Nov 2026. Status: accepted (asked for by the team). Builds on decisions 0032, 0033 and 0035; replaces 0035's
-"first model of the sorted list" rule.
+"first model of the sorted list" rule. **Amended 11 Nov 2026: OpenAI removed from the console (see "Amendment").**
 
 ## Decision
 - **One field by default:** "API key" (password field; browser autofill off: `autocomplete="new-password"`, password
   manager ignore attributes, `autocomplete="off"` on the form). Provider, model, Load models, base URL and a manual
   Test connection are under a collapsed **"Advanced (optional)"**. The box opens by itself while nothing is set.
-- **Provider from the key's prefix, in the browser, before anything is sent** (`frontend/src/lib/keyDetect.js`):
+- **Provider from the key's prefix, in the browser, before anything is sent** (OpenAI: see the amendment) (`frontend/src/lib/keyDetect.js`):
   `gsk_` Groq; `AIza` Gemini; `sk-or-` OpenRouter (OpenAI-compatible, `https://openrouter.ai/api/v1`); `sk-ant-`
   Anthropic: **"Anthropic keys are not supported yet: LogiMind has no Anthropic adapter, so nothing was sent."**;
   `sk-proj-` / `sk-` OpenAI (OpenAI-compatible, `https://api.openai.com/v1`). Surrounding spaces and one pair of quotes
@@ -36,6 +36,22 @@ Date: 10 Nov 2026. Status: accepted (asked for by the team). Builds on decisions
   any other value is ignored.
 - Unchanged: the key stays in sessionStorage for the tab, goes to our server only in the `X-LLM-Key` header, and is
   never stored, logged, returned or put in a URL; the outbound guard, https, timeouts and size cap apply to every call.
+
+## Amendment (11 Nov 2026): OpenRouter kept, OpenAI not offered
+CLAUDE.md invariant 12 (zero cost) allows only hosted providers with a free tier. OpenRouter has free models (`:free`)
+and stays. OpenAI has no free tier, so the console no longer offers it:
+- A key starting `sk-proj-` / `sk-` (other than `sk-or-` and `sk-ant-`) is refused in the browser with "OpenAI keys
+  are not offered: OpenAI has no free tier and LogiMind stays free to run, so nothing was sent. Use Groq, Gemini or
+  OpenRouter." No request is made.
+- "OpenAI" is gone from the unknown-key service choice and from the Advanced provider list. The `openai` adapter
+  remains only as **"Another OpenAI-compatible service (needs its base URL)"**; with no base URL the console sends
+  nothing ("Enter the service's https base URL first; nothing was sent."), so a key never goes to OpenAI by default
+  from the console. That option is opt-in and nothing needs it.
+- Server side unchanged: the backend `openai` provider still defaults to `https://api.openai.com/v1` when called
+  without a base URL (only reachable by a hand-made request with the tenant's own key, or by `backend\.env`). The
+  README's provider table and CLAUDE.md invariant 12 were updated to match.
+- Tests: `frontend/src/test/copilotSettings.test.jsx` (OpenAI key refused with nothing sent; no OpenAI choice; the
+  compatible service sends nothing without a base URL).
 
 ## Limits
 - Prefixes are conventions, not guarantees; a service may change them. Any other key gets the service choice.

@@ -17,7 +17,7 @@ Start every session by reading this file, `PLAN.md` and `PROGRESS.md`, then run 
 9. Every external service (LLM, OSRM, notifications) sits behind an adapter with a deterministic fake, so tests and CI run offline.
 10. When a fallback is used (e.g. straight-line distance because OSRM is down), the plan says so.
 11. Never claim something is done if it is not. Keep `PROGRESS.md` truthful.
-12. Zero cost: no paid or key-gated service is required anywhere. The only exception is the copilot's optional free-tier hosted LLM providers (Groq, Gemini; decision 0032): local Ollama stays the default, tests never need the network, and their keys live only in the git-ignored `backend\.env`. New dependencies must be free, open source and runnable offline. Do not set `ANTHROPIC_API_KEY` globally (Claude Code would bill the API instead of the Pro plan).
+12. Zero cost: no paid or key-gated service is required anywhere. The only exception is the copilot's optional hosted LLM providers with a free tier (Groq, Gemini, OpenRouter's free models; decisions 0032, 0036). OpenAI is not offered (no free tier); "another OpenAI-compatible service" stays only as an opt-in Advanced setting that nothing needs. Local Ollama stays the default, tests never need the network, and hosted keys live only in the git-ignored `backend\.env` or, typed in the console, in that browser tab's sessionStorage (decision 0033), never in a committed file. New dependencies must be free, open source and runnable offline. Do not set `ANTHROPIC_API_KEY` globally (Claude Code would bill the API instead of the Pro plan).
 
 ## Working rules
 - Preserve working code; evolve the baseline instead of rewriting it.

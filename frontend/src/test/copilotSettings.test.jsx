@@ -16,9 +16,9 @@ const BASE = {
   'GET /api/whoami': { tenant_id: 't', tenant_name: 'Acme', key_id: 'k' },
   'GET /api/copilot/status': { available: false, provider: 'none', model: null, reason: 'no model', problem: '' },
 }
-const KEYS = { groq: 'gsk_FAKE_test_key_WXYZ', gemini: 'AIzaFAKE_test_key_WXYZ', openrouter: 'sk-or-v1-FAKE_WXYZ',
-  openai: 'sk-proj-FAKE_test_WXYZ' }
-const LABEL = { groq: 'Groq', gemini: 'Gemini', openrouter: 'OpenRouter', openai: 'OpenAI' }
+const KEYS = { groq: 'gsk_FAKE_test_key_WXYZ', gemini: 'AIzaFAKE_test_key_WXYZ', openrouter: 'sk-or-v1-FAKE_WXYZ' }
+const LABEL = { groq: 'Groq', gemini: 'Gemini', openrouter: 'OpenRouter' }
+const CUSTOM_KEY = 'xyz-FAKE-custom-WXYZ'  // a key for "another OpenAI-compatible service" (OpenAI itself is not offered)
 
 function recording(table) {
   const calls = []
@@ -46,8 +46,8 @@ test('the prefix decides the service, locally', () => {
   expect(detectProvider('gsk_abc')).toMatchObject({ kind: 'known', provider: 'groq', label: 'Groq' })
   expect(detectProvider('AIzaSyabc')).toMatchObject({ kind: 'known', provider: 'gemini' })
   expect(detectProvider('sk-or-v1-abc')).toMatchObject({ kind: 'known', provider: 'openrouter', baseUrl: 'https://openrouter.ai/api/v1' })
-  expect(detectProvider('sk-proj-abc')).toMatchObject({ kind: 'known', provider: 'openai', baseUrl: 'https://api.openai.com/v1' })
-  expect(detectProvider('sk-abc')).toMatchObject({ kind: 'known', provider: 'openai' })
+  expect(detectProvider('sk-proj-abc')).toMatchObject({ kind: 'unsupported', label: 'OpenAI' })  // decision 0036: not offered
+  expect(detectProvider('sk-abc')).toMatchObject({ kind: 'unsupported', label: 'OpenAI' })
   expect(detectProvider('sk-ant-api03-abc')).toMatchObject({ kind: 'unsupported', label: 'Anthropic' })
   expect(detectProvider('xyz-123')).toMatchObject({ kind: 'unknown' })
   expect(detectProvider('  ')).toMatchObject({ kind: 'empty' })
@@ -110,6 +110,27 @@ test('"another OpenAI-compatible service" needs its base URL before anything is 
   expect(sent(calls, 'POST /api/copilot/test')[0].headers).toMatchObject({ 'X-LLM-Provider': 'openai', 'X-LLM-Base-URL': 'https://llm.example.com/v1' })
 })
 
+test('an OpenAI key is refused plainly, OpenAI is not a choice, and nothing is sent', async () => {
+  const calls = recording({ ...BASE, 'POST /api/copilot/test': works, 'POST /api/copilot/models': { ok: true, models: [] } })
+  const box = await openBox()
+  await userEvent.type(keyField(box), 'sk-proj-FAKE-WXYZ{Enter}')
+  expect(within(box).getByText(/OpenAI keys are not offered: OpenAI has no free tier.*so nothing was sent/)).toBeInTheDocument()
+  await new Promise((r) => setTimeout(r, 900))
+  expect(sent(calls, 'POST /api/copilot/test')).toHaveLength(0)
+  await userEvent.clear(keyField(box)); await userEvent.type(keyField(box), 'xyz-FAKE-key-WXYZ')
+  const choices = [...within(box).getByLabelText('Which service is this key for?').options].map((o) => o.textContent)
+  expect(choices.some((t) => /^OpenAI/.test(t))).toBe(false)
+  await userEvent.click(within(box).getByText('Advanced (optional)'))
+  const providers = [...within(box).getByLabelText('Provider').options].map((o) => o.textContent)
+  expect(providers.some((t) => /^OpenAI/.test(t))).toBe(false)
+  await userEvent.selectOptions(within(box).getByLabelText('Provider'), 'openai')  // = another OpenAI-compatible service
+  await userEvent.click(within(box).getByRole('button', { name: /test connection/i }))
+  expect(within(box).getByText('Enter the service’s https base URL first; nothing was sent.')).toBeInTheDocument()
+  await userEvent.click(within(box).getByRole('button', { name: /load models/i }))
+  expect(sent(calls, 'POST /api/copilot/test')).toHaveLength(0)
+  expect(sent(calls, 'POST /api/copilot/models')).toHaveLength(0)
+})
+
 test('an Anthropic key is refused plainly and nothing is sent', async () => {
   const calls = recording({ ...BASE, 'POST /api/copilot/test': works })
   const box = await openBox()
@@ -167,7 +188,7 @@ test('the key field turns browser autofill off and is a password field', async (
 })
 
 test('a refused base URL in Advanced is shown as the server’s sentence', async () => {
-  sessionStorage.setItem('logimind.llm', JSON.stringify({ provider: 'openai', model: '', baseUrl: '', key: KEYS.openai }))
+  sessionStorage.setItem('logimind.llm', JSON.stringify({ provider: 'openai', model: '', baseUrl: '', key: CUSTOM_KEY }))
   const calls = recording({ ...BASE, 'POST /api/copilot/test': { __status: 400, body: { detail:
     'Copilot settings: OpenAI-compatible base URL: the base URL must start with https:// (plain http is allowed only for the local Ollama).' } } })
   renderPage(<Copilot />)
@@ -208,12 +229,12 @@ test('signing out clears the copilot settings with the sign-in', async () => {
 })
 
 test('settings the server refuses are shown as "Copilot settings not accepted", not as a missing local model', async () => {
-  sessionStorage.setItem('logimind.llm', JSON.stringify({ provider: 'openai', model: 'm-1', baseUrl: 'http://x', key: KEYS.openai }))
+  sessionStorage.setItem('logimind.llm', JSON.stringify({ provider: 'openai', model: 'm-1', baseUrl: 'http://x', key: CUSTOM_KEY }))
   recording({ ...BASE, 'GET /api/copilot/status': { __status: 400, body: { detail:
     'Copilot settings: OpenAI-compatible base URL: the base URL must start with https://.' } } })
   renderPage(<Copilot />)
   expect(await screen.findByText('Copilot settings not accepted')).toBeInTheDocument()
   expect(screen.getByText('openai · m-1: not available')).toBeInTheDocument()
   expect(screen.queryByText(/no local model is available/i)).not.toBeInTheDocument()
-  await waitFor(() => expect(document.body.textContent).not.toContain(KEYS.openai))
+  await waitFor(() => expect(document.body.textContent).not.toContain(CUSTOM_KEY))
 })
