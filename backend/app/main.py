@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import logging
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -62,12 +63,19 @@ from app.services.store import Store
 from app.services.webhooks import HttpxSender
 
 
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    yield
+    if app.state.worker is not None:  # inline worker: stop its loop; its thread then stops the solver process
+        app.state.worker.close()
+
+
 def create_app(data_dir: Path | None = None, legacy_open: bool | None = None, clock=None,
                distances: DistanceService | None = None, worker: str | None = None,
                demo: bool | None = None) -> FastAPI:
     """demo: None reads LOGIMIND_DEMO_MODE / LOGIMIND_BIND_HOST (app/demo.py); True/False override it (tests)."""
     default_dir = Path(__file__).resolve().parents[2] / "experiments" / "results" / "api_data"
-    app = FastAPI(title="LogiMind API", version="0.2.0",
+    app = FastAPI(title="LogiMind API", version="0.2.0", lifespan=_lifespan,
                   description="Route planning with OR-Tools, GA and hybrid engines. Tenant endpoints "
                               "(plans, imports, webhooks, audit) need an `X-API-Key` header.")
     origins = os.environ.get("ROUTEOPT_CORS_ORIGINS", "http://localhost:5173").split(",")

@@ -93,8 +93,17 @@ class Worker:
         log.info("worker %s stopped after %d jobs", self.worker_id, self.jobs_done)
 
     def start_thread(self) -> "Worker":
-        threading.Thread(target=self.run_forever, name=f"worker-{self.worker_id}", daemon=True).start()
+        threading.Thread(target=self._run_then_close, name=f"worker-{self.worker_id}", daemon=True).start()
         return self
+
+    def _run_then_close(self) -> None:
+        # The thread owns the guarded solver process: after close() it finishes the current job, then stops it.
+        # Without this every inline app left one solver process behind (about 500 MB each; the test suite ran out
+        # of memory after about 90 of them).
+        try:
+            self.run_forever()
+        finally:
+            self.executor.guard.close()
 
     def close(self) -> None:
         self.stop.set()

@@ -264,3 +264,25 @@ def test_worker_process_crash_and_restart_finishes_the_plan(ext):
     with tenant_session(app.state.db, ext["a"]) as s:
         done = s.scalars(select(AuditLog).where(AuditLog.action == "plan.completed")).one()
     assert done.detail["attempt"] == 2 and done.detail["job_id"] == job_id
+
+
+def test_app_shutdown_stops_the_inline_workers_solver_process(tmp_path):
+    """Each inline app used to leave its solver process running until the interpreter exited (about 500 MB each;
+    the full test suite ran out of memory after about 90 of them)."""
+    app = create_app(tmp_path, worker="inline")
+    with TestClient(app) as c:
+        with admin_session(app.state.db) as s:
+            t = create_tenant(s, "A")
+            _, key = issue_key(s, t.id)
+            s.commit()
+        h = {"X-API-Key": key}
+        plan_id = c.post("/api/plans", json={"instance": TINY, "engine": "ortools", "time_limit_s": 1},
+                         headers=h).json()["plan_id"]
+        end = time.time() + 60
+        while c.get(f"/api/plans/{plan_id}", headers=h).json()["state"] not in ("completed", "failed"):
+            assert time.time() < end, "plan did not finish"
+            time.sleep(0.1)
+        proc = app.state.worker.executor.guard._proc
+        assert proc is not None and proc.is_alive()
+    proc.join(timeout=15)
+    assert not proc.is_alive()
