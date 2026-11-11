@@ -8,9 +8,11 @@ export const PROVIDER_OPTIONS = [
   ['ollama', 'Ollama (local, free)'],
   ['groq', 'Groq'],
   ['gemini', 'Gemini'],
-  ['openai', 'OpenAI-compatible'],
+  ['openrouter', 'OpenRouter'],
+  ['openai', 'OpenAI (or another OpenAI-compatible service)'],
 ]
-export const NEEDS_KEY = new Set(['groq', 'gemini', 'openai'])
+export const NEEDS_KEY = new Set(['groq', 'gemini', 'openai', 'openrouter'])
+const HAS_BASE_URL = new Set(['openai', 'openrouter'])  // empty = the service's own address (decision 0036)
 
 export function loadLlmSettings() {
   try {
@@ -20,7 +22,7 @@ export function loadLlmSettings() {
 }
 
 export function saveLlmSettings({ provider = '', model = '', baseUrl = '', key = '' } = {}) {
-  const s = { provider, model: model.trim(), baseUrl: provider === 'openai' ? baseUrl.trim() : '',
+  const s = { provider, model: model.trim(), baseUrl: HAS_BASE_URL.has(provider) ? baseUrl.trim() : '',
     key: NEEDS_KEY.has(provider) ? key.trim() : '' }
   try {
     if (s.provider) sessionStorage.setItem(STORE, JSON.stringify(s))
@@ -38,7 +40,7 @@ export function llmHeaders(s = loadLlmSettings()) {
   if (!s.provider) return {}
   const h = { 'X-LLM-Provider': s.provider }
   if (s.model) h['X-LLM-Model'] = s.model
-  if (s.provider === 'openai' && s.baseUrl) h['X-LLM-Base-URL'] = s.baseUrl
+  if (HAS_BASE_URL.has(s.provider) && s.baseUrl) h['X-LLM-Base-URL'] = s.baseUrl
   if (NEEDS_KEY.has(s.provider) && s.key) h['X-LLM-Key'] = s.key
   return h
 }

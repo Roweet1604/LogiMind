@@ -180,7 +180,7 @@ def test_bad_base_urls_are_refused_with_a_plain_400(wired, base, words):
 @pytest.mark.parametrize("answer,ok,kind,words", [
     (openai_answer("m-1"), True, "ok", "Works"),
     (lambda r: httpx.Response(401, json={"error": {"message": f"bad key {KEY}"}}), False, "auth",
-     "key missing or rejected (HTTP 401). Check the key in Copilot settings"),
+     "OpenAI-compatible service rejected this key. Check that the whole key was copied, with no spaces or quotes."),
     (openai_answer("another-model"), False, "model", "model 'm-1' not found"),
     (lambda r: httpx.Response(429, headers={"retry-after": "30"}), False, "rate_limit", "try again in 30 s"),
     (lambda r: (_ for _ in ()).throw(httpx.ConnectError("down", request=r)), False, "network", "could not be reached"),

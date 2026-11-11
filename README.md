@@ -122,21 +122,26 @@ all tests work without any model. If you cannot run Ollama, you can use a hosted
 | Ollama (local) | free | no key; install Ollama and `ollama pull llama3.2:3b` |
 | Groq | free tier | https://console.groq.com → **API Keys** → **Create API Key** |
 | Gemini | free tier | https://aistudio.google.com → **Get API key** → **Create API key** |
-| OpenAI-compatible | **usually paid** | the service's own console (for example https://platform.openai.com → **API keys**); you also need its `https://…/v1` base URL |
+| OpenRouter | free models (ids ending in `:free`) and paid ones | https://openrouter.ai → **Keys** → **Create Key** |
+| OpenAI | **paid** | https://platform.openai.com → **API keys** |
+| Another OpenAI-compatible service | **usually paid** | its own console; you also need its `https://…/v1` base URL |
 
 Choose a model that supports structured (JSON-schema) output; at the time of writing, for example,
 `openai/gpt-oss-20b` on Groq or `gemini-2.5-flash` on Gemini. Check the provider's current model list.
 
-**Way 1, in the console (one browser tab):** open the copilot panel (or the Copilot page) → **Copilot settings** →
-choose the provider, paste the key, press **Load models** and pick a model from the list (picking one tests it
-at once), or type the model name → **Test connection**. Leave the name empty to use the first chat model in
-the provider's list; the box says which one it chose (decision 0035). If the list cannot be loaded, the box
-says why and you can still type the name. You get a plain answer: "Works",
-"Key rejected", "Model not found", "Rate limit reached", "Not reachable" or "Address not allowed". The key stays only
-in this browser tab (sessionStorage; gone when the tab closes or you sign out), afterwards only its last 4 characters
-are shown, and **Clear key** removes it. It is sent to our own server with each copilot request and the server never
-stores, logs or returns it. An OpenAI-compatible base URL must be `https://` and a public address; private and
-internal addresses are refused.
+**Way 1, in the console (one browser tab), only the key (decision 0036):** open the copilot panel (or the Copilot
+page) → **Copilot settings** → paste the key into **API key**. The service is recognised from how the key starts,
+in your browser, before anything is sent: `gsk_` Groq, `AIza` Gemini, `sk-or-` OpenRouter, `sk-proj-` / `sk-` OpenAI;
+`sk-ant-` (Anthropic) is not supported yet and nothing is sent. For any other key the box asks which service it is
+for and sends nothing until you choose. A moment after pasting (or when you press Enter) the key is tested with that
+one service, a chat model is chosen from its list (a free one where the service marks them, e.g. OpenRouter's
+`:free` models), and you get one sentence, e.g. "Works: Groq is ready." or "Groq rejected this key. Check that the
+whole key was copied, with no spaces or quotes." A small line names the model. Provider, model, **Load models** and
+the base URL of another OpenAI-compatible service are under **Advanced (optional)**. The key stays only in this
+browser tab (sessionStorage; gone when the tab closes or you sign out), afterwards only its last 4 characters are
+shown, and **Clear key** removes it. It is sent to our own server with each copilot request and the server never
+stores, logs or returns it. A base URL must be `https://` and a public address; private and internal addresses are
+refused.
 
 **Way 2, for the whole server:** put the settings in `backend\.env` (open it with `notepad backend\.env`) and
 restart (`start-dev.bat`), for example:

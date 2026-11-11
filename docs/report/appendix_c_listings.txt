@@ -1,0 +1,1079 @@
+Appendix C: Source code listings
+
+The listings below are copied unchanged from the repository.
+
+====================================================================================================
+C.1 Validator
+File: backend/app/evaluation/validator.py, lines 1-152
+====================================================================================================
+"""Independent route validator.
+
+It trusts nothing from the solver: it only looks at the routes (lists of
+customer IDs, depot implicit at the start and end of every route) and the
+instance. Same code is used for OR-Tools and the GA.
+"""
+from __future__ import annotations
+
+from collections import Counter
+from dataclasses import dataclass, field
+
+from app.models.problem import DEPOT_NODE, TIME_EPS, Instance
+
+VALIDATOR_VERSION = "1.1"  # 1.1: time-window and depot-return checks
+
+UNKNOWN_CUSTOMER = "unknown_customer"
+DEPOT_AS_STOP = "depot_as_stop"
+DUPLICATE_VISIT = "duplicate_visit"
+UNSERVED_CUSTOMER = "unserved_customer"
+CAPACITY_EXCEEDED = "capacity_exceeded"
+TOO_MANY_VEHICLES = "too_many_vehicles"
+TIME_WINDOW_VIOLATED = "time_window_violated"
+DEPOT_RETURN_LATE = "depot_return_late"
+TIME_VIOLATIONS = (TIME_WINDOW_VIOLATED, DEPOT_RETURN_LATE)
+
+
+@dataclass
+class RouteSchedule:
+    """Timeline of one route when it leaves the depot at depot_ready_time and
+    starts every service as early as allowed (waiting when early)."""
+    starts: list[float]       # service start per stop
+    lateness: list[float]     # max(0, start - due) per stop
+    waiting: float            # total waiting before ready times
+    end_time: float           # arrival back at the depot
+    return_lateness: float    # max(0, end_time - depot_due_time)
+
+    @property
+    def total_lateness(self) -> float:
+        return sum(self.lateness) + self.return_lateness
+
+
+def route_schedule(instance: Instance, stops: list[int]) -> RouteSchedule:
+    """Schedule for a route of known customer IDs (unknown IDs are skipped;
+    the validator reports them separately)."""
+    idx = instance.index_of()
+    nodes = [idx[c] for c in stops if c in idx and c != DEPOT_NODE]
+    t = instance.travel_time_matrix()
+    ready, due, service = instance.ready_times, instance.due_times, instance.service_times
+    now, prev, waiting = instance.depot_ready_time, 0, 0.0
+    starts, lateness = [], []
+    for node in nodes:
+        arrival = now + t[prev][node]
+        start = max(arrival, ready[node])
+        waiting += start - arrival
+        starts.append(start)
+        lateness.append(max(0.0, start - due[node]))
+        now, prev = start + service[node], node
+    end = now + t[prev][0] if nodes else instance.depot_ready_time
+    return RouteSchedule(starts, lateness, waiting, end, max(0.0, end - due[0]))
+
+
+@dataclass
+class Violation:
+    type: str
+    detail: str
+    route_index: int | None = None
+
+
+@dataclass
+class ValidationResult:
+    feasible: bool
+    violations: list[Violation] = field(default_factory=list)
+    unserved: list[int] = field(default_factory=list)
+    duplicated: list[int] = field(default_factory=list)
+    route_loads: list[int] = field(default_factory=list)
+    total_lateness: float = 0.0
+    validator_version: str = VALIDATOR_VERSION
+
+    def count(self, violation_type: str) -> int:
+        return sum(1 for v in self.violations if v.type == violation_type)
+
+    def to_dict(self) -> dict:
+        return {
+            "feasible": self.feasible,
+            "violations": [v.__dict__ for v in self.violations],
+            "unserved": self.unserved,
+            "duplicated": self.duplicated,
+            "route_loads": self.route_loads,
+            "total_lateness": self.total_lateness,
+            "validator_version": self.validator_version,
+        }
+
+
+def validate_routes(instance: Instance, routes: list[list[int]]) -> ValidationResult:
+    demand_of = {c.id: c.demand for c in instance.customers}
+    violations: list[Violation] = []
+    loads: list[int] = []
+    visits: Counter[int] = Counter()
+
+    for r, stops in enumerate(routes):
+        load = 0
+        for cid in stops:
+            if cid == DEPOT_NODE:
+                violations.append(Violation(DEPOT_AS_STOP, f"route {r} lists the depot as a customer stop", r))
+                continue
+            if cid not in demand_of:
+                violations.append(Violation(UNKNOWN_CUSTOMER, f"route {r} visits unknown customer {cid}", r))
+                continue
+            visits[cid] += 1
+            load += demand_of[cid]
+        loads.append(load)
+        if load > instance.vehicle_capacity:
+            violations.append(Violation(
+                CAPACITY_EXCEEDED,
+                f"route {r} load {load} exceeds capacity {instance.vehicle_capacity}", r))
+
+    duplicated = sorted(cid for cid, n in visits.items() if n > 1)
+    for cid in duplicated:
+        violations.append(Violation(DUPLICATE_VISIT, f"customer {cid} visited {visits[cid]} times"))
+
+    unserved = sorted(cid for cid in demand_of if cid not in visits)
+    for cid in unserved:
+        violations.append(Violation(UNSERVED_CUSTOMER, f"customer {cid} is not served"))
+
+    used = sum(1 for stops in routes if stops)
+    if used > instance.vehicle_count:
+        violations.append(Violation(
+            TOO_MANY_VEHICLES, f"{used} non-empty routes but only {instance.vehicle_count} vehicles available"))
+
+    total_lateness = 0.0
+    if instance.has_time_windows:
+        idx = instance.index_of()
+        for r, stops in enumerate(routes):
+            known = [c for c in stops if c in idx and c != DEPOT_NODE]
+            sched = route_schedule(instance, known)
+            for cid, start, late in zip(known, sched.starts, sched.lateness):
+                if late > TIME_EPS:
+                    total_lateness += late
+                    violations.append(Violation(
+                        TIME_WINDOW_VIOLATED,
+                        f"route {r}: service at customer {cid} starts at {start:.2f}, "
+                        f"{late:.2f} after its due time", r))
+            if sched.return_lateness > TIME_EPS:
+                total_lateness += sched.return_lateness
+                violations.append(Violation(
+                    DEPOT_RETURN_LATE,
+                    f"route {r} returns to the depot at {sched.end_time:.2f}, "
+                    f"{sched.return_lateness:.2f} after the depot closes", r))
+
+    return ValidationResult(
+        feasible=not violations, violations=violations, unserved=unserved,
+        duplicated=duplicated, route_loads=loads, total_lateness=total_lateness)
+
+====================================================================================================
+C.2 Genetic algorithm
+File: backend/app/solvers/genetic_algorithm.py, lines 1-404
+====================================================================================================
+"""Custom Genetic Algorithm for CVRP (own population-based search; no OR-Tools).
+
+Representation
+--------------
+A chromosome is a *giant tour*: a permutation of all customers. It is decoded
+into vehicle routes by an optimal "split" (Prins-style dynamic programme): the
+tour is cut into consecutive segments, each segment being one route, such that
+every segment respects vehicle capacity and total estimated cost
+(fixed vehicle cost + cost_per_distance * distance) is minimal for that order.
+
+Constraint handling
+-------------------
+* Customer coverage / no duplicates: guaranteed by the permutation encoding.
+* Capacity: guaranteed by the split (segments never exceed capacity; instance
+  validation ensures every single demand fits one vehicle).
+* Fleet size: the split ignores the vehicle limit, so tours that decode into
+  more routes than vehicles are penalised by `excess_routes * penalty`, where
+  penalty is an upper bound on any feasible solution's cost. The independent
+  validator still checks the final answer and reports a violation if the GA
+  ends with an over-sized fleet.
+
+Operators
+---------
+Selection: tournament. Crossover: order crossover (OX). Mutation: swap,
+inversion or relocate (one chosen at random). Elitism: best `elite_count`
+copied unchanged. Optional: a fraction of the initial population is built with
+randomised nearest-neighbour tours (`nn_seed_fraction`; set 0 for a purely
+random start). Termination: max generations, wall-clock limit, or stagnation. The clock is checked
+between generations, so the initial population is always built and evaluated first;
+with very small budgets on very large instances the GA can therefore overshoot.
+
+Fitness is the shared cost model, so it is comparable with the OR-Tools objective
+(but reported metrics are always recomputed by the shared evaluator).
+"""
+from __future__ import annotations
+
+import random
+import time
+from dataclasses import asdict, dataclass
+
+from app.models import result as R
+from app.models.problem import Instance, InstanceValidationError
+from app.solvers.local_search import fleet_repair, local_search, routes_to_tour
+
+
+@dataclass
+class GAConfig:
+    population_size: int = 100
+    max_generations: int = 500
+    time_limit_s: float | None = None
+    stagnation_generations: int | None = 100
+    elite_count: int = 2
+    tournament_size: int = 3
+    crossover_rate: float = 0.9
+    mutation_rate: float = 0.2
+    nn_seed_fraction: float = 0.1
+    # Time windows only: share of the start population ordered by due time, the
+    # cost of one time unit of lateness (None = automatic, see _Problem), and
+    # whether the best tour gets one repair move per generation while it is late.
+    due_seed_fraction: float = 0.1
+    lateness_weight: float | None = None
+    tw_repair: bool = True
+    # P3: empty the smallest routes when there are more routes than vehicles;
+    # optional local search (relocate, swap, 2-opt) on a share of the children.
+    fleet_repair: bool = True
+    local_search: bool = False
+    ls_rate: float = 0.2
+    ls_neighbours: int = 10
+    seed: int = 0
+
+    def validate(self) -> None:
+        errs = []
+        if self.population_size < 4:
+            errs.append("population_size must be >= 4")
+        if self.max_generations < 1:
+            errs.append("max_generations must be >= 1")
+        if not 0 <= self.elite_count < self.population_size:
+            errs.append("elite_count must be in [0, population_size)")
+        if self.tournament_size < 1:
+            errs.append("tournament_size must be >= 1")
+        if not (0 <= self.crossover_rate <= 1 and 0 <= self.mutation_rate <= 1):
+            errs.append("crossover_rate and mutation_rate must be in [0, 1]")
+        if not 0 <= self.nn_seed_fraction <= 1:
+            errs.append("nn_seed_fraction must be in [0, 1]")
+        if not 0 <= self.due_seed_fraction <= 1 or self.nn_seed_fraction + self.due_seed_fraction > 1:
+            errs.append("due_seed_fraction must be in [0, 1] and nn_seed_fraction + due_seed_fraction <= 1")
+        if self.lateness_weight is not None and self.lateness_weight < 0:
+            errs.append("lateness_weight must be >= 0")
+        if not 0 <= self.ls_rate <= 1:
+            errs.append("ls_rate must be in [0, 1]")
+        if self.ls_neighbours < 1:
+            errs.append("ls_neighbours must be >= 1")
+        if errs:
+            raise ValueError("; ".join(errs))
+
+
+class _Problem:
+    """Plain-list view of the instance for fast inner loops."""
+
+    def __init__(self, inst: Instance, lateness_weight: float | None = None):
+        self.d = inst.distance_matrix().tolist()
+        self.demand = inst.demands
+        self.cap = inst.vehicle_capacity
+        self.fixed = inst.fixed_vehicle_cost
+        self.cpd = inst.cost_per_distance
+        self.vehicles = inst.vehicle_count
+        self.n = len(self.d) - 1
+        # Upper bound for any feasible solution: one depot round trip per customer.
+        self.penalty = sum(2 * self.d[0][i] for i in range(1, self.n + 1)) * self.cpd + self.fixed * self.n + 1.0
+        self.tw = inst.has_time_windows
+        if self.tw:
+            self.t = inst.travel_time_matrix().tolist()
+            self.ready, self.due, self.service = inst.ready_times, inst.due_times, inst.service_times
+            self.start_time, self.depot_due = inst.depot_ready_time, self.due[0]
+            # Default: one time unit late costs as much as the worst feasible plan,
+            # so any on-time plan beats any late one.
+            self.late_w = self.penalty if lateness_weight is None else lateness_weight
+
+    def split(self, perm: list[int]) -> tuple[float, list[list[int]]]:
+        """Optimal capacity-respecting segmentation of `perm`; returns (cost, routes of node indices).
+
+        With time windows, each route's cost also includes late_w * (lateness at
+        its stops + late return to the depot). Capacity stays a hard limit."""
+        n, d, dem, cap = len(perm), self.d, self.demand, self.cap
+        tw = self.tw
+        if tw:
+            t, ready, due, serv = self.t, self.ready, self.due, self.service
+            t0, depot_due, late_w = self.start_time, self.depot_due, self.late_w
+        inf = float("inf")
+        best = [inf] * (n + 1)
+        pred = [0] * (n + 1)
+        best[0] = 0.0
+        for i in range(n):
+            base = best[i]
+            if base == inf:
+                continue
+            load, dist = 0, 0.0
+            now, late = 0.0, 0.0
+            for j in range(i, n):
+                c = perm[j]
+                load += dem[c]
+                if load > cap:
+                    break
+                dist = d[0][c] if j == i else dist + d[perm[j - 1]][c]
+                cost = base + self.fixed + self.cpd * (dist + d[c][0])
+                if tw:
+                    arrival = t0 + t[0][c] if j == i else now + t[perm[j - 1]][c]
+                    start = ready[c] if arrival < ready[c] else arrival
+                    if start > due[c]:
+                        late += start - due[c]
+                    now = start + serv[c]
+                    back = now + t[c][0]
+                    cost += late_w * (late + (back - depot_due if back > depot_due else 0.0))
+                if cost < best[j + 1]:
+                    best[j + 1] = cost
+                    pred[j + 1] = i
+        routes, j = [], n
+        while j > 0:
+            i = pred[j]
+            routes.append(perm[i:j])
+            j = i
+        routes.reverse()
+        return best[n], routes
+
+    def fitness(self, perm: list[int]) -> float:
+        cost, routes = self.split(perm)
+        return cost + self.penalty * max(0, len(routes) - self.vehicles)
+
+    def route_lateness(self, route: list[int]) -> list[float]:
+        """Lateness at each stop of one route (time windows only)."""
+        now, prev, out = self.start_time, 0, []
+        for c in route:
+            start = max(now + self.t[prev][c], self.ready[c])
+            out.append(max(0.0, start - self.due[c]))
+            now, prev = start + self.service[c], c
+        return out
+
+
+def _needs_repair(p: _Problem, perm: list[int]) -> bool:
+    """Late somewhere, or more routes than vehicles (the split's other way to dodge lateness)."""
+    _, routes = p.split(perm)
+    return len(routes) > p.vehicles or any(late > 1e-9 for r in routes for late in p.route_lateness(r))
+
+
+def repair_time_windows(p: _Problem, perm: list[int], rng: random.Random,
+                        max_positions: int = 200) -> tuple[list[int], float, int]:
+    """One repair move for a time-window tour: take the latest customer (or, if no
+    stop is late but the split needs more routes than vehicles, a random customer
+    of the shortest route) and reinsert it at the giant-tour position with the
+    best fitness, trying at most `max_positions` positions.
+
+    Returns (perm, fitness, fitness evaluations used); the input perm comes back
+    unchanged if no move helps."""
+    base_fit = p.fitness(perm)
+    _, routes = p.split(perm)
+    worst, worst_late = None, 0.0
+    for r in routes:
+        for c, late in zip(r, p.route_lateness(r)):
+            if late > worst_late:
+                worst, worst_late = c, late
+    if worst is None and len(routes) > p.vehicles:
+        worst = rng.choice(min(routes, key=len))
+    if worst is None:
+        return perm, base_fit, 1
+    rest = [c for c in perm if c != worst]
+    positions = list(range(len(rest) + 1))
+    if len(positions) > max_positions:
+        positions = rng.sample(positions, max_positions)
+    best_perm, best_fit = perm, base_fit
+    for pos in positions:
+        cand = rest[:pos] + [worst] + rest[pos:]
+        f = p.fitness(cand)
+        if f < best_fit - 1e-9:
+            best_perm, best_fit = cand, f
+    return best_perm, best_fit, 1 + len(positions)
+
+
+def order_crossover(p1: list[int], p2: list[int], rng: random.Random) -> list[int]:
+    n = len(p1)
+    if n < 3:
+        return p1[:]
+    a, b = sorted(rng.sample(range(n), 2))
+    child: list[int | None] = [None] * n
+    child[a:b + 1] = p1[a:b + 1]
+    used = set(p1[a:b + 1])
+    fill = [g for g in p2[b + 1:] + p2[:b + 1] if g not in used]
+    positions = list(range(b + 1, n)) + list(range(0, a))
+    for pos, g in zip(positions, fill):
+        child[pos] = g
+    return child  # type: ignore[return-value]
+
+
+def mutate(perm: list[int], rng: random.Random) -> None:
+    n = len(perm)
+    if n < 2:
+        return
+    kind = rng.choice(("swap", "inversion", "relocate"))
+    i, j = sorted(rng.sample(range(n), 2))
+    if kind == "swap":
+        perm[i], perm[j] = perm[j], perm[i]
+    elif kind == "inversion":
+        perm[i:j + 1] = reversed(perm[i:j + 1])
+    else:
+        perm.insert(j, perm.pop(i))
+
+
+def _random_nn_tour(p: _Problem, rng: random.Random, k: int = 3) -> list[int]:
+    left = set(range(1, p.n + 1))
+    cur = rng.choice(sorted(left))
+    tour = [cur]
+    left.remove(cur)
+    while left:
+        cand = sorted(left, key=lambda c: p.d[cur][c])[:k]
+        cur = rng.choice(cand)
+        tour.append(cur)
+        left.remove(cur)
+    return tour
+
+
+def _random_due_tour(p: _Problem, rng: random.Random) -> list[int]:
+    """Customers ordered by due time with a little random jitter (time-window seed)."""
+    span = max((x for x in p.due[1:] if x != float("inf")), default=1.0) or 1.0
+    key = {c: (p.due[c] if p.due[c] != float("inf") else span) + rng.uniform(0, 0.05 * span)
+           for c in range(1, p.n + 1)}
+    return sorted(range(1, p.n + 1), key=key.__getitem__)
+
+
+def solve_ga(instance: Instance, config: GAConfig | None = None,
+             initial_tours: list[list[int]] | None = None) -> R.SolveResult:
+    """initial_tours (customer ids) go into the start population; the hybrid uses this."""
+    cfg = config or GAConfig()
+    cfg_dict = asdict(cfg)
+
+    def result(status, runtime, routes=None, message="", diag=None):
+        return R.SolveResult(instance.instance_id, "ga", status, runtime, routes, cfg_dict,
+                             seed=cfg.seed, message=message, diagnostics=diag or {})
+
+    try:
+        cfg.validate()
+        instance.validate()
+    except (InstanceValidationError, ValueError) as exc:
+        return result(R.INVALID_INPUT, 0.0, message=str(exc))
+
+    instance.distance_matrix()  # shared one-off cost, computed outside the timed region
+    start = time.perf_counter()
+    try:
+        rng = random.Random(cfg.seed)
+        p = _Problem(instance, cfg.lateness_weight)
+        base = list(range(1, p.n + 1))
+        deadline = None if cfg.time_limit_s is None else start + cfg.time_limit_s
+
+        def out_of_time() -> bool:
+            return deadline is not None and time.perf_counter() >= deadline
+
+        pop: list[list[int]] = []
+        index_of = instance.index_of() if initial_tours else {}
+        for tour in (initial_tours or [])[:cfg.population_size]:
+            perm = [index_of[c] for c in tour]
+            if sorted(perm) != base:
+                raise ValueError("initial tour must visit every customer exactly once")
+            pop.append(perm)
+        seeded = len(pop)
+        n_nn = min(int(cfg.population_size * cfg.nn_seed_fraction), cfg.population_size - len(pop))
+        pop.extend(_random_nn_tour(p, rng) for _ in range(n_nn))
+        if p.tw:
+            n_due = min(int(cfg.population_size * cfg.due_seed_fraction), cfg.population_size - len(pop))
+            pop.extend(_random_due_tour(p, rng) for _ in range(n_due))
+        repair_calls = repair_wins = fleet_calls = fleet_wins = ls_calls = ls_moves = 0
+        while len(pop) < cfg.population_size:
+            perm = base[:]
+            rng.shuffle(perm)
+            pop.append(perm)
+        fit = [p.fitness(x) for x in pop]
+        evaluations = len(pop)
+
+        best_fit, best_perm = min(zip(fit, pop), key=lambda t: t[0])
+        best_perm = best_perm[:]
+        history = [best_fit]
+        stagnant, stop_reason, gen = 0, "max_generations", 0
+
+        for gen in range(1, cfg.max_generations + 1):
+            if out_of_time():
+                stop_reason = "time_limit"
+                gen -= 1
+                break
+            order = sorted(range(len(pop)), key=fit.__getitem__)
+            new_pop = [pop[i][:] for i in order[:cfg.elite_count]]
+            new_fit = [fit[i] for i in order[:cfg.elite_count]]
+
+            def tournament() -> list[int]:
+                picks = [rng.randrange(len(pop)) for _ in range(cfg.tournament_size)]
+                return pop[min(picks, key=fit.__getitem__)]
+
+            cut_short = False
+            while len(new_pop) < cfg.population_size:
+                if out_of_time():  # stop mid-generation; every kept child is scored
+                    cut_short = True
+                    break
+                p1, p2 = tournament(), tournament()
+                child = order_crossover(p1, p2, rng) if rng.random() < cfg.crossover_rate else p1[:]
+                if rng.random() < cfg.mutation_rate:
+                    mutate(child, rng)
+                if cfg.local_search and rng.random() < cfg.ls_rate:
+                    _, rts = p.split(child)
+                    rts, moves = local_search(p, rts, rng, deadline, cfg.ls_neighbours)
+                    child = routes_to_tour(rts)
+                    ls_calls += 1
+                    ls_moves += moves
+                new_pop.append(child)
+                new_fit.append(p.fitness(child))
+                evaluations += 1
+            pop, fit = new_pop, new_fit
+
+            gen_best = min(range(len(pop)), key=fit.__getitem__)
+            if cfg.fleet_repair and not out_of_time():
+                _, rts = p.split(pop[gen_best])
+                if len(rts) > p.vehicles:
+                    fleet_calls += 1
+                    fixed = routes_to_tour(fleet_repair(p, rts, deadline))
+                    fixed_fit = p.fitness(fixed)
+                    evaluations += 1
+                    if fixed_fit < fit[gen_best] - 1e-9:
+                        fleet_wins += 1
+                        worst = max(range(len(pop)), key=fit.__getitem__)
+                        pop[worst], fit[worst] = fixed, fixed_fit
+                        gen_best = worst
+            if p.tw and cfg.tw_repair and not out_of_time() and _needs_repair(p, pop[gen_best]):
+                repair_calls += 1
+                fixed, fixed_fit, used = repair_time_windows(p, pop[gen_best], rng)
+                evaluations += used
+                if fixed_fit < fit[gen_best] - 1e-9:
+                    repair_wins += 1
+                    worst = max(range(len(pop)), key=fit.__getitem__)
+                    pop[worst], fit[worst] = fixed, fixed_fit
+                    gen_best = worst
+            if fit[gen_best] < best_fit - 1e-12:
+                best_fit, best_perm, stagnant = fit[gen_best], pop[gen_best][:], 0
+            else:
+                stagnant += 1
+            history.append(best_fit)
+            if cut_short:
+                stop_reason = "time_limit"
+                break
+            if cfg.stagnation_generations is not None and stagnant >= cfg.stagnation_generations:
+                stop_reason = "stagnation"
+                break
+
+        _, node_routes = p.split(best_perm)
+        ids = instance.node_ids
+        routes = [[ids[c] for c in r] for r in node_routes]
+        # pad with empty routes so len(routes) == vehicle_count when possible
+        routes += [[] for _ in range(max(0, instance.vehicle_count - len(routes)))]
+        runtime = time.perf_counter() - start
+        step = max(1, len(history) // 200)
+        diag = {"generations_run": gen, "stop_reason": stop_reason, "evaluations": evaluations,
+                "best_fitness": best_fit, "fitness_history": history[::step], "seeded_tours": seeded,
+                "fleet_repair_calls": fleet_calls, "fleet_repair_improvements": fleet_wins,
+                "local_search_calls": ls_calls, "local_search_moves": ls_moves}
+        if p.tw:
+            diag.update(repair_calls=repair_calls, repair_improvements=repair_wins,
+                        best_lateness=sum(sum(p.route_lateness(r)) for r in node_routes))
+        return result(R.SOLVED, runtime, routes, diag=diag)
+    except Exception as exc:
+        return result(R.ERROR, time.perf_counter() - start, message=f"{type(exc).__name__}: {exc}")
+
+====================================================================================================
+C.3 Hybrid engine
+File: backend/app/solvers/hybrid.py, lines 1-121
+====================================================================================================
+"""Hybrid solver (P3): OR-Tools seeds the GA. Labelled "hybrid" everywhere.
+
+Within ONE total wall-clock budget (the equal-clock rule):
+1. OR-Tools runs for `ortools_share` of the budget (audited defaults for that
+   sub-budget unless a strategy is given).
+2. Its routes, joined into one giant tour, plus `seed_copies - 1` mutated
+   copies, go into the GA's start population. The rest of the population is
+   built as usual (random / nearest-neighbour / due-time tours).
+3. The GA (optionally with local search) runs for whatever time is left.
+Elitism keeps the seed, and the GA's split decodes the seed tour at least as
+well as the OR-Tools routes, so the hybrid never ends worse than its OR-Tools
+phase in the GA's own cost terms. The validator still checks the final plan.
+
+If OR-Tools finds nothing, the GA runs unseeded and the diagnostics say so.
+The standalone GA (`genetic_algorithm.py`) never calls this module.
+"""
+from __future__ import annotations
+
+import random
+import time
+from dataclasses import asdict, dataclass, field
+from typing import Any
+
+from app.evaluation.metrics import compute_metrics
+from app.evaluation.validator import validate_routes
+from app.models import result as R
+from app.models.problem import Instance, InstanceValidationError
+from app.solvers.genetic_algorithm import GAConfig, mutate, solve_ga
+from app.solvers.ortools_solver import solve_ortools
+
+MIN_GA_SECONDS = 0.05
+
+
+@dataclass
+class HybridConfig:
+    time_limit_s: float = 10.0
+    ortools_share: float = 0.5
+    first_solution: str | None = None
+    metaheuristic: str | None = None
+    seed_copies: int = 5
+    local_search: bool = True
+    seed: int = 0
+    ga: dict[str, Any] = field(default_factory=dict)  # other GAConfig fields
+
+    def validate(self) -> None:
+        errs = []
+        if not self.time_limit_s > 0:
+            errs.append("time_limit_s must be > 0")
+        if not 0 < self.ortools_share < 1:
+            errs.append("ortools_share must be in (0, 1)")
+        if self.seed_copies < 1:
+            errs.append("seed_copies must be >= 1")
+        bad = set(self.ga) & {"time_limit_s", "local_search", "seed", "max_generations", "stagnation_generations"}
+        if bad:
+            errs.append(f"set {sorted(bad)} on the hybrid config, not inside ga")
+        if errs:
+            raise ValueError("; ".join(errs))
+
+
+def _distance(instance: Instance, routes: list[list[int]]) -> float | None:
+    v = validate_routes(instance, routes)
+    return compute_metrics(instance, routes, v).total_distance if v.feasible else None
+
+
+def solve_hybrid(instance: Instance, config: HybridConfig | None = None) -> R.SolveResult:
+    cfg = config or HybridConfig()
+    cfg_dict = asdict(cfg)
+
+    def result(status, runtime, routes=None, message="", diag=None):
+        return R.SolveResult(instance.instance_id, "hybrid", status, runtime, routes, cfg_dict,
+                             seed=cfg.seed, message=message, diagnostics=diag or {})
+
+    try:
+        cfg.validate()
+        GAConfig(**cfg.ga).validate()
+        instance.validate()
+    except (InstanceValidationError, ValueError, TypeError) as exc:
+        return result(R.INVALID_INPUT, 0.0, message=str(exc))
+
+    instance.distance_matrix()  # shared one-off cost, outside the timed region (as for both engines)
+    start = time.perf_counter()
+    ort = solve_ortools(instance, time_limit_s=cfg.ortools_share * cfg.time_limit_s,
+                        first_solution=cfg.first_solution, metaheuristic=cfg.metaheuristic)
+    ort_diag = {"status": ort.status, "runtime_seconds": ort.runtime_seconds, "message": ort.message,
+                "first_solution_strategy": ort.config.get("first_solution_strategy"),
+                "local_search_metaheuristic": ort.config.get("local_search_metaheuristic"),
+                "seed_distance": None}
+    seeds: list[list[int]] = []
+    if ort.routes is not None:
+        ort_diag["seed_distance"] = _distance(instance, ort.routes)
+        tour = [c for r in ort.routes for c in r]
+        rng = random.Random(cfg.seed)
+        seeds.append(tour)
+        for _ in range(cfg.seed_copies - 1):
+            copy = tour[:]
+            mutate(copy, rng)
+            seeds.append(copy)
+
+    remaining = cfg.time_limit_s - (time.perf_counter() - start)
+    if remaining < MIN_GA_SECONDS:
+        diag = {"ortools_phase": ort_diag, "ga_phase": None, "seeded": bool(seeds),
+                "note": "no time left for the GA phase; plan is the OR-Tools phase result"}
+        status = R.SOLVED if ort.routes is not None else ort.status
+        return result(status, time.perf_counter() - start, ort.routes, diag=diag)
+
+    ga_cfg = GAConfig(**{**cfg.ga, "time_limit_s": remaining, "local_search": cfg.local_search,
+                         "seed": cfg.seed, "max_generations": 10**9, "stagnation_generations": None})
+    ga = solve_ga(instance, ga_cfg, initial_tours=seeds)
+    diag = {"ortools_phase": ort_diag, "ga_phase": ga.diagnostics, "seeded": bool(seeds),
+            "ga_seconds": ga.runtime_seconds}
+    if ga.routes is None:  # GA failed: say so; fall back to the OR-Tools plan only if there is one
+        msg = f"GA phase failed ({ga.status}: {ga.message})"
+        if ort.routes is not None:
+            return result(R.SOLVED, time.perf_counter() - start, ort.routes,
+                          message=msg + "; plan is the OR-Tools phase result", diag=diag)
+        return result(ga.status, time.perf_counter() - start, message=msg, diag=diag)
+    final = _distance(instance, ga.routes)
+    seed_d = ort_diag["seed_distance"]
+    diag["improved_over_seed"] = (final is not None and seed_d is not None and final < seed_d - 1e-9)
+    msg = "" if seeds else "OR-Tools phase found no plan; GA ran unseeded"
+    return result(R.SOLVED, time.perf_counter() - start, ga.routes, message=msg, diag=diag)
+
+====================================================================================================
+C.4 Warm-start replanner: disruption events and warm-start set-up
+File: backend/app/replan/events.py, lines 1-254
+====================================================================================================
+"""Disruption events and how they change a plan's instance and constraints.
+
+The current plan's routes are indexed by vehicle (route v = vehicle v). `completed[v]` is
+the number of stops vehicle v has already finished (a prefix of route v). Those stops are
+**frozen**: the replanned route of vehicle v starts with exactly the same stops, in the
+same order. Assumption (decision 0012): frozen stops were served on the planned schedule.
+
+Events
+* vehicle_breakdown: vehicle v takes no further stops; its unfinished stops go to others.
+  Its route is cut after its completed stops (the return leg is still counted, as the
+  shared cost model has every route end at the depot).
+* failed_delivery: a stop that was attempted but not delivered. retry=True keeps the
+  customer in the plan (it is re-visited later); retry=False drops it from the instance,
+  and the plan reports it as dropped. **Retry rule (decision 0023):** a retried stop is never
+  a route's next unfinished stop, unless it is that route's only remaining stop (then it is
+  at the end). Going straight back to a customer who was just not home is rarely useful.
+* urgent_order: a new customer that must be served in the replanned plan.
+"""
+from __future__ import annotations
+
+import math
+from dataclasses import dataclass, field
+from typing import Annotated, Literal
+
+from pydantic import BaseModel, Field
+
+from app.api.schemas import CustomerIn
+from app.evaluation.validator import route_schedule, validate_routes
+from app.models.problem import TIME_EPS, Customer, Instance
+
+
+class ReplanError(ValueError):
+    """The event does not fit the current plan (wrong vehicle, unknown customer, ...)."""
+
+
+class _EventBase(BaseModel):
+    completed: dict[int, int] = Field(default_factory=dict,
+                                      description="vehicle index -> number of stops already completed")
+    now: float | None = Field(None, ge=0, description="current time; time-window instances only")
+    occurred_at: str | None = Field(None, description="client timestamp, stored for the record only")
+
+
+class VehicleBreakdown(_EventBase):
+    type: Literal["vehicle_breakdown"]
+    vehicle: int = Field(ge=0)
+
+
+class FailedDelivery(_EventBase):
+    type: Literal["failed_delivery"]
+    customer_id: int
+    retry: bool = True
+
+
+class UrgentOrder(_EventBase):
+    type: Literal["urgent_order"]
+    customer: CustomerIn
+
+
+def extra_points(event) -> list[tuple[float, float]]:
+    """Coordinates an event adds to the plan (an urgent order's stop), for the road matrix."""
+    return [(event.customer.x, event.customer.y)] if isinstance(event, UrgentOrder) else []
+
+
+Event = Annotated[VehicleBreakdown | FailedDelivery | UrgentOrder, Field(discriminator="type")]
+
+
+class ReplanIn(BaseModel):
+    """Body of POST /api/plans/{id}/replan. engine: "ortools" (warm start + frozen stops) or "ga" (only when no
+    stop is frozen)."""
+    event: Event
+    engine: Literal["ortools", "ga"] = "ortools"
+    time_limit_s: float = Field(5.0, gt=0)
+    warm_start: bool = True
+    seed: int = 0
+
+
+@dataclass
+class ReplanSetup:
+    instance: Instance                # the real instance after the event (stored with the plan)
+    timing_instance: Instance         # same, but unfinished stops not ready before `now` (solved + checked)
+    frozen: list[list[int]]           # per vehicle, completed stops (customer ids)
+    blocked: list[int]                # vehicles that take no further stops
+    warm_routes: list[list[int]]      # current plan adjusted to the event (warm start)
+    to_insert: list[int]              # customers that had no place in the adjusted plan
+    dropped: list[int] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
+    retry: list[int] = field(default_factory=list)  # retried failed deliveries (retry rule)
+
+    @property
+    def has_frozen(self) -> bool:
+        return any(self.frozen)
+
+
+def _with_customers(instance: Instance, customers: list[Customer], suffix: str) -> Instance:
+    d = instance.to_dict()
+    d.pop("instance_id", None)
+    inst = Instance.from_dict(d)
+    inst.customers = customers
+    inst.name = f"{instance.name}{suffix}"
+    inst.source = instance.source
+    inst.instance_id = inst.compute_id()
+    inst._matrix = None
+    return inst
+
+
+def apply_event(instance: Instance, routes: list[list[int]], event: VehicleBreakdown | FailedDelivery | UrgentOrder
+                ) -> ReplanSetup:
+    k = instance.vehicle_count
+    routes = [list(r) for r in routes] + [[] for _ in range(k - len(routes))]
+    if len(routes) > k:
+        raise ReplanError(f"plan has {len(routes)} routes but the instance has {k} vehicles")
+    for v, n in event.completed.items():
+        if not 0 <= v < k:
+            raise ReplanError(f"completed: vehicle {v} does not exist (0..{k - 1})")
+        if not 0 <= n <= len(routes[v]):
+            raise ReplanError(f"completed: vehicle {v} has {len(routes[v])} stops, not {n}")
+    frozen = [routes[v][:event.completed.get(v, 0)] for v in range(k)]
+    rest = [routes[v][event.completed.get(v, 0):] for v in range(k)]
+    frozen_ids = {c for f in frozen for c in f}
+    customers = list(instance.customers)
+    blocked: list[int] = []
+    to_insert: list[int] = []
+    retry: list[int] = []
+    dropped: list[int] = []
+    notes: list[str] = []
+    suffix = ""
+
+    if isinstance(event, VehicleBreakdown):
+        if event.vehicle >= k:
+            raise ReplanError(f"vehicle {event.vehicle} does not exist (0..{k - 1})")
+        blocked = [event.vehicle]
+        to_insert = rest[event.vehicle]
+        rest[event.vehicle] = []
+        notes.append(f"vehicle {event.vehicle} broke down after {len(frozen[event.vehicle])} completed stops; "
+                     f"{len(to_insert)} unfinished stops reassigned")
+        suffix = f"+breakdown-v{event.vehicle}"
+    elif isinstance(event, FailedDelivery):
+        cid = event.customer_id
+        if cid not in {c.id for c in customers}:
+            raise ReplanError(f"customer {cid} is not in the plan")
+        if cid in frozen_ids:
+            raise ReplanError(f"customer {cid} is counted as completed; a failed delivery cannot be completed")
+        rest = [[c for c in r if c != cid] for r in rest]
+        if event.retry:
+            to_insert = [cid]
+            retry = [cid]
+            notes.append(f"delivery to customer {cid} failed; it will be re-visited, but not as a route's next stop "
+                         "(only as a route's last remaining stop)")
+        else:
+            customers = [c for c in customers if c.id != cid]
+            dropped = [cid]
+            notes.append(f"delivery to customer {cid} failed; dropped from the plan as requested (not served)")
+        suffix = f"+failed-{cid}"
+    else:
+        c = event.customer
+        if c.id in {x.id for x in customers} or c.id == 0:
+            raise ReplanError(f"customer id {c.id} is already used")
+        customers.append(Customer(c.id, c.x, c.y, c.demand, ready_time=c.ready_time, due_time=c.due_time,
+                                  service_time=c.service_time))
+        to_insert = [c.id]
+        notes.append(f"urgent order {c.id} added")
+        suffix = f"+urgent-{c.id}"
+
+    new = _with_customers(instance, customers, suffix)
+    timing = not_before(new, {c for f in frozen for c in f}, event.now)
+    if event.now is not None and not new.has_time_windows:
+        notes.append("now is ignored: the instance has no time windows")
+    warm = [f + r for f, r in zip(frozen, rest)]
+    leftover = insert_cheapest(timing, warm, to_insert, frozen, blocked, not_next=retry)
+    if leftover:
+        notes.append(f"warm start: no feasible insertion found for {leftover}; OR-Tools may start cold")
+    return ReplanSetup(new, timing, frozen, blocked, warm, leftover, dropped, notes, retry)
+
+
+def not_before(instance: Instance, frozen_ids: set[int], now: float | None) -> Instance:
+    """Copy of the instance where no unfinished stop can start before `now` (ready = max(ready, now)).
+    A vehicle can always wait, so a plan that is on time here is on time in the real instance too."""
+    if now is None or not instance.has_time_windows:
+        return instance
+    shifted = [c if c.id in frozen_ids else Customer(c.id, c.x, c.y, c.demand, ready_time=max(c.ready_time, now),
+                                                    due_time=c.due_time, service_time=c.service_time)
+               for c in instance.customers]
+    for c in shifted:
+        if c.due_time is not None and c.ready_time > c.due_time + TIME_EPS:
+            raise ReplanError(f"customer {c.id} is due at {c.due_time:g}, before the current time {now:g}; "
+                              f"it cannot be served any more (drop it with a failed_delivery, retry=false)")
+    return _with_customers(instance, shifted, f"@t{now:g}")
+
+
+def schedule_ok(instance: Instance, route: list[int]) -> bool:
+    ids = set(route)
+    if sum(c.demand for c in instance.customers if c.id in ids) > instance.vehicle_capacity:
+        return False
+    return not instance.has_time_windows or route_schedule(instance, route).total_lateness <= TIME_EPS
+
+
+def retry_too_soon(route: list[int], n_frozen: int, retry: list[int] | set[int]) -> int | None:
+    """The retried customer that breaks the retry rule on this route (it is the next unfinished stop and other
+    unfinished stops follow it), or None."""
+    rest = route[n_frozen:]
+    return rest[0] if len(rest) > 1 and rest[0] in set(retry) else None
+
+
+def insert_cheapest(instance: Instance, routes: list[list[int]], customers: list[int], frozen: list[list[int]],
+                    blocked: list[int], not_next: list[int] | tuple = ()) -> list[int]:
+    """Insert each customer at its cheapest feasible position after the frozen prefix of a vehicle that is
+    not blocked (in place). Customers in `not_next` keep the retry rule. Returns the customers that fit nowhere."""
+    d = instance.distance_matrix()
+    idx = instance.index_of()
+    leftover = []
+    for cid in customers:
+        best = (math.inf, -1, -1)
+        for v, r in enumerate(routes):
+            if v in blocked:
+                continue
+            for pos in range(len(frozen[v]), len(r) + 1):
+                a = idx[r[pos - 1]] if pos > 0 else 0
+                b = idx[r[pos]] if pos < len(r) else 0
+                added = d[a][idx[cid]] + d[idx[cid]][b] - d[a][b]
+                candidate = r[:pos] + [cid] + r[pos:]
+                if retry_too_soon(candidate, len(frozen[v]), not_next) is not None:
+                    continue
+                if added < best[0] and schedule_ok(instance, candidate):
+                    best = (added, v, pos)
+        if best[1] < 0:
+            leftover.append(cid)
+        else:
+            routes[best[1]].insert(best[2], cid)
+    return leftover
+
+
+def check_replan(routes: list[list[int]], setup: ReplanSetup) -> list[str]:
+    """Independent of the solver: frozen stops kept, blocked vehicles idle, the retry rule kept, nothing
+    scheduled before `now` (the last via the validator on the timing instance)."""
+    instance = setup.timing_instance
+    problems = []
+    extra = [r for r in routes[instance.vehicle_count:] if r]
+    if extra:
+        problems.append(f"{len(extra)} routes more than the {instance.vehicle_count} vehicles (vehicle index)")
+    routes = routes + [[] for _ in range(instance.vehicle_count - len(routes))]
+    for v, prefix in enumerate(setup.frozen):
+        if routes[v][:len(prefix)] != prefix:
+            problems.append(f"vehicle {v}: completed stops {prefix} changed to {routes[v][:len(prefix)]}")
+    for v in setup.blocked:
+        if routes[v] != setup.frozen[v]:
+            problems.append(f"vehicle {v} broke down but has new stops {routes[v][len(setup.frozen[v]):]}")
+    for v, prefix in enumerate(setup.frozen):
+        early = retry_too_soon(routes[v], len(prefix), setup.retry)
+        if early is not None:
+            problems.append(f"vehicle {v}: retried customer {early} is the next stop (retry rule)")
+    if setup.timing_instance is not setup.instance:
+        timing = validate_routes(instance, routes)
+        problems += [f"with the current time applied: {v.detail}" for v in timing.violations]
+    return problems
+
+====================================================================================================
+C.5 Warm-start replanner: solver job with the warm start
+File: backend/app/replan/jobs.py, lines 1-86
+====================================================================================================
+"""Turn a ReplanSetup into one guarded solver job, and the job's routes back into a per-vehicle plan.
+
+* ortools: the timing instance with frozen prefixes, blocked vehicles and (if complete) the
+  adjusted current plan as the initial assignment.
+* ga (GA + local search): only when no stop is frozen, because the GA's giant-tour encoding
+  cannot pin a prefix to a vehicle (decision 0012). Blocked vehicles are removed from the
+  fleet (vehicles are identical), and the adjusted current plan is the GA's first tour.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any
+
+from app.models.problem import Instance
+from app.replan.events import ReplanError, ReplanSetup, _with_customers, not_before
+from app.selector.dataset import GA_TIME_ONLY
+
+REPLAN_ENGINES = ("ortools", "ga")
+
+
+@dataclass
+class ReplanJob:
+    instance: Any               # Instance the solver sees
+    algorithm: str
+    config: dict[str, Any]
+    vehicle_map: list[int]      # solver route j -> vehicle index
+    warm_start: str             # what was given as a warm start
+
+
+def build_job(setup: ReplanSetup, engine: str, time_limit_s: float, warm_start: bool = True,
+              seed: int = 0) -> ReplanJob:
+    k = setup.instance.vehicle_count
+    complete_warm = warm_start and not setup.to_insert
+    if engine == "ortools":
+        cfg: dict[str, Any] = {"time_limit_s": time_limit_s, "frozen": setup.frozen, "blocked": setup.blocked}
+        if setup.retry:
+            cfg["not_next"] = setup.retry
+        if complete_warm:
+            cfg["initial_routes"] = setup.warm_routes
+        return ReplanJob(setup.timing_instance, "ortools", cfg, list(range(k)),
+                         "current plan (adjusted)" if complete_warm else "none (cold start)")
+    if engine != "ga":
+        raise ReplanError(f"unknown replan engine {engine!r}; expected one of {REPLAN_ENGINES}")
+    if setup.has_frozen:
+        raise ReplanError("the GA cannot keep completed (frozen) stops in place; use engine=ortools")
+    if setup.retry:
+        raise ReplanError("the GA cannot keep the retry rule (a retried delivery is not the next stop); "
+                          "use engine=ortools")
+    free = [v for v in range(k) if v not in setup.blocked]
+    if not free:
+        raise ReplanError("no vehicle left to serve the remaining stops")
+    inst = _with_customers(setup.timing_instance, list(setup.timing_instance.customers), "")
+    inst.vehicle_count = len(free)
+    inst.instance_id = inst.compute_id()
+    cfg = {**GA_TIME_ONLY, "local_search": True, "time_limit_s": time_limit_s, "seed": seed}
+    if warm_start:
+        tour = [c for v in free for c in setup.warm_routes[v]] + list(setup.to_insert)
+        cfg["initial_tours"] = [tour]
+    return ReplanJob(inst, "ga", cfg, free, "current plan (adjusted)" if warm_start else "none (cold start)")
+
+
+def routes_by_vehicle(job: ReplanJob, routes: list[list[int]], vehicle_count: int) -> list[list[int]]:
+    out: list[list[int]] = [[] for _ in range(vehicle_count)]
+    used = [r for r in routes if r]
+    if job.algorithm == "ortools":
+        for v, r in enumerate(routes):
+            out[v] = list(r)
+        return out
+    for v, r in zip(job.vehicle_map, used):
+        out[v] = list(r)
+    # More routes than free vehicles: keep them, so the validator reports too_many_vehicles (never hidden).
+    return out + [list(r) for r in used[len(job.vehicle_map):]]
+
+
+def setup_payload(setup: ReplanSetup, now: float | None) -> dict[str, Any]:
+    """What a replan job must carry so the worker can rebuild the exact solver job (the instance is on the plan)."""
+    return {"frozen": setup.frozen, "blocked": setup.blocked, "warm_routes": setup.warm_routes,
+            "to_insert": setup.to_insert, "dropped": setup.dropped, "notes": setup.notes, "now": now,
+            "retry": setup.retry}
+
+
+def setup_from(instance: Instance, p: dict[str, Any]) -> ReplanSetup:
+    frozen_ids = {c for f in p["frozen"] for c in f}
+    return ReplanSetup(instance, not_before(instance, frozen_ids, p.get("now")), p["frozen"], p["blocked"],
+                       p["warm_routes"], p["to_insert"], p.get("dropped") or [], p.get("notes") or [],
+                       p.get("retry") or [])
+
+====================================================================================================
+C.6 Engine selector inference function (EngineSelector.choose)
+File: backend/app/selector/model.py, lines 147-175
+====================================================================================================
+    def choose(self, instance: Instance, budget_s: float) -> Selection:
+        feats = extract_features(instance, budget_s)
+        if self.model is None:
+            return Selection(FALLBACK_ENGINE, "fallback",
+                             f"No trained selector is available ({self.data_path.name} missing or too small), "
+                             f"so engine=auto fell back to OR-Tools with its audited defaults.", feats, {})
+        x = np.array(feature_vector(feats), dtype=float).reshape(1, -1)
+        engine = self.model.predict(x)[0]
+        predicted = {e: round(float(v[0]), 2) for e, v in self.model.predicted_regrets(x).items()}
+        steps = explain_path(self.model.trees[engine], x[0])
+        n_lo, n_hi = self.cases["n_customers"].min(), self.cases["n_customers"].max()
+        b_lo, b_hi = self.cases["budget_s"].min(), self.cases["budget_s"].max()
+        outside = []
+        if not n_lo <= feats["n_customers"] <= n_hi:
+            outside.append(f"{int(feats['n_customers'])} customers (trained on {n_lo}-{n_hi})")
+        if not b_lo <= budget_s <= b_hi:
+            outside.append(f"a {budget_s:g} s budget (trained on {b_lo:g}-{b_hi:g} s)")
+        pred_text = ", ".join(f"{ENGINE_LABELS[e]} {v:.2f}%" for e, v in predicted.items())
+        text = (f"Chose {ENGINE_LABELS[engine]} because it has the lowest predicted extra distance over the best "
+                f"engine for instances like this one ({pred_text}).")
+        if steps:
+            text += " Rule used for the chosen engine: " + "; ".join(steps) + "."
+        if outside:
+            text += " Caution: this instance is outside the training range: " + ", ".join(outside) + "."
+        text += (" These are predictions from synthetic training instances, not measurements on this instance; "
+                 "see docs/model_card_selector.md.")
+        return Selection(engine, "model", text, feats,
+                         {"predicted_regret_pct": predicted, "rule": steps, "outside_training_range": outside,
+                          "training_cases": int(len(self.cases)), "model": "per-engine regret trees (depth 3)"})

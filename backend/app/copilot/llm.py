@@ -193,7 +193,27 @@ def read_dotenv(path: Path) -> dict[str, str]:
 
 # Model ids that are not chat models (speech, embeddings, safety classifiers, images). "Load models" hides them.
 NOT_CHAT = ("embed", "whisper", "tts", "guard", "moderation", "dall-e", "imagen", "image-generation", "transcri",
-            "speech", "audio", "aqa", "rerank", "playai", "orpheus")
+            "speech", "audio", "aqa", "rerank", "playai", "orpheus", "babbage", "davinci", "realtime", "computer-use",
+            "search-preview", "codex", "sora", "turbo-instruct", "gpt-image")
+# Automatic model choice (decision 0036): a model the provider marks as free first (OpenRouter ids end in ":free"),
+# then these well-known chat models (they change over time; the list is a convenience, not a judgement), then the
+# first chat model of the sorted list.
+PREFERRED = {
+    "groq": ("openai/gpt-oss-20b", "openai/gpt-oss-120b", "llama-3.3-70b-versatile", "llama-3.1-8b-instant"),
+    "gemini": ("gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-flash-lite", "gemini-1.5-flash"),
+    "openai": ("gpt-4o-mini", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o", "gpt-4.1"),
+}
+
+
+def pick_model(kind: str, models: list[str]) -> tuple[str, str]:
+    """(model, why) with why = "free", "preferred" or "first". `models` is a non-empty chat_models() list."""
+    free = [m for m in models if m.endswith(":free")]
+    if free:
+        return free[0], "free"
+    for name in PREFERRED.get(kind, ()):
+        if name in models:
+            return name, "preferred"
+    return models[0], "first"
 MAX_MODELS = 500
 
 
@@ -240,8 +260,10 @@ class HostedLLM:
     settings_from: str = "env"  # "env" (backend/.env) or "ui" (Copilot settings in the console, decision 0033)
     guarded: bool = False  # True: the base URL is checked and pinned (netguard) before every call
     resolve: Resolver | None = field(default=None, repr=False)  # tests: a fake DNS
-    auto_model: bool = False  # console settings without a model name: use the first chat model in the list
+    auto_model: bool = False  # console settings without a model name: choose one from the provider's list
     chosen_automatically: bool = False
+    choice_reason: str = ""  # "free", "preferred" or "first" (decision 0036)
+    preference: str = ""  # which PREFERRED list applies; "" = the provider name
     _cache: tuple[float, Availability] | None = field(default=None, repr=False)
 
     def _scrub(self, text: str) -> str:
@@ -281,18 +303,20 @@ class HostedLLM:
 
     def _works(self) -> str:
         if self.chosen_automatically:
-            return (f"Works: {self.label} accepted the key. No model name was given, so {self.model} was chosen "
-                    "(the first chat model in its list).")
-        return f"Works: {self.label} accepted the key and offers the model {self.model}."
+            why = {"free": "a free model", "preferred": "a common chat model",
+                   "first": "the first chat model in its list"}[self.choice_reason]
+            return f"Works: {self.label} is ready, using {self.model} (chosen automatically: {why})."
+        return f"Works: {self.label} is ready, using {self.model}."
 
     def _choose_model(self) -> None:
-        """Console settings without a model name: take the first chat model from the provider's list."""
+        """Console settings without a model name: choose one from the provider's list (pick_model)."""
         if self.model or not self.auto_model:
             return
         models = self.list_models()
         if not models:
-            raise LLMError("model", f"{self.label} lists no chat models for this key. Type a model name in {UI}.")
-        self.model, self.chosen_automatically = models[0], True
+            raise LLMError("model", f"{self.label} lists no chat models for this key; type a model name in {UI}.")
+        self.model, self.choice_reason = pick_model(self.preference or self.provider, models)
+        self.chosen_automatically = True
 
     def list_models(self) -> list[str]:
         """The provider's chat models (one list call through the same guard and limits). Never needs a model."""
@@ -317,6 +341,8 @@ class HostedLLM:
             how = "chosen automatically: the first chat model in its list" if self.chosen_automatically else \
                 "optional free tier"
             av = Availability(True, self.provider, self.model, f"hosted {self.label} model ({how})")
+            if self.chosen_automatically:
+                av.reason = f"hosted {self.label} model (chosen automatically: {self.choice_reason})"
         except LLMError as exc:
             av = Availability(False, self.provider, self.model, str(exc), f"{self.label} {SHORT[exc.kind]}")
         self._cache = (now + (300.0 if av.available else 30.0), av)
@@ -363,8 +389,9 @@ class HostedLLM:
             raise LLMError("network", f"{self.label} did not answer within {self.timeout_s:g} s (network timeout). "
                                       "Check the internet connection and try again.") from None
         except httpx.TransportError as exc:
-            raise LLMError("network", f"{self.label} could not be reached ({type(exc).__name__}). Check the "
-                                      "internet connection and try again.") from None
+            raise LLMError("network", f"{self.label} could not be reached from the LogiMind server "
+                                      f"({type(exc).__name__}); check the internet connection or try again later."
+                           ) from None
         if 300 <= r.status_code < 400:
             raise LLMError("bad_request", f"{self.label} answered with a redirect (HTTP {r.status_code}); redirects "
                                           "are not followed. Check the base URL.")
@@ -384,14 +411,16 @@ class HostedLLM:
         detail = self._scrub(detail)[:200]
         code = r.status_code
         if code in (401, 403) or (code == 400 and ("API_KEY_INVALID" in r.text or "API key not valid" in r.text)):
-            fix = "Check the key in Copilot settings." if self.settings_from == "ui" else \
-                f"Check {self.key_var} in {ENV_FILE} and restart the server."
-            return LLMError("auth", f"{self.label} key missing or rejected (HTTP {code}). {fix}")
+            if self.settings_from == "ui":  # one plain sentence for a key pasted in the console (decision 0036)
+                return LLMError("auth", f"{self.label} rejected this key. Check that the whole key was copied, "
+                                        "with no spaces or quotes.")
+            return LLMError("auth", f"{self.label} key missing or rejected (HTTP {code}). Check {self.key_var} in "
+                                    f"{ENV_FILE} and restart the server.")
         if code == 429:
             wait = r.headers.get("retry-after")
             return LLMError("rate_limit", f"{self.label} rate limit reached (HTTP 429)"
                                           + (f"; try again in {wait} s" if wait else "; try again in a minute")
-                                          + ". Free tiers allow only a few requests per minute.")
+                                          + ", because free tiers allow only a few requests per minute.")
         if code == 404:
             return LLMError("model", f"{self.label}: model {self.model!r} not found (HTTP 404). "
                                      f"Check the model name in {self._where(self.model_var)}.")
@@ -518,7 +547,12 @@ def llm_from_env(env: dict[str, str] | None = None, dotenv: Path | None = None) 
 
 
 # ---- settings typed in the console (decision 0033) ----------------------------------------------------------
-UI_PROVIDERS = ("ollama", "groq", "gemini", "openai")
+UI_PROVIDERS = ("ollama", "groq", "gemini", "openai", "openrouter")
+# OpenAI-compatible services the console detects from the key prefix (decision 0036). Any other base URL is a generic
+# "OpenAI-compatible service". The operator may point these at a local fake in backend/.env (localhost only).
+OPENAI_LIKE = {"openai": ("https://api.openai.com/v1", "OpenAI", "LOGIMIND_OPENAI_BASE_URL"),
+               "openrouter": ("https://openrouter.ai/api/v1", "OpenRouter", "LOGIMIND_OPENROUTER_BASE_URL")}
+LABEL_BY_HOST = {"api.openai.com": ("OpenAI", "openai"), "openrouter.ai": ("OpenRouter", "openrouter")}
 
 
 class SettingsError(ValueError):
@@ -533,21 +567,32 @@ def llm_from_settings(s: dict[str, str], env: dict[str, str] | None = None, dote
     provider = s.get("provider", "").strip().lower()
     if not provider:
         return None
+    if provider == "anthropic":
+        raise SettingsError("Anthropic keys are not supported yet: LogiMind has no Anthropic adapter")
     if provider not in UI_PROVIDERS:
-        raise SettingsError("unknown provider; choose Ollama (local), Groq, Gemini or OpenAI-compatible")
+        raise SettingsError("unknown provider; choose Ollama (local), Groq, Gemini, OpenRouter or OpenAI-compatible")
     env = os.environ if env is None else env
     model, key = s.get("model", "").strip(), s.get("key", "").strip()
     if provider == "ollama":  # always the server's own local Ollama URL: plain http only ever goes there
         return OllamaLLM(url=env.get("LOGIMIND_OLLAMA_URL", "http://localhost:11434"),
                          model=model or env.get("LOGIMIND_OLLAMA_MODEL", "llama3.2:3b"))
-    if provider == "openai":
+    if provider in OPENAI_LIKE:
+        default, label, override_var = OPENAI_LIKE[provider]
         base = s.get("base_url", "").strip().rstrip("/")
+        override = read_dotenv(BACKEND_ENV if dotenv is None else dotenv).get(override_var, "")
+        if not base and override and _is_loopback_url(override):  # operator's local fake (decision 0036)
+            return OpenAICompatLLM(model=model, api_key=key, base_url=override.rstrip("/"), settings_from="ui",
+                                   label=label, preference=provider, provider=provider, transport=transport,
+                                   resolve=resolve, auto_model=not model)
+        base = base or default
         try:
-            check_base_url(base)
+            host, _port = check_base_url(base)
         except BlockedURL as exc:
             raise SettingsError(f"OpenAI-compatible base URL: {exc}") from None
+        label, kind = LABEL_BY_HOST.get(host, ("OpenAI-compatible service", "openai"))
         return OpenAICompatLLM(model=model, api_key=key, base_url=base, settings_from="ui", guarded=True,
-                               transport=transport, resolve=resolve, auto_model=not model)
+                               label=label, preference=kind, provider=kind, transport=transport, resolve=resolve,
+                               auto_model=not model)
     cls, prefix = HOSTED[provider]
     conf = read_dotenv(BACKEND_ENV if dotenv is None else dotenv)
     llm = cls(model=model or conf.get(f"{prefix}_MODEL", ""), api_key=key or conf.get(f"{prefix}_API_KEY", ""),

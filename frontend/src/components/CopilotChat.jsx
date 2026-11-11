@@ -14,8 +14,8 @@ const KIND = {
 }
 
 // Copilot model providers (decision 0032). Hosted ones run on the provider's servers; the key never reaches the console.
-export const PROVIDERS = { ollama: 'Ollama', groq: 'Groq', gemini: 'Gemini', openai: 'the OpenAI-compatible service', fake: 'Fake model', none: 'None' }
-export const isHosted = (status) => ['groq', 'gemini', 'openai'].includes(status?.provider)
+export const PROVIDERS = { ollama: 'Ollama', groq: 'Groq', gemini: 'Gemini', openrouter: 'OpenRouter', openai: 'the OpenAI-compatible service', fake: 'Fake model', none: 'None' }
+export const isHosted = (status) => ['groq', 'gemini', 'openai', 'openrouter'].includes(status?.provider)
 const nameOf = (status) => PROVIDERS[status?.provider] || status?.provider || 'Model'
 
 // One conversation per signed-in key, shared by the docked panel and the /copilot page.
@@ -67,9 +67,13 @@ export function CopilotProvider({ children }) {
 
   // Copilot settings changed in this tab: ask the server again which model is in use.
   const settingsChanged = useCallback(() => { setStatus(null); loadStatus() }, [loadStatus])
+  // A connection test just worked: show the model as ready at once (no stale "not available" badge).
+  const markReady = useCallback((provider, model) => {
+    setStatus({ available: true, provider, model, reason: 'tested just now', problem: '' })
+  }, [])
 
-  const value = useMemo(() => ({ status, messages, busy, error, loadStatus, send, confirm, settingsChanged }),
-    [status, messages, busy, error, loadStatus, send, confirm, settingsChanged])
+  const value = useMemo(() => ({ status, messages, busy, error, loadStatus, send, confirm, settingsChanged, markReady }),
+    [status, messages, busy, error, loadStatus, send, confirm, settingsChanged, markReady])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 

@@ -65,7 +65,7 @@ def test_openai_compatible_lists_through_the_guard(wired):  # noqa: F811
 
 @pytest.mark.parametrize("answer,kind,words", [
     (lambda r: httpx.Response(401, json={"error": {"message": f"Invalid API Key {KEY}"}}), "auth",
-     "key missing or rejected (HTTP 401). Check the key in Copilot settings"),
+     "Groq rejected this key. Check that the whole key was copied, with no spaces or quotes."),
     (lambda r: httpx.Response(429, headers={"retry-after": "12"}), "rate_limit", "try again in 12 s"),
     (lambda r: (_ for _ in ()).throw(httpx.ConnectError("down", request=r)), "network", "could not be reached"),
     (lambda r: httpx.Response(200, content=b"x" * (netguard.MAX_RESPONSE_BYTES + 1)), "bad_response", "1 MB"),
@@ -90,7 +90,7 @@ def test_no_key_anywhere_is_a_plain_reason_without_a_request(wired):  # noqa: F8
     assert http.requests == []
 
 
-def test_an_empty_model_name_uses_the_first_chat_model_and_says_which(wired):  # noqa: F811
+def test_an_empty_model_name_uses_a_suitable_chat_model_and_says_which(wired):  # noqa: F811
     c, app, ha, hb, pid, use = wired
     app.state.llm_dotenv.write_text("", encoding="utf-8")  # no model in backend/.env: the console gave none
 
@@ -103,16 +103,19 @@ def test_an_empty_model_name_uses_the_first_chat_model_and_says_which(wired):  #
                                          "model_used": body["model"]})
     http = use(answer)
     test = c.post("/api/copilot/test", headers=headers(ha, provider="groq", key=KEY)).json()
-    assert test["ok"] is True and test["model"] == CHAT[0] and test["chosen_automatically"] is True
-    assert f"{CHAT[0]} was chosen (the first chat model in its list)" in test["message"]
+    # Groq's list has openai/gpt-oss-20b, the first of its preferred chat models (decision 0036)
+    assert test["ok"] is True and test["model"] == "openai/gpt-oss-20b" and test["chosen_automatically"] is True
+    assert test["message"] == ("Works: Groq is ready, using openai/gpt-oss-20b (chosen automatically: a common chat "
+                               "model).")
     assert all(q.method == "GET" for q in http.requests)  # never a completion to test
     status = c.get("/api/copilot/status", headers=headers(ha, provider="groq", key=KEY)).json()
-    assert status["available"] is True and status["model"] == CHAT[0] and "chosen automatically" in status["reason"]
+    assert status["available"] is True and status["model"] == "openai/gpt-oss-20b"
+    assert "chosen automatically" in status["reason"]
     r = c.post("/api/copilot/chat", json={"message": "explain the latest plan"},
                headers=headers(ha, provider="groq", key=KEY)).json()
     assert r["kind"] == "answer"
     posts = [q for q in http.requests if q.method == "POST"]
-    assert posts and all(json.loads(q.content)["model"] == CHAT[0] for q in posts)
+    assert posts and all(json.loads(q.content)["model"] == "openai/gpt-oss-20b" for q in posts)
 
 
 def test_a_typed_model_name_is_never_replaced(wired):  # noqa: F811
