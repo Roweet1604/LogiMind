@@ -23,10 +23,10 @@ An API-first hybrid optimization platform with an AI dispatch copilot for small-
 Keep the Python virtual environment **outside OneDrive** (OneDrive sync and long paths break installs).
 
 **`start-dev.bat`** (decisions 0028, 0030) does everything that is missing, once: creates `%TEMP%\lmv` with `py -3`
-or `python`, installs `backend
-equirements.txt`, writes `backend\.env` (git-ignored) from `backend\.env.example`
-with a new `LOGIMIND_DRIVER_LINK_SECRET` (existing values are never changed), and runs `npm install` in `frontend\`
-and `driver\`. Then it checks the ports, opens four windows: **API** (http://127.0.0.1:8000, local only),
+or `python`, installs `backend\requirements.txt`, writes `backend\.env` (git-ignored) from `backend\.env.example`
+with a new `LOGIMIND_DRIVER_LINK_SECRET` (existing values are never changed), and runs `npm ci` for the console and
+the driver app in a copy outside OneDrive, `%LOCALAPPDATA%\LogiMind` (decision 0038; the copy is refreshed on every
+start, so repository edits show up after the next `start-dev.bat`). Then it checks the ports, opens four windows: **API** (http://127.0.0.1:8000, local only),
 **worker** (runs the solver jobs), **console** (http://localhost:5173) and **driver app** (http://localhost:5174),
 waits until the API and the console answer, and opens the console. If a port is busy it names the port (and the
 program and its PID, read from the system's list of listening sockets; decision 0034), stops nothing and exits.
@@ -60,7 +60,7 @@ set LOGIMIND_WORKER=external
 cd backend
 %TEMP%\lmv\Scripts\python -m app.jobs.worker
 
-:: 3. Console     (folder: frontend; npm install once)
+:: 3. Console     (folder: frontend; npm install once. Inside OneDrive prefer start-dev.bat: it keeps node_modules outside, decision 0038)
 cd frontend
 npm install
 npm run dev

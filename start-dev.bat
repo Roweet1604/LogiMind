@@ -6,7 +6,8 @@ rem   start-dev.bat --no-browser                      start everything but do no
 rem   start-dev.bat --force-ports                     emergency: skip the busy-port check (decision 0034)
 rem   start-dev.bat tenant "Acme Fleet"               create a tenant; prints its API key ONCE
 rem First run (once): makes the Python environment in %TEMP%\lmv, installs the backend packages, writes
-rem backend\.env with a new driver-link secret, and runs npm install in frontend\ and driver\ (npm runs nowhere else).
+rem backend\.env with a new driver-link secret, and runs npm ci for the console and driver app in
+rem %LOCALAPPDATA%\LogiMind, outside OneDrive (decision 0038; npm runs nowhere else).
 rem Settings: backend\.env (git-ignored). Variables already set in this window win.
 rem Ports: API_PORT (8000), CONSOLE_PORT (5173), DRIVER_PORT (5174). Python: LOGIMIND_PYTHON, else %TEMP%\lmv.
 rem Demo mode is on here (local only, synthetic data); set LOGIMIND_DEMO_MODE=0 in backend\.env to turn it off.
@@ -88,20 +89,36 @@ if /i "%~1"=="tenant" (
   exit /b !RC!
 )
 
-rem ---- 3. Node packages for the console and the driver app (one time) -------------------------------------------
+rem ---- 3. Console and driver app run from a copy outside OneDrive (decision 0038) --------------------------------
+rem node_modules must not sit in OneDrive. frontend\, driver\ and design\ are mirrored to %LOCALAPPDATA%\LogiMind on
+rem every start (node_modules and dist there are kept); npm ci runs there when node_modules is missing or
+rem package-lock.json changed. Edits in the repository show up after the next start-dev.bat.
 where npm >nul 2>&1 || (
   echo [error] Node.js is not installed ^(npm not found^). Install the LTS version from nodejs.org, then run this again.
   exit /b 1
 )
+if not defined LOGIMIND_APPS (
+  if not defined LOCALAPPDATA (echo [error] The LOCALAPPDATA folder is not set. & exit /b 1)
+  set "LOGIMIND_APPS=%LOCALAPPDATA%\LogiMind"
+)
+for %%D in (design frontend driver) do (
+  if defined DRY (echo [dry-run] copy %%D\ to %LOGIMIND_APPS%\%%D) else (
+    robocopy "%ROOT%\%%D" "%LOGIMIND_APPS%\%%D" /MIR /XD node_modules dist /NFL /NDL /NJH /NJS /NP >nul
+    if errorlevel 8 (echo [error] Could not copy %%D\ to %LOGIMIND_APPS%\%%D. & exit /b 1)
+  )
+)
 for %%D in (frontend driver) do (
-  if not exist "%ROOT%\%%D\node_modules" (
-    echo [setup] npm install in %%D\ ^(one time^)...
-    if defined DRY (echo [dry-run] npm install in %%D) else (
-      pushd "%ROOT%\%%D"
-      call npm install --no-audit --no-fund
+  set "NEED_NPM="
+  fc /b "%ROOT%\%%D\package-lock.json" "%LOGIMIND_APPS%\%%D\node_modules\.logimind-lock" >nul 2>&1 || set "NEED_NPM=1"
+  if defined NEED_NPM (
+    echo [setup] npm ci for %%D\ in %LOGIMIND_APPS%\%%D ^(first run, or its packages changed^)...
+    if defined DRY (echo [dry-run] npm ci in %LOGIMIND_APPS%\%%D) else (
+      pushd "%LOGIMIND_APPS%\%%D"
+      call npm ci --no-audit --no-fund
       set "RC=!errorlevel!"
       popd
-      if not "!RC!"=="0" (echo [error] npm install failed in %%D\; the reason is printed above. & exit /b 1)
+      if not "!RC!"=="0" (echo [error] npm ci failed for %%D\; the reason is printed above. & exit /b 1)
+      copy /y "%ROOT%\%%D\package-lock.json" "%LOGIMIND_APPS%\%%D\node_modules\.logimind-lock" >nul
     )
   )
 )
@@ -133,8 +150,8 @@ set "LAUNCH=start"
 if defined DRY set "LAUNCH=echo [dry-run] start"
 %LAUNCH% "LogiMind API :%API_PORT%" /d "%ROOT%\backend" cmd /k ""%LOGIMIND_PYTHON%" -m uvicorn app.main:app --reload --host %LOGIMIND_BIND_HOST% --port %API_PORT%"
 %LAUNCH% "LogiMind worker" /d "%ROOT%\backend" cmd /k ""%LOGIMIND_PYTHON%" -m app.jobs.worker"
-%LAUNCH% "LogiMind console :%CONSOLE_PORT%" /d "%ROOT%\frontend" cmd /k "npm run dev -- --port %CONSOLE_PORT% --strictPort"
-%LAUNCH% "LogiMind driver :%DRIVER_PORT%" /d "%ROOT%\driver" cmd /k "npm run dev -- --port %DRIVER_PORT% --strictPort"
+%LAUNCH% "LogiMind console :%CONSOLE_PORT%" /d "%LOGIMIND_APPS%\frontend" cmd /k "npm run dev -- --port %CONSOLE_PORT% --strictPort"
+%LAUNCH% "LogiMind driver :%DRIVER_PORT%" /d "%LOGIMIND_APPS%\driver" cmd /k "npm run dev -- --port %DRIVER_PORT% --strictPort"
 if defined DRY (echo [dry-run] would wait for the API and the console, then open http://localhost:%CONSOLE_PORT%/ & exit /b 0)
 
 rem ---- 6. Wait until the API and the console answer, then open the console ---------------------------------------
