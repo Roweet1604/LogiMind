@@ -1,6 +1,6 @@
 # LogiMind progress
 
-Last updated: 10 Nov 2026, fifteenth session (branch `ui-redesign`): "Load models" in the Copilot settings box (decision 0035). Fourteenth: start-dev.bat's port check reads the listener table (decision 0034).
+Last updated: 11 Nov 2026, sixteenth session (branch `cleanup-and-fixes`): replans keep earlier disruptions (decision 0037); OpenAI no longer offered in the console (decision 0036 amended). Before that, 10 Nov 2026, fifteenth session (branch `ui-redesign`): "Load models" in the Copilot settings box (decision 0035). Fourteenth: start-dev.bat's port check reads the listener table (decision 0034).
 
 ## Done and verified
 ### Phase 0
@@ -232,6 +232,12 @@ Last updated: 10 Nov 2026, fifteenth session (branch `ui-redesign`): "Load model
 - **Not checked:** `start-dev.bat` on the default ports (5173 was busy with the developer's own server); a computer without Python or Node.js; the driver app (not changed); a phone. Plan "Created" times show UTC (for example 09:11 for 14:41 IST); existing behaviour, not changed.
 - **Tests at the end (exit codes checked):** ruff exit 0; backend **292 passed** (exit 0, 16 library deprecation warnings; Python 3.14.7, OR-Tools 9.15.6755); console **52 passed**, build exit 0; driver PWA **20 passed**.
 
+### Sixteenth session, 11 Nov 2026: replan chain fix and OpenAI removed (branch `cleanup-and-fixes`; commits 04c1f09, b6c9317, 36db243)
+- **Replans keep earlier disruptions** (decision 0037): `apply_event` reads the parent plan's replan record. A broken vehicle stays blocked (breaking it again is a 422), completed stops are at least the earlier frozen count, and retried customers keep the retry rule until completed or dropped. Each carried item is in the notes; the replan record now stores `retry`. Test `backend/tests/test_replan_chain.py` (3): all 3 failed on the old code (session-start run: 399 passed, 3 failed) and pass now.
+- **Console replan form:** completed counts start from (and cannot go below) the frozen counts, a broken vehicle is not offered and its count is locked, the GA is disabled while a retry rule is carried. New test in `src/test/ops.test.jsx`.
+- **Copilot settings:** OpenRouter kept; OpenAI not offered (keys refused in the browser, nothing sent; no OpenAI choice; "another OpenAI-compatible service" sends nothing without a base URL). Decision 0036 amended; README and CLAUDE.md invariant 12 match. Backend `openai` adapter unchanged.
+- **Tests (11 Nov 2026):** ruff passes; console 87 passed, console build OK, driver 21 passed. Backend: full suite 400 passed, 2 failed (`test_replan_chain.py::test_second_replan_keeps_the_retry_rule` timed out in its *first* plan before any replan; `test_runner_export.py::test_benchmark_script_end_to_end`: "OpenBLAS error: Memory allocation still failed"). The laptop had ~5 GB free with browsers, VS Code and PowerPoint open; an earlier full run during a parallel disk scan also had `MemoryError` failures. Rerun alone, the three affected files pass (23 passed). **A clean full backend run with free memory is still to be done.**
+
 ### Fifteenth session, 10 Nov 2026: "Load models" (decision 0035)
 - **Branch note:** the repository was on `main` when this session started, and the fourteenth session's commit 2d7649b had gone straight onto `main`. `ui-redesign` was fast-forwarded to `main` and this session's commit is on `ui-redesign`.
 - **Built:** "Load models" in the Copilot settings box → `POST /api/copilot/models` (same key header, guard, https, timeouts and 1 MB cap). Groq / OpenAI-compatible `GET /models`, Gemini `GET /models?pageSize=1000` (generateContent models only), Ollama `/api/tags`; non-chat models (embedding, speech, guard, moderation, image) filtered out; sorted. Picking a model fills the name and runs Test connection at once. A list that cannot be fetched gives a plain reason and the text field stays. With no model name (console settings, none in `backend\.env`) the first chat model of the list is used and named; the console writes it into the field.
@@ -314,7 +320,7 @@ Last updated: 10 Nov 2026, fifteenth session (branch `ui-redesign`): "Load model
 
 4. Team: review the `ui-redesign` branch (screenshots in `docs/report/ui/`) and merge it, or ask for changes; try the driver app on a real phone outdoors.
 5. Before the demo: close other dev servers, run `start-dev.bat` on the demo laptop once (first run downloads packages), and check that the browser opens signed in with three plans. Decide whether the venv should live outside `%TEMP%` (decision 0030).
-6. Team: decide whether to fix "replans forget earlier disruptions" before the review (carry unavailable vehicles and retries along the plan chain into `backend/app/replan/`), and whether the plan page should show planned arrival times. Rehearse `docs/DEMO_SCRIPT.md` once with the screenshots as a fallback.
+6. Done 11 Nov 2026: replans keep earlier disruptions (decision 0037). Team: decide whether the plan page should show planned arrival times. Run the full backend suite once with other programs closed (16th session's full runs hit memory errors). Rehearse `docs/DEMO_SCRIPT.md` once with the screenshots as a fallback.
 
 ## Restart commands
 See CLAUDE.md "Commands". In a new session: read CLAUDE.md, PLAN.md and PROGRESS.md, run the backend tests and report the real result.
