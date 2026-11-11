@@ -91,11 +91,12 @@ class PlanService:
                                      "only a completed, feasible plan can be replanned")
             routes = result.get("routes") or result["solve"]["routes"]
             parent_instance = Instance.from_dict(parent.instance)
+            earlier = dict(parent.replan or {})
         parent_road_ok = parent_instance.road is not None and not parent_instance.road.fallback
         if parent_instance.road is not None and self.distances is not None:
             # an urgent order's stop needs matrix rows: rebuild from the same requested source (fallback flagged)
             parent_instance = self.distances.cover(parent_instance, extra=extra_points(event))
-        setup = apply_event(parent_instance, routes, event)  # ReplanError -> 422
+        setup = apply_event(parent_instance, routes, event, earlier)  # ReplanError -> 422
         job = build_job(setup, engine, time_limit_s, warm_start, seed)  # ReplanError (e.g. GA + frozen) -> 422
         new_id = f"plan-{uuid.uuid4().hex[:12]}"
         stored = setup.instance.to_dict()
@@ -104,7 +105,8 @@ class PlanService:
             setup.notes.append("distances changed: OSRM was not available for the new stop, so this replan uses "
                                "the straight-line fallback for the whole matrix")
         record = {"parent_plan_id": plan_id, "frozen": setup.frozen, "blocked": setup.blocked,
-                  "dropped_customers": setup.dropped, "notes": setup.notes, "warm_start": job.warm_start,
+                  "dropped_customers": setup.dropped, "retry": setup.retry, "notes": setup.notes,
+                  "warm_start": job.warm_start,
                   "received_at": received_at.isoformat()}
         with tenant_session(self.factory, who.tenant_id) as s:
             s.add(Plan(id=new_id, tenant_id=who.tenant_id, instance=stored, requested_engine=engine,

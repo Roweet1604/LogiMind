@@ -15,6 +15,10 @@ Events
   a route's next unfinished stop, unless it is that route's only remaining stop (then it is
   at the end). Going straight back to a customer who was just not home is rarely useful.
 * urgent_order: a new customer that must be served in the replanned plan.
+
+Replanning a replanned plan keeps the earlier disruptions (`earlier` = the parent plan's replan record):
+a vehicle that broke down stays broken, stops completed earlier stay frozen even when the client sends a
+smaller count, and a retried delivery keeps the retry rule until it is completed or dropped.
 """
 from __future__ import annotations
 
@@ -103,8 +107,8 @@ def _with_customers(instance: Instance, customers: list[Customer], suffix: str) 
     return inst
 
 
-def apply_event(instance: Instance, routes: list[list[int]], event: VehicleBreakdown | FailedDelivery | UrgentOrder
-                ) -> ReplanSetup:
+def apply_event(instance: Instance, routes: list[list[int]], event: VehicleBreakdown | FailedDelivery | UrgentOrder,
+                earlier: dict | None = None) -> ReplanSetup:
     k = instance.vehicle_count
     routes = [list(r) for r in routes] + [[] for _ in range(k - len(routes))]
     if len(routes) > k:
@@ -114,25 +118,43 @@ def apply_event(instance: Instance, routes: list[list[int]], event: VehicleBreak
             raise ReplanError(f"completed: vehicle {v} does not exist (0..{k - 1})")
         if not 0 <= n <= len(routes[v]):
             raise ReplanError(f"completed: vehicle {v} has {len(routes[v])} stops, not {n}")
-    frozen = [routes[v][:event.completed.get(v, 0)] for v in range(k)]
-    rest = [routes[v][event.completed.get(v, 0):] for v in range(k)]
+    earlier = earlier or {}
+    earlier_frozen = list(earlier.get("frozen") or [])
+    earlier_frozen += [[] for _ in range(k - len(earlier_frozen))]
+    done = {v: max(event.completed.get(v, 0), len(earlier_frozen[v])) for v in range(k)}
+    frozen = [routes[v][:done[v]] for v in range(k)]
+    rest = [routes[v][done[v]:] for v in range(k)]
     frozen_ids = {c for f in frozen for c in f}
     customers = list(instance.customers)
-    blocked: list[int] = []
+    blocked: list[int] = sorted({int(v) for v in earlier.get("blocked") or []})
     to_insert: list[int] = []
-    retry: list[int] = []
+    retry: list[int] = [c for c in earlier.get("retry") or [] if c not in frozen_ids]
     dropped: list[int] = []
     notes: list[str] = []
     suffix = ""
+    kept = [v for v in range(k) if len(earlier_frozen[v]) > event.completed.get(v, 0)]
+    if kept:
+        notes.append("completed stops kept from the earlier replan: "
+                     + ", ".join(f"vehicle {v}: {len(earlier_frozen[v])}" for v in kept))
+    if blocked:
+        notes.append(f"vehicle(s) {blocked} broke down in an earlier replan and take no further stops")
+    if retry:
+        notes.append(f"retry rule kept from the earlier replan for customer(s) {retry}")
+    for v in blocked:  # a broken vehicle's route is its frozen prefix; nothing else is left on it
+        to_insert += rest[v]
+        rest[v] = []
 
     if isinstance(event, VehicleBreakdown):
         if event.vehicle >= k:
             raise ReplanError(f"vehicle {event.vehicle} does not exist (0..{k - 1})")
-        blocked = [event.vehicle]
-        to_insert = rest[event.vehicle]
+        if event.vehicle in blocked:
+            raise ReplanError(f"vehicle {event.vehicle} already broke down in an earlier replan")
+        blocked = sorted(blocked + [event.vehicle])
+        moved = rest[event.vehicle]
+        to_insert += moved
         rest[event.vehicle] = []
         notes.append(f"vehicle {event.vehicle} broke down after {len(frozen[event.vehicle])} completed stops; "
-                     f"{len(to_insert)} unfinished stops reassigned")
+                     f"{len(moved)} unfinished stops reassigned")
         suffix = f"+breakdown-v{event.vehicle}"
     elif isinstance(event, FailedDelivery):
         cid = event.customer_id
@@ -141,9 +163,11 @@ def apply_event(instance: Instance, routes: list[list[int]], event: VehicleBreak
         if cid in frozen_ids:
             raise ReplanError(f"customer {cid} is counted as completed; a failed delivery cannot be completed")
         rest = [[c for c in r if c != cid] for r in rest]
+        to_insert = [c for c in to_insert if c != cid]
+        retry = [c for c in retry if c != cid]
         if event.retry:
-            to_insert = [cid]
-            retry = [cid]
+            to_insert.append(cid)
+            retry.append(cid)
             notes.append(f"delivery to customer {cid} failed; it will be re-visited, but not as a route's next stop "
                          "(only as a route's last remaining stop)")
         else:
@@ -157,7 +181,7 @@ def apply_event(instance: Instance, routes: list[list[int]], event: VehicleBreak
             raise ReplanError(f"customer id {c.id} is already used")
         customers.append(Customer(c.id, c.x, c.y, c.demand, ready_time=c.ready_time, due_time=c.due_time,
                                   service_time=c.service_time))
-        to_insert = [c.id]
+        to_insert.append(c.id)
         notes.append(f"urgent order {c.id} added")
         suffix = f"+urgent-{c.id}"
 
