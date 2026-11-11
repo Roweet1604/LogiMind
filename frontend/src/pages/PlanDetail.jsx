@@ -17,13 +17,17 @@ const busy = (p) => p && (p.state === 'queued' || p.state === 'running')
 const EVENTS = [['vehicle_breakdown', 'Vehicle breakdown'], ['failed_delivery', 'Failed delivery'], ['urgent_order', 'Urgent order']]
 
 // Replan form: the backend freezes the completed stops and checks the new plan with the validator.
+// On a replanned plan, stops completed earlier are the minimum and broken-down vehicles are not offered again.
 export function ReplanPanel({ plan, onReplanned }) {
   const routes = planRoutes(plan) || []
   const inst = plan.instance
   const used = routes.map((r, v) => ({ r, v })).filter((x) => x.r.length)
+  const doneBefore = (v) => plan.replan?.frozen?.[v]?.length || 0
+  const broken = new Set(plan.replan?.blocked || [])
+  const running = used.filter(({ v }) => !broken.has(v))
   const [type, setType] = useState('vehicle_breakdown')
-  const [completed, setCompleted] = useState(() => Object.fromEntries(used.map(({ v }) => [v, 0])))
-  const [vehicle, setVehicle] = useState(used[0]?.v ?? 0)
+  const [completed, setCompleted] = useState(() => Object.fromEntries(used.map(({ v }) => [v, doneBefore(v)])))
+  const [vehicle, setVehicle] = useState(running[0]?.v ?? '')
   const [failed, setFailed] = useState('')
   const [retry, setRetry] = useState(true)
   const nextId = Math.max(0, ...inst.customers.map((c) => c.id)) + 1
@@ -40,6 +44,8 @@ export function ReplanPanel({ plan, onReplanned }) {
   }
   const pending = used.flatMap(({ r, v }) => r.slice(completed[v] || 0))
   const anyFrozen = Object.values(completed).some((n) => n > 0)
+  const retried = plan.replan?.retry?.length > 0  // the GA cannot keep the retry rule either
+  const noGa = anyFrozen || retried
 
   async function submit(e) {
     e.preventDefault()
@@ -68,9 +74,10 @@ export function ReplanPanel({ plan, onReplanned }) {
           <legend className="label">Stops already completed per vehicle</legend>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {used.map(({ r, v }) => (
-              <Field key={v} label={`Vehicle ${v} (of ${r.length})`} htmlFor={`done-${v}`}>
-                <NumberInput id={`done-${v}`} value={completed[v]} min={0} max={r.length}
-                  onChange={(n) => setCompleted((p) => ({ ...p, [v]: n === '' ? 0 : Math.max(0, Math.min(r.length, n)) }))} />
+              <Field key={v} label={`Vehicle ${v} (of ${r.length})`} htmlFor={`done-${v}`}
+                hint={broken.has(v) ? 'Broke down earlier' : doneBefore(v) ? `At least ${doneBefore(v)} (completed earlier)` : undefined}>
+                <NumberInput id={`done-${v}`} value={completed[v]} min={doneBefore(v)} max={r.length} disabled={broken.has(v)}
+                  onChange={(n) => setCompleted((p) => ({ ...p, [v]: n === '' ? doneBefore(v) : Math.max(doneBefore(v), Math.min(r.length, n)) }))} />
               </Field>
             ))}
           </div>
@@ -78,7 +85,7 @@ export function ReplanPanel({ plan, onReplanned }) {
         {type === 'vehicle_breakdown' && (
           <div className="max-w-sm"><Field label="Broken-down vehicle" htmlFor="broken">
             <select id="broken" className="input" value={vehicle} onChange={(e) => setVehicle(e.target.value)}>
-              {used.map(({ v }) => <option key={v} value={v}>Vehicle {v}</option>)}
+              {running.map(({ v }) => <option key={v} value={v}>Vehicle {v}</option>)}
             </select>
           </Field></div>
         )}
@@ -115,17 +122,17 @@ export function ReplanPanel({ plan, onReplanned }) {
               <NumberInput id="now" value={now} onChange={setNow} min={0} step="any" />
             </Field>
           )}
-          <Field label="Engine" htmlFor="re-engine" hint={anyFrozen ? 'The GA cannot keep completed stops; OR-Tools only.' : undefined}>
+          <Field label="Engine" htmlFor="re-engine" hint={anyFrozen ? 'The GA cannot keep completed stops; OR-Tools only.' : retried ? 'The GA cannot keep the retry rule; OR-Tools only.' : undefined}>
             <select id="re-engine" className="input" value={engine} onChange={(e) => setEngine(e.target.value)}>
               <option value="ortools">OR-Tools (warm start)</option>
-              <option value="ga" disabled={anyFrozen}>GA + local search (seeded with this plan)</option>
+              <option value="ga" disabled={noGa}>GA + local search (seeded with this plan)</option>
             </select>
           </Field>
           <Field label="Time budget (s)" htmlFor="re-budget"><NumberInput id="re-budget" value={budget} onChange={setBudget} min={0.5} step={0.5} /></Field>
         </div>
         {error && <Notice kind="error" title="Replan not accepted" errors={error.errors}>{error.message}</Notice>}
         <button type="submit" className="btn btn-primary"
-          disabled={sending || (type === 'failed_delivery' && !failed) || (engine === 'ga' && anyFrozen)}>
+          disabled={sending || (type === 'failed_delivery' && !failed) || (type === 'vehicle_breakdown' && vehicle === '') || (engine === 'ga' && noGa)}>
           {sending ? <Spinner label="Submitting" /> : 'Replan'}
         </button>
       </form>

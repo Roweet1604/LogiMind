@@ -167,6 +167,24 @@ test('Replan: urgent order sends the new customer; GA is disabled while stops ar
   expect(body().event).toEqual({ type: 'urgent_order', customer: { id: 5, x: 50, y: 50, demand: 2 }, completed: { 0: 1 } })
 })
 
+test('Replan of a replanned plan: completed stops start from the frozen counts; a broken vehicle is not offered', async () => {
+  setApiKey(KEY)
+  const child = { ...PLAN, result: { ...PLAN.result, routes: [[1], [3, 4, 2]] },
+    replan: { parent_plan_id: 'plan-0', frozen: [[1], [3]], blocked: [0], retry: [] } }
+  const calls = recordingFetch({ ...replanTable(), 'GET /api/plans/plan-1': child })
+  renderPage(<Routes><Route path="/plans/:id" element={<PlanDetail />} /></Routes>, { route: '/plans/plan-1' })
+  await screen.findByText('Replan after a disruption')
+  expect(screen.getByLabelText(/vehicle 0 \(of 1\)/i)).toHaveValue(1)
+  expect(screen.getByLabelText(/vehicle 0 \(of 1\)/i)).toBeDisabled()
+  expect(screen.getByLabelText(/vehicle 1 \(of 3\)/i)).toHaveValue(1)
+  expect([...screen.getByLabelText(/broken-down vehicle/i).options].map((o) => o.value)).toEqual(['1'])
+  await userEvent.click(screen.getByRole('tab', { name: /urgent order/i }))
+  await userEvent.click(screen.getByRole('button', { name: /^replan$/i }))
+  await waitFor(() => expect(calls.some((c) => c.key === 'POST /api/plans/plan-1/replan')).toBe(true))
+  const body = JSON.parse(calls.find((c) => c.key === 'POST /api/plans/plan-1/replan').body)
+  expect(body.event.completed).toEqual({ 0: 1, 1: 1 })
+})
+
 test('Replan: a refused replan shows the backend reason', async () => {
   setApiKey(KEY)
   recordingFetch({ ...replanTable(), 'POST /api/plans/plan-1/replan': { __status: 422, body: { detail: 'vehicle 9 does not exist (0..1)' } } })
