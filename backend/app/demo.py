@@ -9,6 +9,10 @@ key that is kept in memory only (never written to disk or the log), and, if the 
 three plans on a small SYNTHETIC data set. The plans go through the normal queue, solvers and validator.
 GET /api/demo/session hands the key out only to a request that comes from this machine (see `request_is_local`).
 Normal API-key sign-in is unchanged.
+
+Public demo (decision 0039, for the free Render deployment): LOGIMIND_DEMO_MODE=1 AND LOGIMIND_PUBLIC_DEMO=1 turn demo
+mode on whatever the bind host is, and GET /api/demo/session hands the key of the SYNTHETIC demo tenant to anyone.
+Use it only on a server that holds nothing but the demo tenant.
 """
 from __future__ import annotations
 
@@ -37,6 +41,7 @@ class DemoState:
     enabled: bool
     reason: str
     key: str = ""
+    public: bool = False  # LOGIMIND_PUBLIC_DEMO=1: the demo key is handed to any caller (decision 0039)
 
 
 def is_loopback(host: str | None) -> bool:
@@ -56,6 +61,9 @@ def demo_from_env(env: dict[str, str] | None = None) -> DemoState:
     env = os.environ if env is None else env
     if env.get("LOGIMIND_DEMO_MODE", "") != "1":
         return DemoState(False, "LOGIMIND_DEMO_MODE is not 1")
+    if env.get("LOGIMIND_PUBLIC_DEMO", "") == "1":
+        return DemoState(True, "on, PUBLIC (LOGIMIND_PUBLIC_DEMO=1): anyone can use the synthetic demo tenant",
+                         public=True)
     bind = env.get("LOGIMIND_BIND_HOST", "")
     if not is_loopback(bind):
         return DemoState(False, f"refused: LOGIMIND_BIND_HOST must be a loopback address, not {bind or '(unset)'!r}")

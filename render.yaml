@@ -1,0 +1,27 @@
+# Render Blueprint: the LogiMind API on the free plan (decision 0039). Public demo with SYNTHETIC data only.
+# The free plan has no persistent disk: the SQLite database starts empty on every deploy or wake-up and the
+# synthetic demo tenant with its three plans is created again at start-up.
+services:
+  - type: web
+    name: logimind-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.14.7
+      - key: LOGIMIND_DEMO_MODE
+        value: "1"
+      - key: LOGIMIND_PUBLIC_DEMO
+        value: "1"
+      - key: LOGIMIND_WORKER
+        value: inline
+      - key: ROUTEOPT_DATA_DIR
+        value: /tmp/logimind-data
+      - key: LOGIMIND_DRIVER_LINK_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        sync: false

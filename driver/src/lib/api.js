@@ -1,5 +1,5 @@
 // Driver API client. The link token goes in X-Driver-Token; nothing else identifies the driver.
-const BASE = import.meta.env?.VITE_API_BASE ?? ''
+const BASE = (import.meta.env?.VITE_API_URL ?? import.meta.env?.VITE_API_BASE ?? '').replace(/\/+$/, '')
 
 export class ApiError extends Error {
   constructor(message, status = 0) {

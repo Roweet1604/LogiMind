@@ -4,6 +4,8 @@ Environment variables
   ROUTEOPT_DATA_DIR            where instances/runs/experiments JSON are stored
                                (default ../experiments/results/api_data)
   ROUTEOPT_CORS_ORIGINS        comma-separated allowed origins (default http://localhost:5173)
+  FRONTEND_URL                 one more allowed origin, e.g. the deployed console https://logimind.vercel.app
+                               (environment first, else the line in backend/.env)
   ROUTEOPT_MAX_TIME_LIMIT_S    cap on per-run time limits (default 300)
   LOGIMIND_DATABASE_URL        tenant database (default: SQLite file logimind.db in the data dir);
                                migrated to the Alembic head on start-up
@@ -27,6 +29,7 @@ Environment variables
                                (development and tests only). See app/jobs/worker.py for the worker's settings.
   LOGIMIND_DEMO_MODE / LOGIMIND_BIND_HOST  "1" + a loopback host: local demo tenant with synthetic plans and
                                console auto sign-in (app/demo.py, decision 0029). OFF by default; never in Compose.
+  LOGIMIND_PUBLIC_DEMO         "1" with LOGIMIND_DEMO_MODE=1: public demo for the hosted deployment (decision 0039)
 """
 from __future__ import annotations
 
@@ -45,7 +48,7 @@ from app.api.notifications import router as notifications_router
 from app.api.platform import router as platform_router
 from app.api.routes import legacy_open_from_env, router
 from app.copilot.agent import Copilot
-from app.copilot.llm import llm_from_env
+from app.copilot.llm import BACKEND_ENV, llm_from_env, read_dotenv
 from app.db.migrate import upgrade_to_head
 from app.db.session import make_engine, make_session_factory
 from app.demo import DemoState, demo_from_env, setup_demo
@@ -79,7 +82,9 @@ def create_app(data_dir: Path | None = None, legacy_open: bool | None = None, cl
                   description="Route planning with OR-Tools, GA and hybrid engines. Tenant endpoints "
                               "(plans, imports, webhooks, audit) need an `X-API-Key` header.")
     origins = os.environ.get("ROUTEOPT_CORS_ORIGINS", "http://localhost:5173").split(",")
-    app.add_middleware(CORSMiddleware, allow_origins=[o.strip() for o in origins],
+    # The deployed console (e.g. Vercel). Also read from the backend/.env file, so plain `uvicorn` picks it up.
+    origins += [os.environ.get("FRONTEND_URL") or read_dotenv(BACKEND_ENV).get("FRONTEND_URL", "")]
+    app.add_middleware(CORSMiddleware, allow_origins=[o.strip().rstrip("/") for o in origins if o.strip()],
                        allow_methods=["*"], allow_headers=["*"])
     explicit_dir = data_dir is not None
     data_dir = Path(data_dir or os.environ.get("ROUTEOPT_DATA_DIR", default_dir))
@@ -109,6 +114,11 @@ def create_app(data_dir: Path | None = None, legacy_open: bool | None = None, cl
         logging.getLogger("logimind.demo").warning("demo mode: %s", app.state.demo.reason)
     if app.state.demo.enabled:
         app.state.demo.key = setup_demo(app.state.db, app.state.plans)
+
+    @app.get("/health", include_in_schema=False)
+    def health() -> dict:  # liveness probe for the host (Render); /api/health has the details
+        return {"status": "ok"}
+
     app.include_router(router)
     app.state.copilot = Copilot(app.state.plans, llm_from_env())
     app.include_router(platform_router)

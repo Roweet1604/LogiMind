@@ -1,6 +1,6 @@
 # LogiMind progress
 
-Last updated: 11 Nov 2026, sixteenth session (branch `cleanup-and-fixes`): replans keep earlier disruptions (decision 0037); OpenAI no longer offered in the console (decision 0036 amended). Before that, 10 Nov 2026, fifteenth session (branch `ui-redesign`): "Load models" in the Copilot settings box (decision 0035). Fourteenth: start-dev.bat's port check reads the listener table (decision 0034).
+Last updated: 12 Nov 2026, eighteenth session (`main`): public deployment plumbing (decision 0039). Before that, 11 Nov 2026, sixteenth session (branch `cleanup-and-fixes`): replans keep earlier disruptions (decision 0037); OpenAI no longer offered in the console (decision 0036 amended). Before that, 10 Nov 2026, fifteenth session (branch `ui-redesign`): "Load models" in the Copilot settings box (decision 0035). Fourteenth: start-dev.bat's port check reads the listener table (decision 0034).
 
 ## Done and verified
 ### Phase 0
@@ -238,7 +238,9 @@ Last updated: 11 Nov 2026, sixteenth session (branch `cleanup-and-fixes`): repla
 - **Removed:** `frontend
 ode_modules`, `driver
 ode_modules`, `frontend\dist`, `driver\dist`, 30 cache folders (`__pycache__`, `.pytest_cache`, `.ruff_cache`, incl. 8 in `docs/context/prior-code`), the old `%TEMP%` folders `lm_shot`, `lmfe`, `lm_fe`, `lm_ui`, `lm_demo_s6`, `lm_browser_s5`, `lm_bench_smoke`, `bench`, `benchchk` and 31 old test logs. Repo on disk: 258.1 MB in 29,837 files -> 32.5 MB in 2,258 files (13.1 MB of it `.git`). The mirror outside OneDrive is 223.9 MB.
-- README: repaired the damaged `backendequirements.txt` path (its `` had been stored as a carriage return).
+- README: repaired the damaged `backend
+equirements.txt` path (its `
+` had been stored as a carriage return).
 - **Tests (12 Nov 2026):** backend **403 passed, 0 failed** (full suite alone, 4 min 29 s); ruff passes; console 87 passed and builds; driver 21 passed and builds.
 
 ### Sixteenth session, 11 Nov 2026: replan chain fix and OpenAI removed (branch `cleanup-and-fixes`; commits 04c1f09, b6c9317, 36db243)
@@ -318,6 +320,12 @@ ode_modules`, `frontend\dist`, `driver\dist`, 30 cache folders (`__pycache__`, `
 - Team answers still missing (docs/decisions/0002). Docker and Ollama not installed.
 - UI redesign (branch `ui-redesign`, not merged): not tried on a real phone; copilot Confirm/Cancel not seen in a browser (no model); research pages and Methodology not re-walked in a browser (now behind the Research link). The console now keeps the session when the server is down (decision 0031).
 - Demo set-up: `start-dev.bat` ran on the default ports from a fresh state on 12 Nov 2026 (decision 0038); not yet on the demo laptop; the venv in `%TEMP%` can be damaged by something outside the project (seen once; decision 0030).
+
+### Deployment plumbing, 12 Nov 2026 (decision 0039)
+- Console reads the API address from `VITE_API_URL` at build time (old `VITE_API_BASE` still works); `frontend/vercel.json` rewrites routes to `index.html`.
+- API: `GET /health`; CORS also allows `FRONTEND_URL` (environment, else the line in `backend/.env`); `LOGIMIND_PUBLIC_DEMO=1` (with `LOGIMIND_DEMO_MODE=1`) hands the synthetic demo key to any caller; `render.yaml` for a free Render web service; `backend/requirements.txt` pinned.
+- **Verified:** backend **407 passed** (12 Nov 2026, Python 3.14.7), ruff passes, frontend **87 passed**, `npm run build` OK with `VITE_API_URL` set; a uvicorn start on an empty data dir with the public demo seeded three validator-feasible plans and answered CORS for `FRONTEND_URL`.
+- **Not verified:** no Render deploy done; the Vercel console against the Cloudflare tunnel was not checked by Claude. Through a tunnel the local-only demo sign-in is refused (403), so the console shows the API-key sign-in unless `LOGIMIND_PUBLIC_DEMO=1` is set.
 
 ## Known quirks
 - Instance ids hash coordinates as given: `10` and `10.0` give different ids (baseline behaviour, kept so old ids stay valid). The API always sends floats.

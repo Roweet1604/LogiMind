@@ -1,7 +1,8 @@
 import { llmHeaders } from './llmSettings'
 
 // Thin client for the FastAPI backend. Errors keep the server's reasons so the UI can show them.
-const BASE = import.meta.env?.VITE_API_BASE ?? ''
+// VITE_API_URL: the deployed API, e.g. https://logimind-api.onrender.com (decision 0039). Empty: same origin / dev proxy.
+const BASE = (import.meta.env?.VITE_API_URL ?? import.meta.env?.VITE_API_BASE ?? '').replace(/\/+$/, '')
 
 export class ApiError extends Error {
   constructor(message, { status = 0, errors = [], unreachable = false } = {}) {
@@ -14,7 +15,9 @@ export class ApiError extends Error {
 }
 
 // Plain words for people who run the demo, not developers.
-export const SERVER_DOWN = "The server isn't running. Run start-dev.bat, then press Retry."
+export const SERVER_DOWN = BASE
+  ? "The server isn't answering yet. The free hosting sleeps when idle and takes about a minute to wake up; press Retry."
+  : "The server isn't running. Run start-dev.bat, then press Retry."
 const PLAIN = {
   401: 'Your sign-in key was not accepted. Sign in again.',
   403: 'This part of LogiMind is switched off on this server.',
