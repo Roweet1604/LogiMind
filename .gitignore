@@ -10,3 +10,9 @@ experiments/benchmarks/data/
 frontend/dist/
 driver/dist/
 osrm-data/
+
+# Hugging Face Space: copies made by backend/scripts/build_hf_space.py (decision 0044)
+hf-space/app/
+hf-space/migrations/
+hf-space/alembic.ini
+hf-space/requirements.txt
