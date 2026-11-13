@@ -6,13 +6,18 @@ import { manifest } from './pwa.manifest.js'
 // Driver PWA. The service worker precaches the app shell so it opens offline; the stop list itself is
 // cached by the app (src/lib/store.js), so the API is never served stale by the service worker.
 
+// DRIVER_BASE: the path the app is served under. The Vercel build of the console puts it at /driver/ (decision 0041);
+// everywhere else (dev server, Docker) it is the site root.
+const base = process.env.DRIVER_BASE || '/'
+
 export default defineConfig({
+  base,
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon-192.png', 'icon-512.png'],
-      manifest,
+      manifest: { ...manifest, start_url: base, scope: base },
       workbox: {
         globPatterns: ['**/*.{js,css,html,png,woff2}'],
         navigateFallback: 'index.html',

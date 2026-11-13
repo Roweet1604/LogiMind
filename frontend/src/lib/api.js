@@ -46,6 +46,23 @@ const BASE = PICK.base
 // The tunnel host name when the console talks to a PC via ?api=, else null (shown in the header).
 export const API_OVERRIDE = PICK.override ? BASE.replace(/^https?:\/\//, '') : null
 
+// Driver link shown to the dispatcher (decision 0041). The signed token is the backend's, unchanged. When this
+// console build also serves the driver app (VITE_DRIVER_PATH, set by the Vercel build to /driver/), the link uses
+// the address the console is served from, so it opens on a phone. Otherwise the backend's address
+// (LOGIMIND_DRIVER_APP_URL) is kept. Either way a laptop tunnel in use goes along as ?api=, before #t=.
+const DRIVER_PATH = import.meta.env?.VITE_DRIVER_PATH || ''
+export function driverLinkUrl(link, {
+  origin = typeof window === 'undefined' ? '' : window.location.origin,
+  driverPath = DRIVER_PATH,
+  api = PICK.override ? BASE : '',
+} = {}) {
+  const query = api ? `?api=${api}` : ''
+  const root = driverPath
+    ? `${origin.replace(/\/+$/, '')}/${driverPath.replace(/^\/+|\/+$/g, '')}/`
+    : (link.url || '').split('#')[0].split('?')[0]
+  return `${root}${query}#t=${link.token}`
+}
+
 export class ApiError extends Error {
   constructor(message, { status = 0, errors = [], unreachable = false } = {}) {
     super(message)

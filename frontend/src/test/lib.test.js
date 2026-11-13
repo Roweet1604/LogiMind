@@ -1,4 +1,4 @@
-import { ApiError, api, parseErrorBody, pickApiBase } from '../lib/api'
+import { ApiError, api, driverLinkUrl, parseErrorBody, pickApiBase } from '../lib/api'
 import { fmt, fmtInt, fmtSeconds, isNum } from '../lib/format'
 
 test('missing values are shown as a dash, never as zero', () => {
@@ -48,4 +48,26 @@ test('pickApiBase ignores other servers and forgets the address on ?api=default'
   expect(pickApiBase({ search: '?api=default', stored: 'https://a.trycloudflare.com', built })).toEqual({ base: built, override: false, store: '' })
   expect(pickApiBase({ stored: 'https://evil.example.com', built })).toEqual({ base: built, override: false, store: '' })
   expect(pickApiBase({ built })).toEqual({ base: built, override: false, store: undefined })
+})
+
+// Driver links (decision 0041): built from the console's own address when it serves the driver app, with the
+// laptop tunnel as ?api= before #t=; the signed token is the backend's, unchanged.
+test('driverLinkUrl uses the console address and carries the tunnel before #t=', () => {
+  const link = { token: 'dl1.abc-DEF_1.sig', url: 'http://localhost:5174/#t=dl1.abc-DEF_1.sig' }
+  const tunnel = 'https://bold-cat-12.trycloudflare.com'
+  const origin = 'https://logi-mind-ten.vercel.app'
+  expect(driverLinkUrl(link, { origin, driverPath: '/driver/', api: tunnel }))
+    .toBe('https://logi-mind-ten.vercel.app/driver/?api=https://bold-cat-12.trycloudflare.com#t=dl1.abc-DEF_1.sig')
+  expect(driverLinkUrl(link, { origin, driverPath: '/driver/', api: '' })).toBe('https://logi-mind-ten.vercel.app/driver/#t=dl1.abc-DEF_1.sig')
+  const u = new URL(driverLinkUrl(link, { origin, driverPath: 'driver', api: tunnel }))
+  expect(u.pathname).toBe('/driver/')
+  expect(u.searchParams.get('api')).toBe(tunnel)
+  expect(u.hash).toBe(`#t=${link.token}`)
+})
+
+test('driverLinkUrl keeps the backend address when the console does not serve the driver app', () => {
+  const link = { token: 'dl1.x.y', url: 'http://localhost:5174/#t=dl1.x.y' }
+  expect(driverLinkUrl(link, { origin: 'http://localhost:5173', driverPath: '', api: '' })).toBe('http://localhost:5174/#t=dl1.x.y')
+  expect(driverLinkUrl(link, { origin: 'http://localhost:5173', driverPath: '', api: 'https://a-b.trycloudflare.com' }))
+    .toBe('http://localhost:5174/?api=https://a-b.trycloudflare.com#t=dl1.x.y')
 })

@@ -1,6 +1,6 @@
 import { CheckCircle2, XCircle } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import { api } from '../lib/api'
+import { api, driverLinkUrl } from '../lib/api'
 import { asUtc } from '../lib/format'
 import { Notice, Panel, TableWrap } from './ui'
 
@@ -45,7 +45,7 @@ export default function DriverLinks({ plan, routes }) {
       {fresh && (
         <div className="mb-4 rounded border border-ink bg-accent-soft p-3">
           <p className="text-xs font-medium">Link for route {fresh.route_index}, valid until {when(fresh.expires_at)}. Send it to the driver; it is shown only now.</p>
-          <input readOnly aria-label="Driver link" className="input mt-2 font-mono text-xs" value={fresh.url} onFocus={(e) => e.target.select()} />
+          <input readOnly aria-label="Driver link" className="input mt-2 font-mono text-xs" value={driverLinkUrl(fresh)} onFocus={(e) => e.target.select()} />
         </div>
       )}
       <TableWrap>

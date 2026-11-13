@@ -1,4 +1,5 @@
 import { manifest } from '../../pwa.manifest.js'
+import { pickApiBase } from '../lib/api'
 import { navUrl } from '../lib/nav'
 import { linkKey, loadQueue, loadToken, saveQueue, takeTokenFromLocation } from '../lib/store'
 import { flushQueue, makeReport, withQueued } from '../lib/sync'
@@ -79,4 +80,20 @@ test('the web app manifest makes the app installable', () => {
   expect(manifest).toMatchObject({ display: 'standalone', start_url: '/', short_name: 'Driver' })
   expect(manifest.icons.map((i) => i.sizes)).toEqual(expect.arrayContaining(['192x192', '512x512']))
   expect(manifest.icons.some((i) => i.purpose === 'maskable')).toBe(true)
+})
+
+// Run-time API address from the driver link (decision 0041): ?api=<tunnel> before #t=, kept for the installed app.
+test('the driver app takes the tunnel from the link and keeps it for the installed app', () => {
+  const t = 'https://bold-cat-12.trycloudflare.com'
+  const built = 'https://x.onrender.com'
+  expect(pickApiBase({ search: `?api=${t}`, hash: '#t=dl1.a.b', built })).toEqual({ base: t, store: t })
+  expect(pickApiBase({ search: '', hash: '', stored: t, built })).toEqual({ base: t, store: undefined })  // opened at start_url
+})
+
+test('the driver app ignores other servers, and a new link without ?api= forgets an old tunnel', () => {
+  const built = 'https://x.onrender.com'
+  for (const bad of ['https://evil.example.com', 'http://a.trycloudflare.com', 'https://a.trycloudflare.com.evil.io']) {
+    expect(pickApiBase({ search: `?api=${encodeURIComponent(bad)}`, hash: '#t=dl1.a.b', built })).toEqual({ base: built, store: undefined })
+  }
+  expect(pickApiBase({ search: '', hash: '#t=dl1.a.b', stored: 'https://old-1.trycloudflare.com', built })).toEqual({ base: built, store: '' })
 })
