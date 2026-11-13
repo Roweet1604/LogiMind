@@ -365,6 +365,11 @@ equirements.txt` path (its `
 - **Also verified:** the backend suite with the Space's package versions (pydantic 2.12.5, gradio 6.32.0, spaces 0.51.3; Python 3.13, as 3.12 is not installed here): **415 passed**. `app.py` run locally on port 7860 from a fresh copy of the folder passed the same checks (health, CORS, demo sign-in, plans, solve, replan). The production build of commit 043ca47 (Vercel GitHub integration) is live; in Chrome the console showed "server connected", "Demo Fleet (synthetic)" and listed the plans.
 - **Not verified:** a real phone, and the driver-link flow on the hosted API.
 
+### Copilot on the Space: key from the Space secret, fast status, limits, 13 Nov 2026 (decision 0046, commit 7c5cc98)
+- `LOGIMIND_LLM_KEYS_FROM_ENV=1` lets hosted keys/models come from the environment (Space secrets); `hf-space/app.py` sets it with `LOGIMIND_LLM_PROVIDER=groq`, `GROQ_MODEL=llama-3.3-70b-versatile`. Status returns `state` (ready / not_configured / unavailable) and `max_message_chars`; the provider probe times out after 5 s. Console: 15 s status timeout with its own message and "Check again"; not configured shows "Copilot needs a model. Plans and replans still work from the Plans page." Public demo limits: 5/min per client IP and per session, 12/min and 300/day per server, 500 characters.
+- **Verified:** backend **425 passed** (+10 in `tests/test_copilot_public.py`), console **96 passed** (+3), console build OK, ruff passes. Uploaded to the Space (commit cfa50f4); the live status answered in 1.9 s with `state: not_configured`, "the GROQ_API_KEY secret is not set on this server".
+- **Not verified:** a real Groq call from the Space and the breakdown → Confirm/Cancel flow there (the secret was not set yet), the console on Vercel against the new status, and how Hugging Face's proxy fills `X-Forwarded-For` (per-IP limit; the server-wide caps hold regardless).
+
 ## Known quirks
 - Instance ids hash coordinates as given: `10` and `10.0` give different ids (baseline behaviour, kept so old ids stay valid). The API always sends floats.
 
