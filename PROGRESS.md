@@ -341,6 +341,11 @@ equirements.txt` path (its `
 - **Verified:** console **91 passed** (+2), driver **23 passed** (+2), backend unchanged (full run before the commit). The Vercel build script was run in a scratch copy of the repo layout: `dist/` and `dist/driver/` were built, with manifest `start_url`/`scope` `/driver/`. That build was served locally with the same rewrites on :5173 against a running `npm run dev` tunnel. A driver link made on the plan page read `http://localhost:5173/driver/?api=<tunnel>#t=dl1...`; opening it showed the route's 5 stops, "Online", a clean address bar and the service worker at `/driver/sw.js`. The test browser's stored addresses, token and service worker were removed afterwards.
 - **Not verified:** the real Vercel build (it runs after the push) and a real phone.
 
+### Scripted copilot stand-in for demos, 13 Nov 2026 (decision 0042)
+- The copilot said "No local model is available" (no Ollama), and there was no `.env`-selectable fake: `FakeLLM` is tests-only, and nothing in the repo produced "fake-scripted". Added `LOGIMIND_LLM_PROVIDER=scripted` (`ScriptedLLM`): fixed rules, not a language model, shown as "scripted · fake-scripted". Its intents go through the same schema, tools, solver, validator and confirmation as a real model's.
+- `backend/.env` on the demo laptop: `LOGIMIND_LLM_PROVIDER=scripted` (was `ollama`; the file is git-ignored and not committed).
+- **Verified:** `tests/test_copilot_scripted.py` (4 new tests); copilot and provider tests 41 passed (one existing assertion now expects "scripted" in the list of valid providers); ruff passes. Through the tunnel, `/api/copilot/status` returned available, scripted/fake-scripted. In the Vercel console, "Vehicle 0 broke down after its first stop. Replan it." gave "This replans active plan plan-096f9992dbc1 because vehicle 0 broke down ... Completed stops: {0: 1}. Confirm?" with Confirm replan and Cancel. Confirm was not pressed.
+
 ## Known quirks
 - Instance ids hash coordinates as given: `10` and `10.0` give different ids (baseline behaviour, kept so old ids stay valid). The API always sends floats.
 

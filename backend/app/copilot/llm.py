@@ -11,6 +11,8 @@ Providers (env LOGIMIND_LLM_PROVIDER):
   file, never from the global environment, the API or the browser. The key is sent only in a request header,
   is hidden from repr and is scrubbed from every error message.
 * "none": no model; the copilot says so.
+* "scripted": ScriptedLLM, an offline demo stand-in with fixed rules, shown as "scripted · fake-scripted"
+  (decision 0042). Not a language model; for demos without Ollama or a key.
 * FakeLLM: deterministic, for tests (never selected by env).
 """
 from __future__ import annotations
@@ -19,6 +21,7 @@ import copy
 import ipaddress
 import json
 import os
+import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -91,6 +94,78 @@ class FakeLLM:
         if isinstance(out, Exception):
             raise out
         return out if isinstance(out, str) else json.dumps(out)
+
+
+_ORDINAL = {"first": 1, "one": 1, "second": 2, "two": 2, "third": 3, "three": 3, "fourth": 4, "four": 4,
+            "fifth": 5, "five": 5}
+_ENGINE_WORDS = (("hybrid", "hybrid"), ("ga", "ga"), ("genetic", "ga"), ("or-tools", "ortools"), ("ortools", "ortools"))
+
+
+@dataclass
+class ScriptedLLM:
+    """Offline demo stand-in (LOGIMIND_LLM_PROVIDER=scripted, decision 0042): NOT a language model. Fixed rules
+    turn a few phrasings into one intent (replan after a breakdown or failed delivery, solve, validate, explain,
+    compare); anything else gets a clarify question that lists what it understands. Its output goes through the
+    same schema validation, tools, solver, validator and confirmation as a real model's."""
+    provider: str = "scripted"
+    model: str | None = "fake-scripted"
+
+    def availability(self) -> Availability:
+        return Availability(True, self.provider, self.model,
+                            "scripted demo stand-in, not a language model: it understands a few fixed phrasings")
+
+    def test_connection(self) -> dict[str, Any]:
+        return {"ok": True, "kind": "ok", "provider": self.provider, "model": self.model,
+                "message": "Works: scripted demo stand-in (fixed rules, not a language model)."}
+
+    def list_models(self) -> list[str]:
+        return [self.model] if self.model else []
+
+    def complete_json(self, system: str, messages: list[dict[str, str]], schema: dict[str, Any]) -> str:
+        user = [m["content"] for m in messages if m.get("role") == "user"
+                and not m["content"].startswith("That output was invalid")]
+        return json.dumps({"intent": self.intent_for(user[-1] if user else "", system)})
+
+    @staticmethod
+    def intent_for(text: str, system: str) -> dict[str, Any]:
+        t = text.lower()
+        listed = re.findall(r"^- (plan-[0-9a-f]{12}):", system, flags=re.M)  # newest first (agent.SYSTEM)
+        named = re.findall(r"plan-[0-9a-f]{12}", t)
+        plan = named[0] if named else (listed[0] if listed else None)
+        understood = ("This scripted demo model understands, for example: \"Vehicle 0 broke down after its first "
+                      "stop. Replan it.\", \"Customer 5 was not home, retry later.\", \"Validate the latest plan.\", "
+                      "\"Explain the latest plan.\" or \"Solve the latest plan with GA.\"")
+        if re.search(r"\b(edit|move|swap|reorder|assign)\b", t):
+            return {"action": "refuse", "reason": "I never write or edit routes by hand; plans come only from the "
+                                                  "solvers. I can replan after a disruption instead."}
+        if plan is None:
+            return {"action": "clarify", "question": "There are no plans yet. Create a plan first, then ask again."}
+        steps = re.search(r"after (?:its |the )?(\w+) stops?", t)
+        done = (int(steps.group(1)) if steps and steps.group(1).isdigit() else _ORDINAL.get(steps.group(1), 0)) \
+            if steps else 0
+        v = re.search(r"(?:vehicle|truck|van|route)\s*#?(\d+)", t)
+        if v and re.search(r"broke|break|breakdown|down|failed vehicle|stuck", t):
+            vehicle = int(v.group(1))
+            return {"action": "reroute", "plan_id": plan, "engine": "ortools",
+                    "event": {"type": "vehicle_breakdown", "vehicle": vehicle,
+                              "completed": {str(vehicle): done} if done else {}}}
+        c = re.search(r"customer\s*#?(\d+)", t)
+        if c and re.search(r"fail|not home|nobody|refused|missed|could not deliver|couldn't deliver", t):
+            retry = not re.search(r"drop|remove|cancel|do not retry|don't retry|no retry", t)
+            return {"action": "reroute", "plan_id": plan, "engine": "ortools",
+                    "event": {"type": "failed_delivery", "customer_id": int(c.group(1)), "retry": retry}}
+        if "compare" in t:
+            ids = named[:4] if len(named) >= 2 else listed[:2]
+            if len(ids) >= 2:
+                return {"action": "compare", "plan_ids": ids}
+        if re.search(r"\b(validate|check|verify)\b", t):
+            return {"action": "validate", "plan_id": plan}
+        if re.search(r"\b(explain|why|summar)", t):
+            return {"action": "explain", "plan_id": plan}
+        if re.search(r"\b(solve|re-solve|resolve|optimi[sz]e|run)\b", t):
+            engine = next((e for w, e in _ENGINE_WORDS if re.search(rf"\b{re.escape(w)}\b", t)), "ortools")
+            return {"action": "solve", "plan_id": plan, "engine": engine}
+        return {"action": "clarify", "question": understood}
 
 
 @dataclass
@@ -529,6 +604,8 @@ def llm_from_env(env: dict[str, str] | None = None, dotenv: Path | None = None) 
     provider = env.get("LOGIMIND_LLM_PROVIDER", "ollama").strip().lower()
     if provider == "none":
         return NoLLM()
+    if provider == "scripted":
+        return ScriptedLLM()
     if provider == "ollama":
         return OllamaLLM(url=env.get("LOGIMIND_OLLAMA_URL", "http://localhost:11434"),
                          model=env.get("LOGIMIND_OLLAMA_MODEL", "llama3.2:3b"))
@@ -543,7 +620,7 @@ def llm_from_env(env: dict[str, str] | None = None, dotenv: Path | None = None) 
                                     "it was ignored so the key is not sent anywhere else", provider=provider)
             llm.base_url = base.rstrip("/")
         return llm
-    return NoLLM(reason=f"unknown LOGIMIND_LLM_PROVIDER {provider!r}; expected ollama, groq, gemini or none")
+    return NoLLM(reason=f"unknown LOGIMIND_LLM_PROVIDER {provider!r}; expected ollama, groq, gemini, scripted or none")
 
 
 # ---- settings typed in the console (decision 0033) ----------------------------------------------------------

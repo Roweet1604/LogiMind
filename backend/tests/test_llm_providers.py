@@ -85,7 +85,7 @@ def test_provider_selection_and_settings_come_from_backend_env_only(tmp_path, mo
     assert isinstance(llm_from_env({}, dotenv), OllamaLLM)
     assert isinstance(llm_from_env({"LOGIMIND_LLM_PROVIDER": "none"}, dotenv), NoLLM)
     bad = llm_from_env({"LOGIMIND_LLM_PROVIDER": "openai"}, dotenv)
-    assert isinstance(bad, NoLLM) and "expected ollama, groq, gemini or none" in bad.availability().reason
+    assert isinstance(bad, NoLLM) and "expected ollama, groq, gemini, scripted or none" in bad.availability().reason
 
 
 def test_missing_key_or_model_is_a_plain_message_and_no_request_is_made():
