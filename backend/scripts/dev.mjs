@@ -7,12 +7,14 @@
 // else python / python3 on the PATH. Settings are environment variables (see app/main.py); for local runs they
 // can also live in backend/.env (git-ignored, see .env.example). Variables already set in the shell win.
 // api also opens a Cloudflare quick tunnel for the deployed console when backend/.env asks for the public demo
-// (LOGIMIND_PUBLIC_DEMO=1 and FRONTEND_URL; decision 0040) and prints the console link to open.
+// (LOGIMIND_PUBLIC_DEMO=1 and FRONTEND_URL; decision 0040) and prints the console link to open, retrying a failed
+// tunnel up to 3 times and printing no link if it never works (decision 0043).
 import { spawn, spawnSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { MAX_ATTEMPTS, classifyLine, findTunnelAddress, tunnelArgs } from './tunnel.mjs'
 
 const backend = join(dirname(fileURLToPath(import.meta.url)), '..')
 const win = process.platform === 'win32'
@@ -164,9 +166,10 @@ function findCloudflared() {
 function pause(ms) { return new Promise((r) => setTimeout(r, ms)) }
 
 // The tunnel's DNS name can take a few seconds to resolve, and the API needs a moment to start; check it from here.
-async function checkTunnel(url) {
+async function checkTunnel(url, cancelled) {
   let last = ''
   for (let i = 0; i < 45; i++) {
+    if (cancelled()) return 'cancelled'
     if (child.exitCode !== null) return 'the API stopped'
     try {
       const r = await fetch(`${url}/health`, { signal: AbortSignal.timeout(5000) })
@@ -191,36 +194,95 @@ function startTunnel(port) {
       '         Install it with: winget install Cloudflare.cloudflared   or set LOGIMIND_CLOUDFLARED=<full path to cloudflared.exe> in backend/.env')
     return null
   }
-  console.log(`[tunnel] Starting a Cloudflare quick tunnel to this API (${exe})...`)
-  const proc = spawn(exe, ['tunnel', '--no-autoupdate', '--url', `http://localhost:${port}`], { stdio: ['ignore', 'pipe', 'pipe'] })
-  let address = null
-  const recent = []  // cloudflared's last lines, shown if it fails
-  const watch = (chunk) => {
-    for (const line of String(chunk).split(/\r?\n/)) if (line.trim()) recent.push(line.trim())
-    recent.splice(0, Math.max(0, recent.length - 8))
-    const m = !address && String(chunk).match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/)
-    if (!m) return
-    address = m[0]
-    const link = `${env.FRONTEND_URL.replace(/\/+$/, '')}/?api=${address}`
-    console.log(`[tunnel] Tunnel address ${address}; checking that it reaches the API...`)
-    checkTunnel(address).then((problem) => {
-      if (problem) {
-        console.log(`[tunnel] The tunnel does not answer yet (${problem}). The link may still work in a minute:\n\n  ${link}\n`)
+  // Up to MAX_ATTEMPTS tries (decision 0043). The link is printed only when the address came from cloudflared's
+  // success banner AND <address>/health answers; a QUIC timeout switches the next tries to --protocol http2.
+  const state = { proc: null, stopped: false }
+  ;(async () => {
+    let protocol = null
+    let last = []
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      if (state.stopped || child.exitCode !== null) return
+      const how = protocol ? ` with --protocol ${protocol}` : ''
+      console.log(`[tunnel] Starting a Cloudflare quick tunnel to this API${how} (try ${attempt} of ${MAX_ATTEMPTS}; ${exe})...`)
+      const r = await tunnelAttempt(exe, port, protocol, state)
+      last = r.recent
+      if (r.ok || state.stopped || child.exitCode !== null) return
+      if (r.quicTimeout && !protocol) protocol = 'http2'
+      console.log(`[tunnel] Try ${attempt} failed: ${r.reason}.${protocol && r.quicTimeout ? ' Next try uses --protocol http2.' : ''}`)
+      if (attempt < MAX_ATTEMPTS) await pause(3000 * attempt)
+    }
+    if (state.stopped || child.exitCode !== null) return
+    console.log(`\n[tunnel] Gave up after ${MAX_ATTEMPTS} tries: no working Cloudflare quick tunnel, so there is NO console link this time.\n` +
+      `         The API still runs on this PC (http://localhost:${port}). cloudflared's last lines:\n  ${last.join('\n  ') || '(none)'}\n` +
+      '         Check the internet connection (a firewall may block cloudflared), then stop with Ctrl+C and run npm run dev again.\n')
+  })()
+  return { kill: () => { state.stopped = true; state.proc?.kill() } }
+}
+
+// One cloudflared run. Resolves { ok: true } once the link was printed, else { ok: false, reason } after stopping
+// cloudflared; quicTimeout says whether a QUIC timeout was seen. If a working tunnel's cloudflared stops later, that is
+// reported (the link no longer works).
+function tunnelAttempt(exe, port, protocol, state) {
+  return new Promise((resolve) => {
+    const proc = spawn(exe, tunnelArgs(port, protocol), { stdio: ['ignore', 'pipe', 'pipe'] })
+    state.proc = proc
+    let output = ''  // what cloudflared printed so far, so a banner split across chunks is still found
+    const recent = []  // cloudflared's last lines, shown if it fails
+    let address = null
+    let quicTimeout = false
+    let done = false
+    let succeeded = false  // the link was printed for this run
+    let noAddress = null
+    const finish = (r) => {
+      if (done) return
+      done = true
+      succeeded = r.ok
+      clearTimeout(noAddress)
+      if (!r.ok) proc.kill()
+      resolve({ ...r, quicTimeout, recent: [...recent] })
+    }
+    const fail = (reason) => finish({ ok: false, reason })
+    const watch = (chunk) => {
+      const text = String(chunk)
+      output = (output + text).slice(-20000)
+      let failure = null
+      for (const line of text.split(/\r?\n/)) {
+        if (!line.trim()) continue
+        recent.push(line.trim())
+        const kind = classifyLine(line)
+        if (kind === 'quic-timeout') quicTimeout = true
+        failure ??= kind
+      }
+      recent.splice(0, Math.max(0, recent.length - 8))
+      if (done) return
+      if (failure) {
+        fail(failure === 'quic-timeout' ? 'the QUIC connection to Cloudflare timed out' : 'cloudflared could not get a quick tunnel')
         return
       }
-      console.log(`\n[tunnel] Checked: ${address}/health answers. Open (and share) this link; it changes every time npm run dev starts:\n\n  ${link}\n\n` +
-        '[tunnel] Keep this terminal open; Ctrl+C stops the API and the tunnel.\n')
+      if (address) return
+      address = findTunnelAddress(output)
+      if (!address) return
+      clearTimeout(noAddress)
+      console.log(`[tunnel] Tunnel address ${address}; checking that it reaches the API...`)
+      checkTunnel(address, () => done).then((problem) => {
+        if (done) return
+        if (problem) { fail(`${address}/health did not answer (${problem})`); return }
+        const link = `${env.FRONTEND_URL.replace(/\/+$/, '')}/?api=${address}`
+        console.log(`\n[tunnel] Checked: ${address}/health answers. Open (and share) this link; it changes every time npm run dev starts:\n\n  ${link}\n\n` +
+          '[tunnel] Keep this terminal open; Ctrl+C stops the API and the tunnel.\n')
+        finish({ ok: true })
+      })
+    }
+    proc.stdout.on('data', watch)
+    proc.stderr.on('data', watch)
+    noAddress = setTimeout(() => fail('no tunnel address after 60 s'), 60000)
+    noAddress.unref()
+    proc.on('error', (e) => fail(`could not start ${exe}: ${e.message}`))
+    proc.on('exit', (code) => {
+      if (!done) { fail(`cloudflared stopped (exit ${code})`); return }
+      if (!succeeded || state.stopped || child.exitCode !== null) return
+      console.log(`[tunnel] cloudflared stopped (exit ${code}); the link above no longer works. Its last lines:\n  ${recent.join('\n  ') || '(none)'}\n` +
+        '         Stop with Ctrl+C and run npm run dev again for a new link.')
     })
-  }
-  proc.stdout.on('data', watch)
-  proc.stderr.on('data', watch)
-  setTimeout(() => {
-    if (!address && proc.exitCode === null) console.log(`[tunnel] No tunnel address after 60 s. cloudflared's last lines:\n  ${recent.join('\n  ') || '(none)'}`)
-  }, 60000).unref()
-  proc.on('error', (e) => console.log(`[tunnel] could not start ${exe}: ${e.message}`))
-  proc.on('exit', (code) => {
-    if (child.exitCode !== null) return
-    console.log(`[tunnel] cloudflared stopped (exit ${code}); the deployed console cannot reach this PC. Its last lines:\n  ${recent.join('\n  ') || '(none)'}`)
   })
-  return proc
 }
