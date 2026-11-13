@@ -1,6 +1,7 @@
 import { BookOpen, Check, ClipboardList, FlaskConical, KeyRound, LayoutGrid, Microscope, MessageSquare, PanelRightClose, PanelRightOpen, Play, Route as RouteIcon, Scale, SlidersHorizontal, Truck } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { API_OVERRIDE, SERVER_DOWN } from '../lib/api'
 import { useApp } from '../state/AppContext'
 import { useAuth } from '../state/AuthContext'
 import CopilotChat, { CopilotProvider, ModelStatus, useCopilot } from './CopilotChat'
@@ -164,6 +165,11 @@ export default function Layout() {
               <span className="text-ink2">Tenant</span>
               <span className="truncate font-medium">{me ? (me.tenant_name || me.tenant_id) : state === 'offline' ? 'waiting for the server' : <Link className="link" to="/login">not signed in</Link>}</span>
               {me?.demo && <span title="Signed in automatically to the local demo tenant. All data is synthetic."><Badge kind="draft">Demo mode</Badge></span>}
+              {API_OVERRIDE && (
+                <span className="hidden truncate text-xs text-ink2 lg:inline" title="This console talks to the server on the team's PC through a Cloudflare tunnel (decision 0040).">
+                  Server: <span className="font-mono">{API_OVERRIDE}</span> · <a className="link" href="?api=default">use the default server</a>
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-3">
               <span className="hidden sm:inline-flex"><BackendStatus health={health} /></span>
@@ -180,7 +186,7 @@ export default function Layout() {
               <div className="mx-auto max-w-[1600px] [container-type:inline-size]">
                 {offline && (
                   <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded border border-l-4 border-err bg-err-soft px-4 py-3" role="alert">
-                    <span>The server isn't running. Run start-dev.bat, then press Retry.{me ? ' You stay signed in.' : ''}</span>
+                    <span>{SERVER_DOWN}{me ? ' You stay signed in.' : ''}</span>
                     <RetryButton />
                   </div>
                 )}

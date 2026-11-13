@@ -25,6 +25,8 @@ if not errorlevel 1 (
   echo [api] A program already listens on port 8000; not starting a second backend.
 ) else (
   echo [api] Starting the backend in the window "LogiMind API (demo)"...
+  rem This script runs its own tunnel below, so npm run dev must not open a second one (decision 0040).
+  set "LOGIMIND_TUNNEL=0"
   start "LogiMind API (demo)" /d "%~dp0backend" cmd /k npm run dev
 )
 

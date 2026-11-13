@@ -2,7 +2,49 @@ import { llmHeaders } from './llmSettings'
 
 // Thin client for the FastAPI backend. Errors keep the server's reasons so the UI can show them.
 // VITE_API_URL: the deployed API, e.g. https://logimind-api.onrender.com (decision 0039). Empty: same origin / dev proxy.
-const BASE = (import.meta.env?.VITE_API_URL ?? import.meta.env?.VITE_API_BASE ?? '').replace(/\/+$/, '')
+const BUILT = (import.meta.env?.VITE_API_URL ?? import.meta.env?.VITE_API_BASE ?? '').replace(/\/+$/, '')
+
+// Run-time API address (decision 0040): `npm run dev` on the team's PC opens a Cloudflare quick tunnel and prints
+// <console>/?api=https://<name>.trycloudflare.com. The address is remembered in this browser until ?api=default.
+// Only quick-tunnel and localhost addresses are accepted, so a link cannot point the console at any other server.
+const API_STORE = 'logimind.apiUrl'
+const ALLOWED_API = /^(https:\/\/[a-z0-9-]+\.trycloudflare\.com|http:\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?)$/
+
+// -> {base, override, store}: store is the value to remember ('' forgets it, undefined leaves storage alone).
+export function pickApiBase({ search = '', stored = '', built = '' } = {}) {
+  const asked = new URLSearchParams(search).get('api')
+  if (asked !== null) {
+    const url = asked.trim().replace(/\/+$/, '')
+    if (url === 'default' || url === '') return { base: built, override: false, store: '' }
+    if (ALLOWED_API.test(url)) return { base: url, override: true, store: url }
+  }
+  if (stored && ALLOWED_API.test(stored)) return { base: stored, override: true, store: undefined }
+  return { base: built, override: false, store: stored ? '' : undefined }
+}
+
+function resolveBase() {
+  let stored = ''
+  try { stored = localStorage.getItem(API_STORE) || '' } catch { /* storage blocked */ }
+  const search = typeof window === 'undefined' ? '' : window.location.search
+  const pick = pickApiBase({ search, stored, built: BUILT })
+  try {
+    if (pick.store === '') localStorage.removeItem(API_STORE)
+    else if (pick.store) localStorage.setItem(API_STORE, pick.store)
+    // Server changed: this tab's tenant key and copilot settings belonged to the other server, never send them here.
+    if (pick.store !== undefined && pick.store !== stored) sessionStorage.clear()
+  } catch { /* storage blocked */ }
+  if (search && new URLSearchParams(search).has('api')) {
+    const u = new URL(window.location.href)
+    u.searchParams.delete('api')
+    window.history.replaceState(window.history.state, '', u.pathname + u.search + u.hash)
+  }
+  return pick
+}
+
+const PICK = resolveBase()
+const BASE = PICK.base
+// The tunnel host name when the console talks to a PC via ?api=, else null (shown in the header).
+export const API_OVERRIDE = PICK.override ? BASE.replace(/^https?:\/\//, '') : null
 
 export class ApiError extends Error {
   constructor(message, { status = 0, errors = [], unreachable = false } = {}) {
@@ -15,7 +57,9 @@ export class ApiError extends Error {
 }
 
 // Plain words for people who run the demo, not developers.
-export const SERVER_DOWN = BASE
+export const SERVER_DOWN = API_OVERRIDE
+  ? "The server on the team's PC isn't answering. Start it there with npm run dev and open the new link it prints."
+  : BASE
   ? "The server isn't answering yet. The free hosting sleeps when idle and takes about a minute to wake up; press Retry."
   : "The server isn't running. Run start-dev.bat, then press Retry."
 const PLAIN = {

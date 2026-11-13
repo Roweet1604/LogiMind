@@ -1,6 +1,6 @@
 # LogiMind progress
 
-Last updated: 12 Nov 2026, eighteenth session (`main`): public deployment plumbing (decision 0039). Before that, 11 Nov 2026, sixteenth session (branch `cleanup-and-fixes`): replans keep earlier disruptions (decision 0037); OpenAI no longer offered in the console (decision 0036 amended). Before that, 10 Nov 2026, fifteenth session (branch `ui-redesign`): "Load models" in the Copilot settings box (decision 0035). Fourteenth: start-dev.bat's port check reads the listener table (decision 0034).
+Last updated: 13 Nov 2026, nineteenth session (`main`): `npm run dev` opens a tunnel and the Vercel console follows it via `?api=` (decision 0040). Before that, 12 Nov 2026, eighteenth session: public deployment plumbing (decision 0039). Before that, 11 Nov 2026, sixteenth session (branch `cleanup-and-fixes`): replans keep earlier disruptions (decision 0037); OpenAI no longer offered in the console (decision 0036 amended). Before that, 10 Nov 2026, fifteenth session (branch `ui-redesign`): "Load models" in the Copilot settings box (decision 0035). Fourteenth: start-dev.bat's port check reads the listener table (decision 0034).
 
 ## Done and verified
 ### Phase 0
@@ -328,6 +328,12 @@ equirements.txt` path (its `
 - `start-demo.bat` (repo root): starts the API (`npm run dev` in backend, reads `backend/.env`) and a Cloudflare quick tunnel in two windows, keeps either if already running, and prints the tunnel address (from cloudflared's local `/quicktunnel` metrics endpoint). Verified on 12 Nov 2026 with both already running: one backend, one tunnel; through the tunnel with Origin `https://logi-mind-ten.vercel.app`: `/health` OK, demo session handed out, 20 plans all completed and feasible. Not verified: a cold start of the tunnel by the script (it would have changed the live address).
 - The console signs in to the demo by itself (`AuthContext` calls `/api/demo/session`); "not signed in" came from a backend started with plain uvicorn, which does not load `backend/.env` (demo mode off, 404). No frontend change was needed.
 - **Not verified:** no Render deploy done; the Vercel console against the Cloudflare tunnel was not checked by Claude. Through a tunnel the local-only demo sign-in is refused (403), so the console shows the API-key sign-in unless `LOGIMIND_PUBLIC_DEMO=1` is set.
+
+### Console on Vercel reaches `npm run dev` on this PC, 13 Nov 2026 (decision 0040)
+- `npm run dev` (backend) also starts a Cloudflare quick tunnel when `backend/.env` has `LOGIMIND_PUBLIC_DEMO=1` and `FRONTEND_URL`, and prints `<FRONTEND_URL>/?api=<tunnel>`; `LOGIMIND_TUNNEL=0` turns it off (`start-demo.bat` sets it, as it runs its own tunnel).
+- Console: `?api=` sets the API address at run time (only `*.trycloudflare.com` and localhost), remembered in localStorage until `?api=default`; header shows "Server: <host>"; a changed address clears the tab's sessionStorage (key, copilot settings). The offline banner now uses the same text as `SERVER_DOWN`.
+- **Verified (13 Nov 2026):** frontend **89 passed** (+2 in `lib.test.js`), `vite build` OK; backend **407 passed**; ruff passes. A real `npm run dev` on port 8010 printed the link; through the tunnel `/health` 200, CORS allows `https://logi-mind-ten.vercel.app`, `/api/demo/session` returned the synthetic demo tenant.
+- **Not verified:** the Vercel console itself with `?api=` (the new console code is not deployed until it is pushed and Vercel rebuilds). Stopping the background test run left its uvicorn (8010) and cloudflared child running; Ctrl+C in a normal console window stops both, since Windows sends it to the whole window.
 
 ## Known quirks
 - Instance ids hash coordinates as given: `10` and `10.0` give different ids (baseline behaviour, kept so old ids stay valid). The API always sends floats.

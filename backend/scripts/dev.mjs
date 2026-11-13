@@ -6,6 +6,8 @@
 // Python is taken from LOGIMIND_PYTHON, else the venv in %TEMP%\lmv (CLAUDE.md), else backend/.venv or ../.venv,
 // else python / python3 on the PATH. Settings are environment variables (see app/main.py); for local runs they
 // can also live in backend/.env (git-ignored, see .env.example). Variables already set in the shell win.
+// api also opens a Cloudflare quick tunnel for the deployed console when backend/.env asks for the public demo
+// (LOGIMIND_PUBLIC_DEMO=1 and FRONTEND_URL; decision 0040) and prints the console link to open.
 import { spawn, spawnSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -77,5 +79,41 @@ if (mode === 'api') {
 }
 
 const child = spawn(python, args, { cwd: backend, env, stdio: 'inherit' })
-for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => child.kill(sig))
-child.on('exit', (code, signal) => process.exit(code ?? (signal ? 1 : 0)))
+const tunnel = mode === 'api' ? startTunnel(env.PORT || '8000') : null
+for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { tunnel?.kill(); child.kill(sig) })
+child.on('exit', (code, signal) => { tunnel?.kill(); process.exit(code ?? (signal ? 1 : 0)) })
+
+// Public demo from this PC (decision 0040): with LOGIMIND_PUBLIC_DEMO=1 and FRONTEND_URL in backend/.env, a free
+// Cloudflare quick tunnel (no account) makes the API reachable from the deployed console. Its address changes on
+// every start, so the console link carries it: <FRONTEND_URL>/?api=<tunnel>. LOGIMIND_TUNNEL=0 turns this off.
+function findCloudflared() {
+  const onPath = spawnSync(win ? 'where' : 'which', ['cloudflared'], { encoding: 'utf8' })
+  if (onPath.status === 0 && onPath.stdout.trim()) return onPath.stdout.trim().split(/\r?\n/)[0]
+  const dirs = win ? [process.env['ProgramFiles(x86)'], process.env.ProgramFiles].filter(Boolean) : []
+  return dirs.map((d) => join(d, 'cloudflared', 'cloudflared.exe')).find(existsSync)
+}
+
+function startTunnel(port) {
+  if (env.LOGIMIND_PUBLIC_DEMO !== '1' || !env.FRONTEND_URL || env.LOGIMIND_TUNNEL === '0') return null
+  if (env.LOGIMIND_DEMO_MODE !== '1') console.log('[tunnel] note: LOGIMIND_DEMO_MODE=1 is missing, so the console will ask for an API key.')
+  const exe = findCloudflared()
+  if (!exe) {
+    console.log('[tunnel] cloudflared not found, so the deployed console cannot reach this PC. Install it with:\n  winget install Cloudflare.cloudflared')
+    return null
+  }
+  const proc = spawn(exe, ['tunnel', '--no-autoupdate', '--url', `http://localhost:${port}`], { stdio: ['ignore', 'pipe', 'pipe'] })
+  let shown = false
+  const watch = (chunk) => {
+    const m = !shown && String(chunk).match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/)
+    if (!m) return
+    shown = true
+    const consoleUrl = env.FRONTEND_URL.replace(/\/+$/, '')
+    console.log(`\n[tunnel] Public demo on this PC. Open (and share) this link; it changes every time npm run dev starts:\n\n  ${consoleUrl}/?api=${m[0]}\n\n[tunnel] API address: ${m[0]}  (keep this window open; Ctrl+C stops the API and the tunnel)\n`)
+  }
+  proc.stdout.on('data', watch)
+  proc.stderr.on('data', watch)
+  proc.on('error', (e) => console.log(`[tunnel] could not start cloudflared: ${e.message}`))
+  proc.on('exit', (code) => { if (!child.killed && child.exitCode === null) console.log(`[tunnel] cloudflared stopped (exit ${code}); the deployed console can no longer reach this PC.`) })
+  console.log('[tunnel] Starting a Cloudflare quick tunnel to this API...')
+  return proc
+}

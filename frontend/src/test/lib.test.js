@@ -1,4 +1,4 @@
-import { ApiError, api, parseErrorBody } from '../lib/api'
+import { ApiError, api, parseErrorBody, pickApiBase } from '../lib/api'
 import { fmt, fmtInt, fmtSeconds, isNum } from '../lib/format'
 
 test('missing values are shown as a dash, never as zero', () => {
@@ -30,4 +30,22 @@ test('network failure becomes a readable ApiError', async () => {
   globalThis.fetch = vi.fn(async () => { throw new TypeError('failed') })
   await expect(api.health()).rejects.toThrow(/The server isn't running\. Run start-dev\.bat/)
   await expect(api.health()).rejects.toMatchObject({ unreachable: true, status: 0 })
+})
+
+// Run-time API address from ?api= (decision 0040): only quick-tunnel and localhost addresses, remembered until ?api=default.
+test('pickApiBase takes a quick-tunnel address from ?api= and remembers it', () => {
+  const t = 'https://bold-cat-12.trycloudflare.com'
+  expect(pickApiBase({ search: `?api=${t}/`, built: 'https://x.onrender.com' })).toEqual({ base: t, override: true, store: t })
+  expect(pickApiBase({ search: '', stored: t, built: '' })).toEqual({ base: t, override: true, store: undefined })
+  expect(pickApiBase({ search: '?api=http://localhost:8000' })).toMatchObject({ base: 'http://localhost:8000', override: true })
+})
+
+test('pickApiBase ignores other servers and forgets the address on ?api=default', () => {
+  const built = 'https://x.onrender.com'
+  for (const bad of ['https://evil.example.com', 'http://bold-cat.trycloudflare.com', 'https://a.trycloudflare.com.evil.io', 'javascript:alert(1)']) {
+    expect(pickApiBase({ search: `?api=${encodeURIComponent(bad)}`, built })).toEqual({ base: built, override: false, store: undefined })
+  }
+  expect(pickApiBase({ search: '?api=default', stored: 'https://a.trycloudflare.com', built })).toEqual({ base: built, override: false, store: '' })
+  expect(pickApiBase({ stored: 'https://evil.example.com', built })).toEqual({ base: built, override: false, store: '' })
+  expect(pickApiBase({ built })).toEqual({ base: built, override: false, store: undefined })
 })
