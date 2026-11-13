@@ -25,7 +25,7 @@ DEV_ONLY = ("pytest", "ruff")  # not needed to run the API
 SPACE_EXTRA = ("gradio", "spaces")
 # Our pins that the Space's gradio[oauth,mcp]==6.32.0 does not allow, replaced for the Space only (second build:
 # gradio[mcp] needs pydantic>=2.11.10,<=2.12.5). Checked with `uv pip compile` for Python 3.12 on Linux, together with
-# the Space's own pins; the live Space with these versions passed a plan + replan check (decision 0045).
+# the Space's own pins; the backend suite passes with them (decision 0045).
 SPACE_OVERRIDES = {"pydantic": "pydantic==2.12.5"}
 IGNORE = shutil.ignore_patterns("__pycache__", "*.pyc", ".pytest_cache", ".ruff_cache", ".env", ".env.*")
 
