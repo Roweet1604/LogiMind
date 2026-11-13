@@ -1,9 +1,11 @@
-"""Fill the Hugging Face Space folder with what the API needs to run (decision 0044).
+"""Fill the Hugging Face Space folder with what the API needs to run (decisions 0044, 0045).
 
     python backend/scripts/build_hf_space.py                     # into hf-space/ (copies git-ignored there)
-    python backend/scripts/build_hf_space.py --out <Space clone>   # also copies Dockerfile, README.md, .dockerignore
+    python backend/scripts/build_hf_space.py --out <folder>   # elsewhere; also copies README.md and app.py
 
-Copies backend/app, backend/migrations, backend/alembic.ini and requirements.txt without the test and lint tools.
+Copies backend/app, backend/migrations, backend/alembic.ini and requirements.txt without the test and lint tools,
+plus gradio and spaces (the Space uses the Gradio SDK with ZeroGPU; decision 0045). Upload the folder with
+    hf.exe upload Rohti/logimind hf-space . --repo-type=space
 Never copies tests, .env files, caches, experiments or results; stops if a .env file would end up in the folder.
 """
 from __future__ import annotations
@@ -15,16 +17,26 @@ from pathlib import Path
 
 BACKEND = Path(__file__).resolve().parents[1]
 SPACE = BACKEND.parent / "hf-space"
-SPACE_FILES = ("Dockerfile", "README.md", ".dockerignore")  # kept in hf-space/ itself
+SPACE_FILES = ("README.md", "app.py")  # kept in hf-space/ itself
 COPIED = ("app", "migrations", "alembic.ini", "requirements.txt")  # generated; replaced on every run
 DEV_ONLY = ("pytest", "ruff")  # not needed to run the API
+# Listed WITHOUT versions: the Gradio SDK build installs gradio==<sdk_version in README.md> and its own spaces pin
+# in the same pip call, and a second pin conflicts (first Space build: spaces==0.51.3 vs 0.52.0).
+SPACE_EXTRA = ("gradio", "spaces")
+# Our pins that the Space's gradio[oauth,mcp]==6.32.0 does not allow, replaced for the Space only (second build:
+# gradio[mcp] needs pydantic>=2.11.10,<=2.12.5). Checked with `uv pip compile` for Python 3.12 on Linux, together with
+# the Space's own pins; the live Space with these versions passed a plan + replan check (decision 0045).
+SPACE_OVERRIDES = {"pydantic": "pydantic==2.12.5"}
 IGNORE = shutil.ignore_patterns("__pycache__", "*.pyc", ".pytest_cache", ".ruff_cache", ".env", ".env.*")
 
 
 def runtime_requirements(text: str) -> str:
-    keep = [line for line in text.splitlines()
-            if line.split("==")[0].strip().lower() not in DEV_ONLY]
-    return "\n".join(keep) + "\n"
+    keep = []
+    for line in text.splitlines():
+        name = line.split("==")[0].strip().lower()
+        if name not in DEV_ONLY:
+            keep.append(SPACE_OVERRIDES.get(name, line))
+    return "\n".join(keep + ["# Hugging Face Space (Gradio SDK + ZeroGPU, decision 0045)", *SPACE_EXTRA]) + "\n"
 
 
 def build(out: Path) -> list[str]:

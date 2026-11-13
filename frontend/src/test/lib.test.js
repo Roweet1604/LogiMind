@@ -71,3 +71,18 @@ test('driverLinkUrl keeps the backend address when the console does not serve th
   expect(driverLinkUrl(link, { origin: 'http://localhost:5173', driverPath: '', api: 'https://a-b.trycloudflare.com' }))
     .toBe('http://localhost:5174/?api=https://a-b.trycloudflare.com#t=dl1.x.y')
 })
+
+// Hosted API as the default (decision 0045): VITE_API_URL at build time; ?api=<that address> means the default too,
+// and driver links carry the API in use even when it is the default.
+test('pickApiBase treats ?api=<the built API> as the default and forgets a remembered tunnel', () => {
+  const built = 'https://rohti-logimind.hf.space'
+  expect(pickApiBase({ search: `?api=${built}/`, stored: 'https://a-b.trycloudflare.com', built }))
+    .toEqual({ base: built, override: false, store: '' })
+  expect(pickApiBase({ search: '?api=https://other-logimind.hf.space', built })).toEqual({ base: built, override: false, store: undefined })
+})
+
+test('driverLinkUrl carries the hosted API address', () => {
+  const link = { token: 'dl1.abc.sig', url: 'http://localhost:5174/#t=dl1.abc.sig' }
+  expect(driverLinkUrl(link, { origin: 'https://logi-mind-ten.vercel.app', driverPath: '/driver/', api: 'https://rohti-logimind.hf.space' }))
+    .toBe('https://logi-mind-ten.vercel.app/driver/?api=https://rohti-logimind.hf.space#t=dl1.abc.sig')
+})

@@ -97,3 +97,12 @@ test('the driver app ignores other servers, and a new link without ?api= forgets
   }
   expect(pickApiBase({ search: '', hash: '#t=dl1.a.b', stored: 'https://old-1.trycloudflare.com', built })).toEqual({ base: built, store: '' })
 })
+
+// Hosted API as the default (decision 0045): a console link carries ?api=<VITE_API_URL>; that is this build's default.
+test('the driver app accepts its own hosted API from the link and forgets an old tunnel', () => {
+  const built = 'https://rohti-logimind.hf.space'
+  expect(pickApiBase({ search: `?api=${built}`, hash: '#t=dl1.a.b', stored: 'https://old-1.trycloudflare.com', built }))
+    .toEqual({ base: built, store: '' })
+  expect(pickApiBase({ search: `?api=${built}`, hash: '#t=dl1.a.b', built })).toEqual({ base: built, store: undefined })
+  expect(pickApiBase({ search: '?api=https://other-x.hf.space', hash: '#t=dl1.a.b', built })).toEqual({ base: built, store: undefined })
+})

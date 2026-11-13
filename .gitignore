@@ -16,3 +16,6 @@ hf-space/app/
 hf-space/migrations/
 hf-space/alembic.ini
 hf-space/requirements.txt
+
+.vercel
+.env*

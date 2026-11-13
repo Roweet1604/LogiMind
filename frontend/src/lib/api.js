@@ -15,7 +15,8 @@ export function pickApiBase({ search = '', stored = '', built = '' } = {}) {
   const asked = new URLSearchParams(search).get('api')
   if (asked !== null) {
     const url = asked.trim().replace(/\/+$/, '')
-    if (url === 'default' || url === '') return { base: built, override: false, store: '' }
+    // the build's own API (VITE_API_URL, decision 0045) is the default, e.g. from a driver link made elsewhere
+    if (url === 'default' || url === '' || (built && url === built)) return { base: built, override: false, store: '' }
     if (ALLOWED_API.test(url)) return { base: url, override: true, store: url }
   }
   if (stored && ALLOWED_API.test(stored)) return { base: stored, override: true, store: undefined }
@@ -49,12 +50,13 @@ export const API_OVERRIDE = PICK.override ? BASE.replace(/^https?:\/\//, '') : n
 // Driver link shown to the dispatcher (decision 0041). The signed token is the backend's, unchanged. When this
 // console build also serves the driver app (VITE_DRIVER_PATH, set by the Vercel build to /driver/), the link uses
 // the address the console is served from, so it opens on a phone. Otherwise the backend's address
-// (LOGIMIND_DRIVER_APP_URL) is kept. Either way a laptop tunnel in use goes along as ?api=, before #t=.
+// (LOGIMIND_DRIVER_APP_URL) is kept. Either way the API in use goes along as ?api=, before #t= (decision 0045):
+// a laptop tunnel, or the hosted default (VITE_API_URL), which the driver app accepts as its own default.
 const DRIVER_PATH = import.meta.env?.VITE_DRIVER_PATH || ''
 export function driverLinkUrl(link, {
   origin = typeof window === 'undefined' ? '' : window.location.origin,
   driverPath = DRIVER_PATH,
-  api = PICK.override ? BASE : '',
+  api = BASE,
 } = {}) {
   const query = api ? `?api=${api}` : ''
   const root = driverPath

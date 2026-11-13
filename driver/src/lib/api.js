@@ -4,13 +4,14 @@ const BUILT = (import.meta.env?.VITE_API_URL ?? import.meta.env?.VITE_API_BASE ?
 // Run-time API address (decision 0041, as in the console, decision 0040): a link made while the console used a
 // laptop tunnel reads <console>/driver/?api=https://<name>.trycloudflare.com#t=<token>. The address is kept in
 // localStorage because the installed app opens at its start URL without it; a new link without ?api= forgets it.
-// Only quick-tunnel and localhost addresses are accepted.
+// Only quick-tunnel and localhost addresses are accepted, plus this build's own VITE_API_URL (the hosted default).
 const API_STORE = 'logimind.driver.apiUrl'
 const ALLOWED_API = /^(https:\/\/[a-z0-9-]+\.trycloudflare\.com|http:\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?)$/
 
 // -> {base, store}: store is the value to remember ('' forgets it, undefined leaves storage alone).
 export function pickApiBase({ search = '', hash = '', stored = '', built = '' } = {}) {
   const asked = (new URLSearchParams(search).get('api') || '').trim().replace(/\/+$/, '')
+  if (built && asked === built) return { base: built, store: stored ? '' : undefined }  // the hosted default (decision 0045)
   if (ALLOWED_API.test(asked)) return { base: asked, store: asked }
   const newLink = /(?:^#|&)t=/.test(hash)
   if (!newLink && ALLOWED_API.test(stored)) return { base: stored, store: undefined }
