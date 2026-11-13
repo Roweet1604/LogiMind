@@ -12,7 +12,11 @@ Environment variables
   LOGIMIND_RATE_PER_MIN        requests per minute per API key (default 60), LOGIMIND_RATE_BURST (default 20)
   LOGIMIND_DEV_RESEARCH_ENDPOINTS  "1" turns on /api/instances, /api/runs, /api/experiments, /api/benchmarks
                                (no tenants; local development only; OFF by default)
-  LOGIMIND_LLM_PROVIDER        copilot model: "ollama" (default; used only if Ollama answers) or "none"
+  LOGIMIND_LLM_PROVIDER        copilot model: "ollama" (default; used only if Ollama answers), "groq", "gemini",
+                               "scripted" or "none" (app/copilot/llm.py)
+  LOGIMIND_LLM_KEYS_FROM_ENV   "1": hosted keys/models (GROQ_API_KEY, GROQ_MODEL, ...) also from the environment,
+                               i.e. a host's secrets (decision 0046). Otherwise only from backend/.env
+  LOGIMIND_COPILOT_*           copilot message limits per client / server / day and length (app/copilot/limits.py)
   LOGIMIND_OLLAMA_URL / LOGIMIND_OLLAMA_MODEL   default http://localhost:11434 / llama3.2:3b
   LOGIMIND_WEBHOOK_ALLOW_PRIVATE  "1" allows webhook URLs on localhost/private addresses (dev only; off)
   LOGIMIND_DRIVER_LINK_SECRET  signs driver links (>= 32 chars). Unset: a random per-process secret, so links
@@ -48,6 +52,7 @@ from app.api.notifications import router as notifications_router
 from app.api.platform import router as platform_router
 from app.api.routes import legacy_open_from_env, router
 from app.copilot.agent import Copilot
+from app.copilot.limits import CopilotLimits
 from app.copilot.llm import BACKEND_ENV, llm_from_env, read_dotenv
 from app.db.migrate import upgrade_to_head
 from app.db.session import make_engine, make_session_factory
@@ -121,6 +126,7 @@ def create_app(data_dir: Path | None = None, legacy_open: bool | None = None, cl
 
     app.include_router(router)
     app.state.copilot = Copilot(app.state.plans, llm_from_env())
+    app.state.copilot_limits = CopilotLimits.from_env(public=app.state.demo.public)
     app.include_router(platform_router)
     app.include_router(copilot_router)
     app.include_router(driver_router)

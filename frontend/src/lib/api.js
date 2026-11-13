@@ -66,12 +66,13 @@ export function driverLinkUrl(link, {
 }
 
 export class ApiError extends Error {
-  constructor(message, { status = 0, errors = [], unreachable = false } = {}) {
+  constructor(message, { status = 0, errors = [], unreachable = false, timedOut = false } = {}) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.errors = errors
     this.unreachable = unreachable  // no answer from the server (not running, or the dev proxy could not reach it)
+    this.timedOut = timedOut  // the server did not answer within the request's own time limit (timeoutMs)
   }
 }
 
@@ -112,21 +113,28 @@ export function setApiKey(key) {
   try { if (apiKey) sessionStorage.setItem(KEY_STORE, apiKey); else sessionStorage.removeItem(KEY_STORE) } catch { /* storage blocked */ }
 }
 
-async function request(path, { method = 'GET', body, form, raw = false, key, extra } = {}) {
+// timeoutMs: give up after this long with a timedOut error (its own message, not "server not answering").
+async function request(path, { method = 'GET', body, form, raw = false, key, extra, timeoutMs } = {}) {
   let res
   const headers = {}
   if (body) headers['Content-Type'] = 'application/json'
   const k = key ?? apiKey
   if (k) headers['X-API-Key'] = k
   Object.assign(headers, extra || {})  // e.g. the copilot settings (headers, never the URL)
+  const abort = timeoutMs ? new AbortController() : null
+  const timer = abort ? setTimeout(() => abort.abort(), timeoutMs) : null
   try {
     res = await fetch(`${BASE}${path}`, {
       method,
       headers: Object.keys(headers).length ? headers : undefined,
       body: form || (body ? JSON.stringify(body) : undefined),
+      ...(abort ? { signal: abort.signal } : {}),
     })
   } catch {
+    if (abort?.signal.aborted) throw new ApiError(`No answer within ${Math.round(timeoutMs / 1000)} s.`, { timedOut: true })
     throw new ApiError(SERVER_DOWN, { status: 0, unreachable: true })
+  } finally {
+    if (timer) clearTimeout(timer)
   }
   if (!res.ok) {
     let parsed = null
@@ -137,6 +145,9 @@ async function request(path, { method = 'GET', body, form, raw = false, key, ext
   }
   return raw ? res : res.json()
 }
+
+// The copilot status check answers in about a second (decision 0046); a sleeping host can take longer to wake.
+export const COPILOT_STATUS_TIMEOUT_MS = 15000
 
 export const api = {
   health: () => request('/api/health'),
@@ -161,7 +172,7 @@ export const api = {
   listDriverLinks: (id) => request(`/api/plans/${id}/driver-links`),
   revokeDriverLink: (linkId) => request(`/api/driver-links/${linkId}`, { method: 'DELETE' }),
   stopReports: (id) => request(`/api/plans/${id}/stop-reports`),
-  copilotStatus: () => request('/api/copilot/status', { extra: llmHeaders() }),
+  copilotStatus: () => request('/api/copilot/status', { extra: llmHeaders(), timeoutMs: COPILOT_STATUS_TIMEOUT_MS }),
   copilotTest: (settings) => request('/api/copilot/test', { method: 'POST', extra: llmHeaders(settings) }),
   copilotModels: (settings) => request('/api/copilot/models', { method: 'POST', extra: llmHeaders(settings) }),
   copilotChat: (message, sessionId) => request('/api/copilot/chat', { method: 'POST', body: { message, session_id: sessionId || null }, extra: llmHeaders() }),

@@ -88,3 +88,45 @@ test('Copilot: cancel sends approve=false; a clarifying question is shown as a q
   expect(screen.getByText('question')).toBeInTheDocument()
   expect(bodies.filter((b) => b.key === 'POST /api/copilot/chat')[1].body.session_id).toBe('chat-1')
 })
+
+// Decision 0046: the hosted server has no model set up, or the status check does not answer in time.
+test('Copilot: with no model set up on the server it shows one plain line', async () => {
+  recording({ ...BASE, 'GET /api/copilot/status': { available: false, state: 'not_configured', provider: 'groq', model: null,
+    reason: 'Groq key missing or rejected: the GROQ_API_KEY secret is not set on this server', max_message_chars: 500 } })
+  renderPage(<Copilot />)
+  expect(await screen.findByText('Copilot needs a model. Plans and replans still work from the Plans page.')).toBeInTheDocument()
+  expect(screen.queryByText(/GROQ_API_KEY/)).not.toBeInTheDocument()
+  expect(screen.getByLabelText(/message to the copilot/i)).toBeDisabled()
+})
+
+test('Copilot: the input follows the server message limit', async () => {
+  recording({ ...BASE, 'GET /api/copilot/status': { available: true, state: 'ready', provider: 'groq', model: 'llama-3.3-70b-versatile', max_message_chars: 500 } })
+  renderPage(<Copilot />)
+  const input = await screen.findByLabelText(/message to the copilot/i)
+  await waitFor(() => expect(input).not.toBeDisabled())
+  expect(input).toHaveAttribute('maxLength', '500')
+})
+
+test('Copilot: a status check that times out says so, not "server not answering", and can be retried', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  try {
+    recording(BASE)
+    const plain = globalThis.fetch
+    let calls = 0
+    globalThis.fetch = vi.fn((url, opts = {}) => {
+      if (!String(url).includes('/api/copilot/status')) return plain(url, opts)
+      calls += 1
+      if (calls > 1) return Promise.resolve({ ok: true, status: 200, json: async () => ({ available: true, state: 'ready', provider: 'groq', model: 'm' }) })
+      return new Promise((resolve, reject) => opts.signal.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError'))))
+    })
+    renderPage(<Copilot />)
+    await waitFor(() => expect(calls).toBe(1))
+    vi.advanceTimersByTime(15001)
+    expect(await screen.findByText(/the copilot check took too long/i)).toBeInTheDocument()
+    expect(screen.queryByText(/isn't answering/i)).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /check again/i }))
+    await waitFor(() => expect(screen.getByLabelText(/message to the copilot/i)).not.toBeDisabled())
+  } finally {
+    vi.useRealTimers()
+  }
+})

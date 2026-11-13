@@ -7,9 +7,10 @@ Providers (env LOGIMIND_LLM_PROVIDER):
 * "ollama" (default): local Ollama through langchain-ollama, used only if the server answers and has the
   model (LOGIMIND_OLLAMA_URL, default http://localhost:11434; LOGIMIND_OLLAMA_MODEL, default llama3.2:3b).
 * "groq" / "gemini" (optional hosted free tiers, decision 0032): plain httpx calls with schema-constrained JSON.
-  GROQ_API_KEY + GROQ_MODEL / GEMINI_API_KEY + GEMINI_MODEL are read ONLY from the git-ignored backend/.env
-  file, never from the global environment, the API or the browser. The key is sent only in a request header,
-  is hidden from repr and is scrubbed from every error message.
+  GROQ_API_KEY + GROQ_MODEL / GEMINI_API_KEY + GEMINI_MODEL are read from the git-ignored backend/.env file,
+  never from the API or the browser. The process environment is read too ONLY when LOGIMIND_LLM_KEYS_FROM_ENV=1
+  (a host's secret store, e.g. the Hugging Face Space, decision 0046); a stray global variable is never picked up
+  otherwise. The key is sent only in a request header, is hidden from repr and is scrubbed from every error message.
 * "none": no model; the copilot says so.
 * "scripted": ScriptedLLM, an offline demo stand-in with fixed rules, shown as "scripted · fake-scripted"
   (decision 0042). Not a language model; for demos without Ollama or a key.
@@ -40,9 +41,14 @@ class Availability:
     model: str | None
     reason: str = ""
     problem: str = ""  # short headline for the console, e.g. "Groq key missing or rejected"
+    # "ready", "not_configured" (no provider, key or model set: nothing to try) or "unavailable" (set up, but the
+    # check failed). Empty: derived from `available`. Decision 0046.
+    state: str = ""
 
     def to_dict(self) -> dict[str, Any]:
-        return self.__dict__.copy()
+        d = self.__dict__.copy()
+        d["state"] = self.state or ("ready" if self.available else "unavailable")
+        return d
 
 
 class LLM(Protocol):
@@ -174,8 +180,11 @@ class NoLLM:
     provider: str = "none"
     model: str | None = None
 
+    configured: bool = False  # True: a provider was asked for but is unusable (e.g. an unknown name)
+
     def availability(self) -> Availability:
-        return Availability(False, self.provider, None, self.reason)
+        return Availability(False, self.provider, None, self.reason,
+                            state="unavailable" if self.configured else "not_configured")
 
     def complete_json(self, system, messages, schema) -> str:
         raise LLMUnavailable(self.reason)
@@ -248,6 +257,8 @@ SHORT = {"auth": "key missing or rejected", "rate_limit": "rate limit reached", 
          "server": "server problem", "bad_request": "request refused", "bad_response": "unusable answer",
          "model": "model not found", "blocked": "address not allowed"}
 UI = "Copilot settings"  # where a key or model typed in the console is fixed
+PROBE_TIMEOUT_S = 5.0  # the status check's model-list call; completions keep timeout_s (decision 0046)
+KEYS_FROM_ENV = "LOGIMIND_LLM_KEYS_FROM_ENV"
 
 
 def read_dotenv(path: Path) -> dict[str, str]:
@@ -264,6 +275,20 @@ def read_dotenv(path: Path) -> dict[str, str]:
         k, v = line.split("=", 1)
         out[k.strip()] = v.strip().strip('"').strip("'")
     return out
+
+
+def hosted_conf(dotenv: Path | None = None, env: Any = None) -> dict[str, str]:
+    """Hosted providers' keys and models: backend/.env, plus the process environment only when
+    LOGIMIND_LLM_KEYS_FROM_ENV=1 (a host's secret store; decision 0046). Then a non-empty environment value wins.
+    Base-URL overrides (LOGIMIND_<P>_BASE_URL) come only from the file."""
+    env = os.environ if env is None else env
+    conf = read_dotenv(BACKEND_ENV if dotenv is None else dotenv)
+    if env.get(KEYS_FROM_ENV, "") == "1":
+        for prefix in ("GROQ", "GEMINI"):
+            for name in (f"{prefix}_API_KEY", f"{prefix}_MODEL"):
+                if env.get(name, "").strip():
+                    conf[name] = env[name].strip()
+    return conf
 
 
 # Model ids that are not chat models (speech, embeddings, safety classifiers, images). "Load models" hides them.
@@ -332,7 +357,9 @@ class HostedLLM:
     label: str = ""
     key_var: str = ""
     model_var: str = ""
-    settings_from: str = "env"  # "env" (backend/.env) or "ui" (Copilot settings in the console, decision 0033)
+    # "env" (backend/.env), "host" (the host's secrets, LOGIMIND_LLM_KEYS_FROM_ENV=1, decision 0046) or "ui"
+    # (Copilot settings in the console, decision 0033)
+    settings_from: str = "env"
     guarded: bool = False  # True: the base URL is checked and pinned (netguard) before every call
     resolve: Resolver | None = field(default=None, repr=False)  # tests: a fake DNS
     auto_model: bool = False  # console settings without a model name: choose one from the provider's list
@@ -345,18 +372,21 @@ class HostedLLM:
         return text.replace(self.api_key, "***") if self.api_key else text
 
     def _where(self, var: str) -> str:
-        return UI if self.settings_from == "ui" else f"{var} in {ENV_FILE}"
+        if self.settings_from == "ui":
+            return UI
+        return f"the {var} secret or variable" if self.settings_from == "host" else f"{var} in {ENV_FILE}"
 
     def _setup_problem(self) -> Availability | None:
         if not self.api_key:
-            why = "no key in Copilot settings" if self.settings_from == "ui" else \
-                f"{self.key_var} is empty in {ENV_FILE}"
+            why = {"ui": "no key in Copilot settings", "host": f"the {self.key_var} secret is not set on this server"
+                   }.get(self.settings_from, f"{self.key_var} is empty in {ENV_FILE}")
             return Availability(False, self.provider, self.model or None,
-                                f"{self.label} key missing or rejected: {why}", f"{self.label} key missing or rejected")
+                                f"{self.label} key missing or rejected: {why}", f"{self.label} key missing or rejected",
+                                state="not_configured")
         if not self.model and not self.auto_model:
             return Availability(False, self.provider, None,
                                 f"{self.label} model not set: put a model name in {self._where(self.model_var)}",
-                                f"{self.label} model not set")
+                                f"{self.label} model not set", state="not_configured")
         return None
 
     def test_connection(self) -> dict[str, Any]:
@@ -383,23 +413,23 @@ class HostedLLM:
             return f"Works: {self.label} is ready, using {self.model} (chosen automatically: {why})."
         return f"Works: {self.label} is ready, using {self.model}."
 
-    def _choose_model(self) -> None:
+    def _choose_model(self, timeout: float | None = None) -> None:
         """Console settings without a model name: choose one from the provider's list (pick_model)."""
         if self.model or not self.auto_model:
             return
-        models = self.list_models()
+        models = self.list_models(timeout)
         if not models:
             raise LLMError("model", f"{self.label} lists no chat models for this key; type a model name in {UI}.")
         self.model, self.choice_reason = pick_model(self.preference or self.provider, models)
         self.chosen_automatically = True
 
-    def list_models(self) -> list[str]:
+    def list_models(self, timeout: float | None = None) -> list[str]:
         """The provider's chat models (one list call through the same guard and limits). Never needs a model."""
         if not self.api_key:
             raise LLMError("auth", self._setup_problem().reason)
-        return chat_models(self._list_raw())
+        return chat_models(self._list_raw(timeout))
 
-    def _list_raw(self) -> list[Any]:
+    def _list_raw(self, timeout: float | None = None) -> list[Any]:
         raise NotImplementedError
 
     def availability(self) -> Availability:
@@ -409,10 +439,10 @@ class HostedLLM:
         now = time.monotonic()
         if self._cache and now < self._cache[0]:
             return self._cache[1]
-        try:
-            self._choose_model()
+        try:  # a short timeout: the status check must answer quickly (decision 0046)
+            self._choose_model(PROBE_TIMEOUT_S)
             if not self.chosen_automatically:
-                self._probe()
+                self._probe(PROBE_TIMEOUT_S)
             how = "chosen automatically: the first chat model in its list" if self.chosen_automatically else \
                 "optional free tier"
             av = Availability(True, self.provider, self.model, f"hosted {self.label} model ({how})")
@@ -440,7 +470,8 @@ class HostedLLM:
     def _headers(self) -> dict[str, str]:
         raise NotImplementedError
 
-    def _request(self, method: str, path: str, body: dict | None = None) -> dict:
+    def _request(self, method: str, path: str, body: dict | None = None, timeout: float | None = None) -> dict:
+        timeout = self.timeout_s if timeout is None else min(timeout, self.timeout_s)
         transport = self.transport
         if self.guarded:
             try:
@@ -450,7 +481,7 @@ class HostedLLM:
                 raise LLMError("blocked", f"{self.label}: {exc}.") from None
             transport = transport or PinnedTransport({host: pinned_ip})
         try:
-            with httpx.Client(base_url=self.base_url, timeout=httpx.Timeout(self.timeout_s, connect=5.0),
+            with httpx.Client(base_url=self.base_url, timeout=httpx.Timeout(timeout, connect=min(5.0, timeout)),
                               transport=transport, follow_redirects=False) as client:
                 with client.stream(method, path, json=body, headers=self._headers()) as streamed:
                     raw = b""
@@ -461,7 +492,7 @@ class HostedLLM:
                                                            "not read.")
                     r = httpx.Response(streamed.status_code, headers=streamed.headers, content=raw)
         except httpx.TimeoutException:
-            raise LLMError("network", f"{self.label} did not answer within {self.timeout_s:g} s (network timeout). "
+            raise LLMError("network", f"{self.label} did not answer within {timeout:g} s (network timeout). "
                                       "Check the internet connection and try again.") from None
         except httpx.TransportError as exc:
             raise LLMError("network", f"{self.label} could not be reached from the LogiMind server "
@@ -489,6 +520,9 @@ class HostedLLM:
             if self.settings_from == "ui":  # one plain sentence for a key pasted in the console (decision 0036)
                 return LLMError("auth", f"{self.label} rejected this key. Check that the whole key was copied, "
                                         "with no spaces or quotes.")
+            if self.settings_from == "host":
+                return LLMError("auth", f"{self.label} key missing or rejected (HTTP {code}). Check the "
+                                        f"{self.key_var} secret and restart the server.")
             return LLMError("auth", f"{self.label} key missing or rejected (HTTP {code}). Check {self.key_var} in "
                                     f"{ENV_FILE} and restart the server.")
         if code == 429:
@@ -504,7 +538,7 @@ class HostedLLM:
         return LLMError("bad_request", f"{self.label} refused the request (HTTP {code})"
                                        + (f": {detail}" if detail else "") + ".")
 
-    def _probe(self) -> None:
+    def _probe(self, timeout: float | None = None) -> None:
         raise NotImplementedError
 
     def _complete(self, system: str, messages: list[dict[str, str]], schema: dict[str, Any]) -> str:
@@ -523,11 +557,12 @@ class OpenAICompatLLM(HostedLLM):
     def _headers(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self.api_key}"}
 
-    def _list_raw(self) -> list[Any]:
-        return [m.get("id") for m in (self._request("GET", "/models").get("data") or []) if isinstance(m, dict)]
+    def _list_raw(self, timeout: float | None = None) -> list[Any]:
+        return [m.get("id") for m in (self._request("GET", "/models", timeout=timeout).get("data") or [])
+                if isinstance(m, dict)]
 
-    def _probe(self) -> None:
-        ids = set(self._list_raw())
+    def _probe(self, timeout: float | None = None) -> None:
+        ids = set(self._list_raw(timeout))
         if self.model not in ids:
             raise LLMError("model", f"{self.label}: model {self.model!r} not found in its model list. "
                                     f"Check the model name in {self._where(self.model_var)}.")
@@ -567,13 +602,13 @@ class GeminiLLM(HostedLLM):
     def _headers(self) -> dict[str, str]:
         return {"x-goog-api-key": self.api_key}
 
-    def _probe(self) -> None:
-        self._request("GET", f"/models/{self.model}")
+    def _probe(self, timeout: float | None = None) -> None:
+        self._request("GET", f"/models/{self.model}", timeout=timeout)
 
-    def _list_raw(self) -> list[Any]:
+    def _list_raw(self, timeout: float | None = None) -> list[Any]:
         """Models that can generate content; ids without the "models/" prefix. The key stays in the header."""
         out = []
-        for m in self._request("GET", "/models?pageSize=1000").get("models") or []:
+        for m in self._request("GET", "/models?pageSize=1000", timeout=timeout).get("models") or []:
             if isinstance(m, dict) and "generateContent" in (m.get("supportedGenerationMethods") or []):
                 out.append(str(m.get("name", "")).removeprefix("models/"))
         return out
@@ -599,7 +634,8 @@ HOSTED: dict[str, tuple[type[HostedLLM], str]] = {"groq": (GroqLLM, "GROQ"), "ge
 
 def llm_from_env(env: dict[str, str] | None = None, dotenv: Path | None = None) -> LLM:
     """The provider name comes from LOGIMIND_LLM_PROVIDER (start-dev.bat copies backend/.env into the process).
-    Hosted providers' keys, models and base URLs are read from the backend/.env FILE only."""
+    Hosted providers' keys and models come from the backend/.env FILE, or from the environment when
+    LOGIMIND_LLM_KEYS_FROM_ENV=1 (hosted_conf); base URLs only from the file."""
     env = os.environ if env is None else env
     provider = env.get("LOGIMIND_LLM_PROVIDER", "ollama").strip().lower()
     if provider == "none":
@@ -611,16 +647,19 @@ def llm_from_env(env: dict[str, str] | None = None, dotenv: Path | None = None) 
                          model=env.get("LOGIMIND_OLLAMA_MODEL", "llama3.2:3b"))
     if provider in HOSTED:
         cls, prefix = HOSTED[provider]
-        conf = read_dotenv(BACKEND_ENV if dotenv is None else dotenv)
-        llm = cls(model=conf.get(f"{prefix}_MODEL", ""), api_key=conf.get(f"{prefix}_API_KEY", ""))
+        conf = hosted_conf(dotenv, env)
+        llm = cls(model=conf.get(f"{prefix}_MODEL", ""), api_key=conf.get(f"{prefix}_API_KEY", ""),
+                  settings_from="host" if env.get(KEYS_FROM_ENV, "") == "1" else "env")
         base = conf.get(f"LOGIMIND_{prefix}_BASE_URL", "")
         if base:  # only for a local fake server (tests, the browser check): a key must never go anywhere else
             if not _is_loopback_url(base):
                 return NoLLM(reason=f"LOGIMIND_{prefix}_BASE_URL may only point to this computer (localhost); "
-                                    "it was ignored so the key is not sent anywhere else", provider=provider)
+                                    "it was ignored so the key is not sent anywhere else", provider=provider,
+                         configured=True)
             llm.base_url = base.rstrip("/")
         return llm
-    return NoLLM(reason=f"unknown LOGIMIND_LLM_PROVIDER {provider!r}; expected ollama, groq, gemini, scripted or none")
+    return NoLLM(reason=f"unknown LOGIMIND_LLM_PROVIDER {provider!r}; expected ollama, groq, gemini, scripted or none",
+                 configured=True)
 
 
 # ---- settings typed in the console (decision 0033) ----------------------------------------------------------
@@ -671,9 +710,10 @@ def llm_from_settings(s: dict[str, str], env: dict[str, str] | None = None, dote
                                label=label, preference=kind, provider=kind, transport=transport, resolve=resolve,
                                auto_model=not model)
     cls, prefix = HOSTED[provider]
-    conf = read_dotenv(BACKEND_ENV if dotenv is None else dotenv)
+    conf = hosted_conf(dotenv, env)
+    server = "host" if env.get(KEYS_FROM_ENV, "") == "1" else "env"
     llm = cls(model=model or conf.get(f"{prefix}_MODEL", ""), api_key=key or conf.get(f"{prefix}_API_KEY", ""),
-              settings_from="ui" if key else "env", transport=transport, resolve=resolve)
+              settings_from="ui" if key else server, transport=transport, resolve=resolve)
     llm.auto_model = not llm.model  # chosen in the console without a model name: first chat model in the list
     override = conf.get(f"LOGIMIND_{prefix}_BASE_URL", "")
     if override and _is_loopback_url(override):  # operator's own setting in backend/.env (decision 0032)

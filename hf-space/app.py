@@ -18,6 +18,11 @@ DEFAULTS = {
     "LOGIMIND_WORKER": "inline",
     "ROUTEOPT_DATA_DIR": "/tmp/logimind-data",
     "FRONTEND_URL": "https://logi-mind-ten.vercel.app",
+    # Copilot (decision 0046): Groq's free tier. The key is the Space SECRET GROQ_API_KEY, never a file here; without
+    # it the copilot reports "not configured" and plans and replans still work.
+    "LOGIMIND_LLM_PROVIDER": "groq",
+    "GROQ_MODEL": "llama-3.3-70b-versatile",
+    "LOGIMIND_LLM_KEYS_FROM_ENV": "1",  # read GROQ_API_KEY / GROQ_MODEL from the Space's secrets and variables
 }
 for name, value in DEFAULTS.items():
     if not os.environ.get(name):

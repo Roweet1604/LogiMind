@@ -40,6 +40,7 @@ export function CopilotProvider({ children }) {
       // e.g. a 400 for Copilot settings the server refused: say so, with the provider chosen in this tab
       const s = loadLlmSettings()
       setStatus({ available: false, provider: s.provider || 'server', model: s.model || null, reason: e.message,
+        state: e.timedOut ? 'timeout' : 'unavailable',
         problem: e.status === 400 ? 'Copilot settings not accepted' : '' })
     })
   }, [state])
@@ -130,12 +131,27 @@ const withoutCommands = (reason) => String(reason).replace(/[;,]?\s*\b(install|r
 // Always names the active provider and model, also when it is not available.
 export function ModelStatus({ status }) {
   if (!status) return <Spinner label="Checking the copilot model" />
+  if (status.state === 'not_configured') return <Badge kind="neutral">copilot: no model set up</Badge>
+  if (status.state === 'timeout') return <Badge kind="warn">copilot: check timed out</Badge>
   const label = `${status.provider}${status.model ? ` · ${status.model}` : ''}`
   if (!status.available) return <Badge kind="bad">{label}: not available</Badge>
   return <Badge kind="ok" icon={ShieldCheck}>{label}</Badge>
 }
 
-function UnavailableNotice({ status }) {
+// The server has no provider, key or model set up (decision 0046): one line, nothing technical.
+export const NOT_CONFIGURED = 'Copilot needs a model. Plans and replans still work from the Plans page.'
+
+function UnavailableNotice({ status, retry }) {
+  if (status.state === 'not_configured') return <Notice kind="info" title={NOT_CONFIGURED} />
+  if (status.state === 'timeout') {
+    return (
+      <Notice kind="warn" title="The copilot check took too long">
+        The server did not report the copilot's model in time ({status.reason}). Plans and replans still work from
+        the Plans page.
+        <div className="mt-2"><button type="button" className="btn btn-on-dark" onClick={retry}>Check again</button></div>
+      </Notice>
+    )
+  }
   if (!isHosted(status)) {
     return (
       <Notice kind="error" title={status.problem || 'No local model is available'}>
@@ -178,7 +194,7 @@ export default function CopilotChat({ compact = false }) {
     <div className={`flex min-h-0 flex-col ${compact ? 'h-full' : ''}`}>
       {off && (
         <div className={compact ? 'px-4 pt-3' : 'mb-3'}>
-          <UnavailableNotice status={status} />
+          <UnavailableNotice status={status} retry={loadStatus} />
         </div>
       )}
       <div className={`space-y-3 ${compact ? 'min-h-0 flex-1 overflow-y-auto px-4 py-3' : 'mb-4 min-h-[16rem]'}`} aria-live="polite">
@@ -194,7 +210,8 @@ export default function CopilotChat({ compact = false }) {
         <form onSubmit={submit} className="flex gap-2">
           <label htmlFor={compact ? 'copilot-dock-input' : 'copilot-input'} className="sr-only">Message to the copilot</label>
           <input id={compact ? 'copilot-dock-input' : 'copilot-input'} className="input" value={text} onChange={(e) => setText(e.target.value)}
-            disabled={busy || off || !status} placeholder={off ? 'Copilot not available' : 'Type a request'} maxLength={2000} />
+            disabled={busy || off || !status} placeholder={off ? 'Copilot not available' : 'Type a request'}
+            maxLength={status?.max_message_chars || 2000} />
           <button type="submit" className="btn btn-primary" disabled={busy || off || !status || !text.trim()}>Send</button>
         </form>
       </div>

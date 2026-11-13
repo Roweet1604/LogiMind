@@ -3,6 +3,9 @@
 Copilot settings from the console (decision 0033) come with each request as headers: X-LLM-Provider, X-LLM-Model,
 X-LLM-Base-URL and X-LLM-Key. They are read by hand, not declared as typed parameters, because a validation error
 would repeat the value (the key) in its reply. Nothing from them is stored, logged, audited or returned.
+
+Calls that reach a model (chat, test, models) count against the copilot limits (app/copilot/limits.py, decision
+0046); the status check never calls a model for longer than a few seconds and is not counted.
 """
 from __future__ import annotations
 
@@ -50,29 +53,39 @@ def llm_for(request: Request) -> LLM | None:
 
 @router.get("/status")
 def copilot_status(request: Request, who: Principal = Depends(require_principal)) -> dict:
-    """Which provider and model the copilot uses for this request, and whether it is available. Never the key."""
-    return request.app.state.copilot.status(llm_for(request))
+    """Which provider and model the copilot uses for this request, and whether it is available: `state` is ready,
+    not_configured or unavailable. Fast: no model call when nothing is set up, and the provider check is short and
+    cached. Never the key."""
+    return {**request.app.state.copilot.status(llm_for(request)), **request.app.state.copilot_limits.describe()}
 
 
 @router.post("/test")
 def copilot_test(request: Request, who: Principal = Depends(require_principal)) -> dict:
     """Test the provider settings with one minimal call (the model list, never a completion). Returns only success
     or a plain-language error (kind: ok, auth, model, rate_limit, network, blocked, server, bad_request, ...)."""
-    return request.app.state.copilot.test_connection(llm_for(request))
+    llm = llm_for(request)
+    request.app.state.copilot_limits.take(request)
+    return request.app.state.copilot.test_connection(llm)
 
 
 @router.post("/models")
 def copilot_models(request: Request, who: Principal = Depends(require_principal)) -> dict:
     """The provider's chat models for the console's "Load models": one list call with the same key header, guard and
     limits as every other call. Returns names only, or a plain error; never the key."""
-    return request.app.state.copilot.list_models(llm_for(request))
+    llm = llm_for(request)
+    request.app.state.copilot_limits.take(request)
+    return request.app.state.copilot.list_models(llm)
 
 
 @router.post("/chat")
 def copilot_chat(body: ChatIn, request: Request, who: Principal = Depends(require_principal)) -> dict:
     """One message. Reply kinds: answer, clarify, confirm (needs POST /confirm), refuse, error, unavailable.
     Answers are built only from tool outputs, listed in `tool_calls`."""
-    return request.app.state.copilot.chat(who, body.message, body.session_id, llm=llm_for(request))
+    limits = request.app.state.copilot_limits
+    limits.check_length(body.message)
+    llm = llm_for(request)
+    limits.take(request, body.session_id)
+    return request.app.state.copilot.chat(who, body.message, body.session_id, llm=llm)
 
 
 @router.post("/confirm")
