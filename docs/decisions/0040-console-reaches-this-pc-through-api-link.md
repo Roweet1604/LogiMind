@@ -8,6 +8,13 @@ and use the console deployed on Vercel, signed in to the demo tenant).
   `LOGIMIND_PUBLIC_DEMO=1` and `FRONTEND_URL` (decision 0039). It prints `<FRONTEND_URL>/?api=<tunnel address>`
   and stops the tunnel when the API stops. `LOGIMIND_TUNNEL=0` turns this off; `start-demo.bat` sets it, because it
   runs its own tunnel. Without cloudflared it says how to install it and runs the API as before.
+- cloudflared is found without the PATH too (VS Code's terminal may keep an old PATH): `LOGIMIND_CLOUDFLARED`, the
+  PATH, Program Files (x86) / Program Files, the WinGet links and package folders, scoop and chocolatey.
+- Port check first (13 Nov 2026): a LogiMind API already on the port (`uvicorn app.main:app`, e.g. an earlier
+  `npm run dev` left open) is stopped with its reloader; any other program is named with its PID and nothing starts.
+  Before this, a busy port made uvicorn exit at once and took the tunnel with it, so no link was printed.
+- The link is printed only after `<tunnel>/health` answers from this PC; if cloudflared or the API fails, its last
+  lines are shown.
 - The console takes the API address at run time from `?api=`. It is kept in this browser's localStorage (a
   convenience, not a secret) until `?api=default`, and removed from the address bar. The header shows
   "Server: <host> · use the default server". Without `?api=` the build-time `VITE_API_URL` is used as before.

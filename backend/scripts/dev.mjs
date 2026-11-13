@@ -9,7 +9,7 @@
 // api also opens a Cloudflare quick tunnel for the deployed console when backend/.env asks for the public demo
 // (LOGIMIND_PUBLIC_DEMO=1 and FRONTEND_URL; decision 0040) and prints the console link to open.
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -78,42 +78,149 @@ if (mode === 'api') {
   process.exit(1)
 }
 
+const apiPort = env.PORT || '8000'
+if (mode === 'api') freePort(apiPort)
 const child = spawn(python, args, { cwd: backend, env, stdio: 'inherit' })
-const tunnel = mode === 'api' ? startTunnel(env.PORT || '8000') : null
+const tunnel = mode === 'api' ? startTunnel(apiPort) : null
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { tunnel?.kill(); child.kill(sig) })
-child.on('exit', (code, signal) => { tunnel?.kill(); process.exit(code ?? (signal ? 1 : 0)) })
+child.on('exit', (code, signal) => {
+  tunnel?.kill()
+  if (mode === 'api') console.log(`[api] The API stopped (exit ${code ?? signal}); the tunnel was stopped with it. The reason is in the lines above.`)
+  process.exit(code ?? (signal ? 1 : 0))
+})
+
+// Port check before the API starts (decision 0040). A LogiMind API left running from an earlier `npm run dev`
+// (uvicorn app.main:app) is stopped with its reloader and workers; anything else is reported and nothing starts.
+function listeners(port) {
+  if (!win) return []
+  const out = spawnSync('netstat', ['-ano', '-p', 'TCP'], { encoding: 'utf8' }).stdout || ''
+  const pids = new Set()
+  for (const line of out.split(/\r?\n/)) {
+    const m = line.trim().match(/^TCP\s+\S+:(\d+)\s+\S+\s+LISTENING\s+(\d+)$/)
+    if (m && m[1] === String(port) && m[2] !== '0') pids.add(Number(m[2]))
+  }
+  return [...pids]
+}
+
+function processInfo(pid) {
+  const ps = `$p = Get-CimInstance Win32_Process -Filter "ProcessId=${Number(pid)}"; if ($p) { [string]$p.ParentProcessId; $p.Name; [string]$p.CommandLine }`
+  const r = spawnSync('powershell', ['-NoProfile', '-Command', ps], { encoding: 'utf8' })
+  const [parent, name, cmd] = (r.stdout || '').split(/\r?\n/)
+  return name ? { pid, parent: Number(parent), name, cmd: cmd || '' } : null
+}
+
+function isLogiMindApi(p) { return /uvicorn/.test(p.cmd) && /app\.main:app/.test(p.cmd) }
+
+function freePort(port) {
+  const pids = listeners(port)
+  if (!pids.length) return
+  for (const pid of pids) {
+    const p = processInfo(pid)
+    if (!p || !isLogiMindApi(p)) {
+      console.error(`[api] Port ${port} is already used by ${p ? `${p.name} (PID ${pid}): ${p.cmd}` : `PID ${pid}`}.\n` +
+        `      It is not a LogiMind API, so it was left alone. Close it, or start on another port: set PORT=8001 in backend/.env.`)
+      process.exit(1)
+    }
+    let top = p  // with --reload the listener is a worker; stop from the reloader down
+    for (let up = processInfo(p.parent); up && isLogiMindApi(up); up = processInfo(up.parent)) top = up
+    console.log(`[api] Port ${port} was held by an earlier LogiMind API (PID ${top.pid}); stopping it.`)
+    spawnSync('taskkill', ['/PID', String(top.pid), '/T', '/F'], { stdio: 'ignore' })
+  }
+  for (let i = 0; i < 20 && listeners(port).length; i++) spawnSync(process.execPath, ['-e', 'setTimeout(()=>{},250)'])
+  if (listeners(port).length) {
+    console.error(`[api] Port ${port} is still in use after stopping PID(s) ${pids.join(', ')}. Close that window by hand and run npm run dev again.`)
+    process.exit(1)
+  }
+}
 
 // Public demo from this PC (decision 0040): with LOGIMIND_PUBLIC_DEMO=1 and FRONTEND_URL in backend/.env, a free
 // Cloudflare quick tunnel (no account) makes the API reachable from the deployed console. Its address changes on
 // every start, so the console link carries it: <FRONTEND_URL>/?api=<tunnel>. LOGIMIND_TUNNEL=0 turns this off.
+// cloudflared is looked for in LOGIMIND_CLOUDFLARED, on the PATH, then in the usual install folders (VS Code's
+// terminal may have an older PATH than a new Windows terminal).
 function findCloudflared() {
+  if (env.LOGIMIND_CLOUDFLARED && existsSync(env.LOGIMIND_CLOUDFLARED)) return env.LOGIMIND_CLOUDFLARED
   const onPath = spawnSync(win ? 'where' : 'which', ['cloudflared'], { encoding: 'utf8' })
   if (onPath.status === 0 && onPath.stdout.trim()) return onPath.stdout.trim().split(/\r?\n/)[0]
-  const dirs = win ? [process.env['ProgramFiles(x86)'], process.env.ProgramFiles].filter(Boolean) : []
-  return dirs.map((d) => join(d, 'cloudflared', 'cloudflared.exe')).find(existsSync)
+  if (!win) return ['/usr/local/bin/cloudflared', '/opt/homebrew/bin/cloudflared', '/usr/bin/cloudflared'].find(existsSync)
+  const local = process.env.LOCALAPPDATA || ''
+  const candidates = [
+    join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'cloudflared', 'cloudflared.exe'),
+    join(process.env.ProgramFiles || 'C:\\Program Files', 'cloudflared', 'cloudflared.exe'),
+    'C:\\Program Files (x86)\\cloudflared\\cloudflared.exe',
+    'C:\\Program Files\\cloudflared\\cloudflared.exe',
+    join(local, 'Microsoft', 'WinGet', 'Links', 'cloudflared.exe'),
+    join(local, 'cloudflared', 'cloudflared.exe'),
+    join(process.env.USERPROFILE || '', 'scoop', 'shims', 'cloudflared.exe'),
+    'C:\\ProgramData\\chocolatey\\bin\\cloudflared.exe',
+  ]
+  const pkgs = join(local, 'Microsoft', 'WinGet', 'Packages')
+  if (local && existsSync(pkgs)) {
+    for (const d of readdirSync(pkgs)) if (/^Cloudflare\.cloudflared/i.test(d)) candidates.push(join(pkgs, d, 'cloudflared.exe'))
+  }
+  return candidates.find((c) => c && existsSync(c))
+}
+
+function pause(ms) { return new Promise((r) => setTimeout(r, ms)) }
+
+// The tunnel's DNS name can take a few seconds to resolve, and the API needs a moment to start; check it from here.
+async function checkTunnel(url) {
+  let last = ''
+  for (let i = 0; i < 45; i++) {
+    if (child.exitCode !== null) return 'the API stopped'
+    try {
+      const r = await fetch(`${url}/health`, { signal: AbortSignal.timeout(5000) })
+      if (r.ok) return null
+      last = `HTTP ${r.status}`
+    } catch (e) { last = e.cause?.code || e.message }
+    await pause(2000)
+  }
+  return last
 }
 
 function startTunnel(port) {
-  if (env.LOGIMIND_PUBLIC_DEMO !== '1' || !env.FRONTEND_URL || env.LOGIMIND_TUNNEL === '0') return null
+  if (env.LOGIMIND_TUNNEL === '0') return null
+  if (env.LOGIMIND_PUBLIC_DEMO !== '1' || !env.FRONTEND_URL) {
+    console.log('[tunnel] Not started: backend/.env needs LOGIMIND_PUBLIC_DEMO=1 and FRONTEND_URL=https://... for the deployed console.')
+    return null
+  }
   if (env.LOGIMIND_DEMO_MODE !== '1') console.log('[tunnel] note: LOGIMIND_DEMO_MODE=1 is missing, so the console will ask for an API key.')
   const exe = findCloudflared()
   if (!exe) {
-    console.log('[tunnel] cloudflared not found, so the deployed console cannot reach this PC. Install it with:\n  winget install Cloudflare.cloudflared')
+    console.log('[tunnel] cloudflared not found (PATH, Program Files, WinGet folders), so the deployed console cannot reach this PC.\n' +
+      '         Install it with: winget install Cloudflare.cloudflared   or set LOGIMIND_CLOUDFLARED=<full path to cloudflared.exe> in backend/.env')
     return null
   }
+  console.log(`[tunnel] Starting a Cloudflare quick tunnel to this API (${exe})...`)
   const proc = spawn(exe, ['tunnel', '--no-autoupdate', '--url', `http://localhost:${port}`], { stdio: ['ignore', 'pipe', 'pipe'] })
-  let shown = false
+  let address = null
+  const recent = []  // cloudflared's last lines, shown if it fails
   const watch = (chunk) => {
-    const m = !shown && String(chunk).match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/)
+    for (const line of String(chunk).split(/\r?\n/)) if (line.trim()) recent.push(line.trim())
+    recent.splice(0, Math.max(0, recent.length - 8))
+    const m = !address && String(chunk).match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/)
     if (!m) return
-    shown = true
-    const consoleUrl = env.FRONTEND_URL.replace(/\/+$/, '')
-    console.log(`\n[tunnel] Public demo on this PC. Open (and share) this link; it changes every time npm run dev starts:\n\n  ${consoleUrl}/?api=${m[0]}\n\n[tunnel] API address: ${m[0]}  (keep this window open; Ctrl+C stops the API and the tunnel)\n`)
+    address = m[0]
+    const link = `${env.FRONTEND_URL.replace(/\/+$/, '')}/?api=${address}`
+    console.log(`[tunnel] Tunnel address ${address}; checking that it reaches the API...`)
+    checkTunnel(address).then((problem) => {
+      if (problem) {
+        console.log(`[tunnel] The tunnel does not answer yet (${problem}). The link may still work in a minute:\n\n  ${link}\n`)
+        return
+      }
+      console.log(`\n[tunnel] Checked: ${address}/health answers. Open (and share) this link; it changes every time npm run dev starts:\n\n  ${link}\n\n` +
+        '[tunnel] Keep this terminal open; Ctrl+C stops the API and the tunnel.\n')
+    })
   }
   proc.stdout.on('data', watch)
   proc.stderr.on('data', watch)
-  proc.on('error', (e) => console.log(`[tunnel] could not start cloudflared: ${e.message}`))
-  proc.on('exit', (code) => { if (!child.killed && child.exitCode === null) console.log(`[tunnel] cloudflared stopped (exit ${code}); the deployed console can no longer reach this PC.`) })
-  console.log('[tunnel] Starting a Cloudflare quick tunnel to this API...')
+  setTimeout(() => {
+    if (!address && proc.exitCode === null) console.log(`[tunnel] No tunnel address after 60 s. cloudflared's last lines:\n  ${recent.join('\n  ') || '(none)'}`)
+  }, 60000).unref()
+  proc.on('error', (e) => console.log(`[tunnel] could not start ${exe}: ${e.message}`))
+  proc.on('exit', (code) => {
+    if (child.exitCode !== null) return
+    console.log(`[tunnel] cloudflared stopped (exit ${code}); the deployed console cannot reach this PC. Its last lines:\n  ${recent.join('\n  ') || '(none)'}`)
+  })
   return proc
 }
